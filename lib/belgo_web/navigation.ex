@@ -34,6 +34,7 @@ defmodule BelgoWeb.Navigation do
       },
       %Item{label: gettext("Devices"), path: "/devices", icon: "hero-server"},
       %Item{label: gettext("Locations"), path: "/locations", icon: "hero-map-pin"},
+      %Item{label: gettext("Plan"), path: "/plan", icon: "hero-home-modern"},
       %Item{label: gettext("Hosting"), path: "/hosting", icon: "hero-rectangle-stack"},
       %Item{label: gettext("Routing"), path: "/routing", icon: "hero-share"},
       %Item{label: gettext("Networks"), path: "/networks", icon: "hero-globe-alt"},

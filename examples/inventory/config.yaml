@@ -18,6 +18,9 @@ port_scan:
   cache_duration: 1h
   # How long to wait for each port.
   timeout: 1s
+plan:
+  # The plan editor saves once changes are left alone this long.
+  autosave_delay: 5s
 # Versions this directory with git (remove the key to disable). Never pulls.
 # git:
 #   # Commit once the files are left alone this long.

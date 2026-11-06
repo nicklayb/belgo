@@ -81,6 +81,20 @@ config forbids several pipes on one line), `mix compile --warnings-as-errors`,
 - The release needs `RELEASE_COOKIE` (nixpkgs removes it); the image sets a dummy one
   with distribution disabled.
 
+## Browser dependencies (owner: npm, declarative)
+
+`assets/package.json` + `package-lock.json` (three, heroicons). Never `npm install`
+by hand for the app: `flake.nix` builds `node_modules` with
+`pkgs.importNpmLock.buildNodeModules` (packages fetched by the lock's integrity);
+the release links it in `preBuild`, the dev shell `shellHook` links
+`assets/node_modules` to it (only when absent or already a symlink). After changing
+`package.json`, regenerate the lock with
+`nix shell nixpkgs#nodejs -c npm install --package-lock-only --ignore-scripts` in
+`assets/`. Tailwind's `hero-*` icons read `assets/node_modules/heroicons`
+(`assets/vendor/heroicons.js`); there is no heroicons Mix dependency anymore.
+Building with `path:.` copies local leftovers of `priv/static/assets` into the
+release (gitignored, a git flake build does not see them).
+
 ## Discovery and claiming
 
 Providers are pulled into **observations** (never persisted, rebuilt on each pull).
@@ -386,6 +400,74 @@ first addressed interface only, other interfaces are named through their
   lease)…"), in Overview and on the device page. AdGuard persistent clients are
   configuration Belgo pushes (not live), auto clients have no MAC: not used.
   Measured on the owner's network: Sony Bravia seen at .158, assigned .37.
+- 3D plan (owner, in progress; steps: 1 model ✓, 2 read-only 2D ✓ (`/plan[/:id]?level=`,
+  `Components.PlanDrawing` SVG in cm, exterior shows the home footprint), 3 3D view ✓
+  (default `/plan` view, `?view=2d` for the drawing; `Plans.Scene` (pure) computes
+  floors, walls split around openings with lintels / door panels, devices; JSON in
+  `data-scene` of the `Plan3D` hook; level tab = show up to that level via
+  `data-visible-up-to`; three.js (npm, see below) loaded with a dynamic `import()`:
+  esbuild runs `--format=esm --splitting`, app.js is `type="module"`, the 3D chunk
+  is `assets/chunks/viewer-*.js`, never loaded by other pages), 4 editor ✓ (`/plan/new`, `/plan/:id/edit`,
+  `Plans.Editor` LiveView: draft in memory, `Plans.Editing` pure edits, autosave
+  timer = `plan.autosave_delay` with `#plan-save-status` (saved / pending / error
+  with changeset reasons), saved on Done and in `terminate`; `PlanEditor` hook:
+  draw / move (Shift = whole room; single-rectangle rooms move whole) / corner
+  resize / split / door / opening clicks, previews in `#plan-editor-overlay`
+  (phx-update ignore); editable drawing keeps one frame for every level, grid
+  pattern, handles; warnings with "Anchor" for orphans; owner improvements:
+  `Layouts.app wide`, three columns (element tree / canvas filling the height /
+  properties), in-memory undo / redo history (`history` / `future`, 100 drafts,
+  Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y), keys V R E S D O (tools), Delete (selected
+  rectangle of a multi-rectangle room, else the room, or the opening), Escape, F
+  (fit), + / -; zoom / pan owned by the browser (`JS.ignore_attributes("viewBox")`,
+  `data-fit`, wheel around the cursor, Space or middle button drag, kept across
+  levels); element tree Exterior › exterior zones and levels › rooms › rectangles:
+  eyes hide rooms / rectangles (`hidden`) and show other levels as faint
+  references (`references`, `ghost_level_ids`), a click focuses; x / y / width /
+  depth fields per rectangle), 5 device placement ✓ (tool "Place device" / P,
+  device chooser, click: `Editing.place_device/5` puts it in the room under the
+  point, on its wall within 30 cm (snapped, 150 cm) else on the floor; placing again
+  moves it; markers selectable and draggable (`move-placement`); panel: anchor
+  floor / wall (snaps to the nearest wall) / floating, height, remove; Delete key;
+  devices in the element tree with eyes; "Set location" on location mismatches
+  updates devices.yaml on click (`placement: location`); the mismatch compares
+  the effective location (a guest's is its host's, `Physical.device_path`)), "+" on free
+  sides (owner): `Editing.free_sides/3` = outline segments of a room (per side,
+  internal edges removed) touching no other room of its level, each with the room
+  that would extend it (whole side long, 300 cm deep), skipped when it would
+  overlap; drawn in each zone group as `[data-extend]`, shown by plain CSS on
+  `g[data-zone]:hover` (Tailwind's `group-hover` needs `(hover: hover)`, false in
+  headless Chromium) and for the selected room; `extend-room` event. The grid
+  draws one fine line per snapping step (`#plan-grid-step`) and a stronger one
+  every 10 (owner: the drawn grid must match the snap), 4 2D editor with autosave (`plan.autosave_delay`, 5s, visual
+  indicator), 5 device placement, 6 polish). Collection `plans` (`plans.yaml`, one
+  `Belgo.Plans.Plan` per home; no other file refers to it, `References` blocks
+  nothing). Static data only, centimetres: levels relative (`base_id` + `offset` in
+  levels of `level_height`), zones = rooms on a level (walled outline) or exterior
+  (no level), made of touching non-overlapping rectangles (L-shaped rooms),
+  openings (door / opening) stored once on a wall line, placements (floor / wall /
+  float + height), ground = percent of a level. `Plans.Geometry` (outlines, merged
+  walls), `Plans.Levels` (elevations), `Plans.Analysis` (in memory: elevations,
+  ground, walls, measures, orphan rooms = not linked to the largest group by
+  shared walls or stacked / half-level adjacency, warnings: broken device /
+  location links kept on purpose, device outside zone / off wall after resize,
+  opening off wall, device location differs from its zone's). Owner decisions: grid
+  in cm close to reality, garage = a level with one room, all rooms walled
+  (exterior zones have none), orphan rooms hidden in 3D + warning + a way to anchor
+  them, wall devices get a height field (default 150), "update device location"
+  button (edits devices.yaml on click only), one plan per home with a selector.
+  Remaining spec (owner): page shows 3D by default when a home exists, an "Edit"
+  mode brings the 2D editor. Editor: create a home, a level (from scratch, raised
+  half a level next to another, or stacked on one = copies its footprint), draw /
+  split rooms as rectangles on a cm grid (snap), L-shapes by adding rectangles,
+  doors / openings on walls, assign a zone to a location, set the ground (level +
+  percent) and exterior zones; orphan rooms get an "anchor" action (snap to the
+  nearest room). "Affecter un appareil": pick a device, click a floor (x, y) or a
+  wall (point + height field) → labelled dot; move / remove. Warnings under the
+  plan (resized room leaving a device outside, broken links, mismatch with
+  "update device location" button). 3D: floors, walls with door / opening holes
+  and a lintel, stacked levels, ground plane at its height with exterior zones,
+  labelled device markers, level visibility, orbit controls.
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

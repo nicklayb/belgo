@@ -37,6 +37,8 @@ defmodule Belgo.Inventory.References do
   end
 
   def list(%Snapshot{}, :virtual_ips, _id), do: []
+  # Plans refer to devices and locations, nothing refers to a plan.
+  def list(%Snapshot{}, :plans, _id), do: []
   def list(%Snapshot{}, :denylist, _id), do: []
 
   defp describe(collection, records) do

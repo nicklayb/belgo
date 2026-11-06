@@ -18,6 +18,8 @@ defmodule Belgo.Config do
       port_scan:
         cache_duration: 1h    # open ports are reused for that long
         timeout: 1s           # how long to wait for each port
+      plan:
+        autosave_delay: 5s    # the plan editor saves once changes are left alone
 
   Read when needed, so edits apply without restart.
   """
@@ -26,6 +28,7 @@ defmodule Belgo.Config do
 
   alias Belgo.Config.Git
   alias Belgo.Config.Ping
+  alias Belgo.Config.Plan
   alias Belgo.Config.PortScan
   alias Belgo.Config.WakeOnLan
   alias Belgo.Duration
@@ -45,7 +48,8 @@ defmodule Belgo.Config do
             ping: %Ping{},
             git: nil,
             wake_on_lan: %WakeOnLan{},
-            port_scan: %PortScan{}
+            port_scan: %PortScan{},
+            plan: %Plan{}
 
   @type theme :: :auto | :light | :dark
   @type t :: %__MODULE__{
@@ -53,7 +57,8 @@ defmodule Belgo.Config do
           ping: Ping.t(),
           git: Git.t() | nil,
           wake_on_lan: WakeOnLan.t(),
-          port_scan: PortScan.t()
+          port_scan: PortScan.t(),
+          plan: Plan.t()
         }
 
   @doc "Reads `config.yaml` from the configured data directory, defaults when invalid."
@@ -104,6 +109,10 @@ defmodule Belgo.Config do
            parse_durations(document, "port_scan", PortScan,
              cache_duration: @minimum_cache_duration_milliseconds,
              timeout: @minimum_timeout_milliseconds
+           ),
+         {:ok, plan} <-
+           parse_durations(document, "plan", Plan,
+             autosave_delay: @minimum_commit_delay_milliseconds
            ) do
       {:ok,
        %__MODULE__{
@@ -111,7 +120,8 @@ defmodule Belgo.Config do
          ping: ping,
          git: git,
          wake_on_lan: wake_on_lan,
-         port_scan: port_scan
+         port_scan: port_scan,
+         plan: plan
        }}
     end
   end

@@ -12,6 +12,7 @@ defmodule BelgoWeb.Components.Layouts do
   attr(:current_user, User, required: true)
   attr(:current_path, :string, required: true)
   attr(:navigation_badges, :map, default: %{})
+  attr(:wide, :boolean, default: false, doc: "uses the whole width (the plan editor)")
   slot(:inner_block, required: true)
 
   @doc "Application shell: sidebar on large screens, collapsible top bar on small ones."
@@ -57,7 +58,11 @@ defmodule BelgoWeb.Components.Layouts do
 
         <.live_component module={BelgoWeb.Components.SearchModal} id="global-search" />
         <main class="relative flex-1 overflow-y-auto overscroll-contain">
-          <div class="mx-auto max-w-6xl px-4 py-6 lg:px-8 lg:py-8">
+          <div class={[
+            "px-4 py-6",
+            !@wide && "mx-auto max-w-6xl lg:px-8 lg:py-8",
+            @wide && "lg:px-6 lg:py-4"
+          ]}>
             <.flash_group flash={@flash} />
             {render_slot(@inner_block)}
           </div>

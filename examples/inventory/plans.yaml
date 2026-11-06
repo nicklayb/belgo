@@ -1,0 +1,73 @@
+---
+# Managed by Belgo. Hand edits are welcome, reload Belgo to apply them.
+# Distances in centimetres; levels sit `offset` levels above their base.
+version: 1
+plans:
+  maison:
+    name: Maison
+    location_id: maison
+    level_height: 270
+    wall_height: 250
+    ground:
+      level_id: sous-sol
+      percent: 80
+    levels:
+      - id: sous-sol
+        name: Sous-sol
+        offset: 0.0
+      - base_id: sous-sol
+        id: garage
+        name: Garage
+        offset: 0.5
+      - base_id: sous-sol
+        id: rez-de-chaussee
+        name: Rez-de-chaussée
+        offset: 1.0
+      - base_id: garage
+        id: etage
+        name: Étage
+        offset: 1.0
+    zones:
+      - id: bureau-nicolas
+        level_id: sous-sol
+        location_id: bureau-nicolas
+        name: Bureau Nicolas
+        rectangles:
+          - {depth: 400, width: 500, x: 0, y: 0}
+      - id: studio
+        level_id: sous-sol
+        name: Studio
+        rectangles:
+          - {depth: 400, width: 500, x: 500, y: 0}
+          - {depth: 400, width: 1000, x: 0, y: 400}
+      - id: garage
+        level_id: garage
+        name: Garage
+        rectangles:
+          - {depth: 800, width: 600, x: 1000, y: 0}
+      - id: salon
+        level_id: rez-de-chaussee
+        location_id: salon
+        name: Salon
+        rectangles:
+          - {depth: 800, width: 1000, x: 0, y: 0}
+      - id: chambre
+        level_id: etage
+        name: Chambre
+        rectangles:
+          - {depth: 400, width: 600, x: 1000, y: 0}
+      - id: chambre-bebe
+        level_id: etage
+        name: Chambre bébé
+        rectangles:
+          - {depth: 400, width: 600, x: 1000, y: 400}
+      - id: terrain
+        name: Terrain
+        rectangles:
+          - {depth: 1800, width: 2600, x: -500, y: -500}
+    openings:
+      - {axis: vertical, kind: door, level_id: sous-sol, width: 90, x: 500, y: 100}
+      - {axis: horizontal, kind: opening, level_id: etage, width: 120, x: 1200, y: 400}
+    placements:
+      - {anchor: floor, device_id: hades, height: 0, x: 80, y: 320, zone_id: bureau-nicolas}
+      - {anchor: wall, device_id: apple-tv-salon, height: 120, x: 500, y: 0, zone_id: salon}

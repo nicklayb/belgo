@@ -34,11 +34,24 @@
           ];
         };
 
+        # Browser dependencies (assets/package.json): every package is fetched by the
+        # integrity hash of the lock file, no npm install at build or run time.
+        nodeModules = pkgs.importNpmLock.buildNodeModules {
+          npmRoot = lib.fileset.toSource {
+            root = ./assets;
+            fileset = lib.fileset.unions [
+              ./assets/package.json
+              ./assets/package-lock.json
+            ];
+          };
+          nodejs = pkgs.nodejs;
+        };
+
         mixFodDeps = beamPackages.fetchMixDeps {
           pname = "belgo-mix-deps";
           inherit version src;
           inherit elixir;
-          hash = "sha256-xQhMF+ikvPzyD70fQDJzamqqsJBQ6o39IaXmwzE1rJk=";
+          hash = "sha256-rAf5GtycYsN2U2VlksPpXOZ0jArS2vNzVFDML54uZ4c=";
         };
 
         belgo = beamPackages.mixRelease {
@@ -48,6 +61,10 @@
 
           TAILWIND_PATH = "${pkgs.tailwindcss_4}/bin/tailwindcss";
           ESBUILD_PATH = "${pkgs.esbuild}/bin/esbuild";
+
+          preBuild = ''
+            ln -sfn ${nodeModules}/node_modules assets/node_modules
+          '';
 
           postBuild = ''
             mix do deps.loadpaths --no-deps-check, assets.deploy
@@ -110,6 +127,7 @@
             pkgs.esbuild
             pkgs.iputils
             pkgs.git
+            pkgs.nodejs
           ];
 
           shellHook = ''
@@ -120,6 +138,10 @@
             export ESBUILD_PATH=${pkgs.esbuild}/bin/esbuild
 
             mix deps.get
+            # Browser dependencies built by Nix from assets/package-lock.json.
+            if [ ! -e assets/node_modules ] || [ -L assets/node_modules ]; then
+              ln -sfn ${nodeModules}/node_modules assets/node_modules
+            fi
             eval "$(direnv hook bash)"
           '';
         };

@@ -113,4 +113,12 @@ defmodule Belgo.ConfigTest do
 
     assert message =~ "wake_on_lan.ping_interval"
   end
+
+  test "the plan editor saves after 5 seconds by default" do
+    assert {:ok, %Config{plan: %Belgo.Config.Plan{autosave_delay: 5_000}}} =
+             Config.parse(%{"version" => 1})
+
+    assert {:ok, %Config{plan: %Belgo.Config.Plan{autosave_delay: 10_000}}} =
+             Config.parse(%{"version" => 1, "plan" => %{"autosave_delay" => "10s"}})
+  end
 end

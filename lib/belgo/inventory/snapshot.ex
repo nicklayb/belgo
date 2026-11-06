@@ -13,17 +13,30 @@ defmodule Belgo.Inventory.Snapshot do
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
   alias Belgo.Inventory.VirtualIp
+  alias Belgo.Plans.Plan
 
-  defstruct locations: [], networks: [], devices: [], virtual_ips: [], denylist: []
+  defstruct locations: [],
+            networks: [],
+            devices: [],
+            virtual_ips: [],
+            denylist: [],
+            plans: []
 
-  @type collection :: :locations | :networks | :devices | :virtual_ips | :denylist
-  @type entity :: Location.t() | Network.t() | Device.t() | VirtualIp.t() | DeniedDevice.t()
+  @type collection :: :locations | :networks | :devices | :virtual_ips | :denylist | :plans
+  @type entity ::
+          Location.t()
+          | Network.t()
+          | Device.t()
+          | VirtualIp.t()
+          | DeniedDevice.t()
+          | Plan.t()
   @type t :: %Snapshot{
           locations: [Location.t()],
           networks: [Network.t()],
           devices: [Device.t()],
           virtual_ips: [VirtualIp.t()],
-          denylist: [DeniedDevice.t()]
+          denylist: [DeniedDevice.t()],
+          plans: [Plan.t()]
         }
 
   @schema_by_collection %{
@@ -31,9 +44,10 @@ defmodule Belgo.Inventory.Snapshot do
     networks: Network,
     devices: Device,
     virtual_ips: VirtualIp,
-    denylist: DeniedDevice
+    denylist: DeniedDevice,
+    plans: Plan
   }
-  @collections [:locations, :networks, :devices, :virtual_ips, :denylist]
+  @collections [:locations, :networks, :devices, :virtual_ips, :denylist, :plans]
 
   @doc "Lists the collections in loading order."
   @spec collections() :: [collection()]

@@ -43,6 +43,11 @@ defmodule BelgoWeb.Router do
       live("/locations/:id", Locations.Live.Show, :show)
       live("/locations/:id/edit", Locations.Live.Form, :edit)
 
+      live("/plan", Plans.Live, :show)
+      live("/plan/new", Plans.Editor, :new)
+      live("/plan/:id", Plans.Live, :show)
+      live("/plan/:id/edit", Plans.Editor, :edit)
+
       live("/hosting", Hosting.Live, :show)
       live("/routing", Routing.Live, :show)
 

@@ -33,7 +33,8 @@ belgo-*.tar
 
 # In case you use Node.js/npm, you want to ignore these.
 npm-debug.log
-/assets/node_modules/
+# A symlink to the Nix-built node_modules (flake.nix), never committed.
+/assets/node_modules
 
 .nix-mix
 .nix-hex

@@ -1,12 +1,11 @@
-// Exposes Heroicons (MIT, https://heroicons.com) as `hero-*` Tailwind classes.
-// Adapted from the Phoenix 1.8 generator.
+// Exposes Heroicons (MIT, https://heroicons.com) as `hero-*` Tailwind classes, from
+// the npm package (assets/package.json). Adapted from the Phoenix 1.8 generator.
 const plugin = require("tailwindcss/plugin")
 const fs = require("fs")
 const path = require("path")
 
 module.exports = plugin(function ({ matchComponents, theme }) {
-  const depsDirectory = process.env.MIX_DEPS_PATH || path.join(__dirname, "../../deps")
-  const iconsDirectory = path.join(depsDirectory, "heroicons/optimized")
+  const iconsDirectory = path.join(__dirname, "../node_modules/heroicons")
   const values = {}
   const variants = [
     ["", "/24/outline"],

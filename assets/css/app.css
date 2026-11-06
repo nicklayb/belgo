@@ -54,3 +54,35 @@
     height: 100%;
   }
 }
+
+/* 3D plan: device labels drawn over the canvas by three's CSS2DRenderer. */
+.plan3d-labels {
+  position: absolute;
+  inset: 0;
+}
+
+.plan3d-label {
+  border-radius: 0.375rem;
+  background: var(--color-surface);
+  color: var(--color-foreground);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2);
+  white-space: nowrap;
+}
+
+a.plan3d-label:hover {
+  color: var(--color-accent);
+}
+
+/* Plan editor: the "+" on a room's free sides shows while the room is hovered (any
+   pointer, no hover media query) and stays for the selected room. */
+[data-extend] {
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+g[data-zone]:hover [data-extend],
+[data-extend][data-selected] {
+  opacity: 1;
+}
