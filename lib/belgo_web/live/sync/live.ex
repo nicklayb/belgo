@@ -55,8 +55,19 @@ defmodule BelgoWeb.Sync.Live do
             <:col :let={record} label={gettext("Address")}>
               <span class="font-mono">{record.address}</span>
             </:col>
-            <:col :let={record} label={gettext("Device")} class="hidden sm:table-cell">
-              <.link navigate={~p"/devices/#{record.device_id}"} class="hover:text-accent">
+            <:col :let={record} label={gettext("Owner")} class="hidden sm:table-cell">
+              <.link
+                :if={record.virtual_ip_id}
+                navigate={~p"/virtual-ips/#{record.virtual_ip_id}"}
+                class="hover:text-accent"
+              >
+                {record.virtual_ip_id}
+              </.link>
+              <.link
+                :if={!record.virtual_ip_id}
+                navigate={~p"/devices/#{record.device_id}"}
+                class="hover:text-accent"
+              >
                 {record.device_id}
               </.link>
             </:col>

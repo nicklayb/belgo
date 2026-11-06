@@ -72,9 +72,12 @@ defmodule Belgo.Discovery.Observation do
   @spec dns_record?(t()) :: boolean()
   def dns_record?(%__MODULE__{source: source}), do: source in @dns_record_sources
 
-  @doc "Fully qualified name of a DNS observation, or its hostname."
+  @doc """
+  Fully qualified name of a DNS observation, or its hostname. An Unbound host
+  override without host names the domain itself (`k8s.home.arpa`).
+  """
   @spec fqdn(t()) :: String.t() | nil
-  def fqdn(%__MODULE__{hostname: nil}), do: nil
+  def fqdn(%__MODULE__{hostname: nil, domain: domain}), do: domain
   def fqdn(%__MODULE__{hostname: hostname, domain: nil}), do: hostname
   def fqdn(%__MODULE__{hostname: hostname, domain: domain}), do: "#{hostname}.#{domain}"
 end

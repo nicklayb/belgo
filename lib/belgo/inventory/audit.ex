@@ -11,6 +11,7 @@ defmodule Belgo.Inventory.Audit do
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
   alias Belgo.Sync.DesiredState
+  alias Belgo.Sync.DesiredState.DnsRecord
 
   @doc "Lists every issue of the snapshot, sorted deterministically."
   @spec issues(Snapshot.t()) :: [Issue.t()]
@@ -22,7 +23,9 @@ defmodule Belgo.Inventory.Audit do
       duplicate_issues(snapshot, :ip, "IP address"),
       duplicate_issues(snapshot, :mac, "MAC address"),
       duplicate_hostname_issues(snapshot),
-      dns_name_issues(snapshot)
+      dns_name_issues(snapshot),
+      virtual_ip_issues(snapshot),
+      virtual_ip_address_issues(snapshot)
     ]
     |> Enum.concat()
     |> Enum.uniq()
@@ -251,29 +254,131 @@ defmodule Belgo.Inventory.Audit do
   end
 
   defp dns_name_issues(snapshot) do
-    device_by_id = Snapshot.index(snapshot, :devices)
+    name_by_owner = owner_names(snapshot)
 
     snapshot
     |> DesiredState.build()
     |> Map.fetch!(:dns_records)
     |> Enum.group_by(& &1.name)
-    |> Enum.flat_map(fn {name, records} -> dns_name_conflicts(name, records, device_by_id) end)
+    |> Enum.flat_map(fn {name, records} -> dns_name_conflicts(name, records, name_by_owner) end)
   end
 
-  defp dns_name_conflicts(name, records, device_by_id) do
-    device_ids =
+  defp owner_names(snapshot) do
+    for collection <- [:devices, :virtual_ips],
+        record <- Map.fetch!(snapshot, collection),
+        into: %{},
+        do: {{collection, record.id}, record.name}
+  end
+
+  defp dns_name_conflicts(name, records, name_by_owner) do
+    owners =
       records
-      |> Enum.map(& &1.device_id)
+      |> Enum.map(&DnsRecord.owner/1)
       |> Enum.uniq()
 
-    for %{device_id: device_id} <- records, length(device_ids) > 1 do
+    for {collection, id} = owner <- owners, length(owners) > 1 do
       others =
-        device_ids
-        |> Enum.reject(&(&1 == device_id))
-        |> Enum.map_join(", ", &Map.fetch!(device_by_id, &1).name)
+        owners
+        |> Enum.reject(&(&1 == owner))
+        |> Enum.map_join(", ", &Map.fetch!(name_by_owner, &1))
 
-      Issue.error(:devices, device_id, :interfaces, "DNS name #{name} is also used by #{others}")
+      Issue.error(
+        collection,
+        id,
+        dns_names_field(collection),
+        "DNS name #{name} is also used by #{others}"
+      )
     end
+  end
+
+  defp dns_names_field(:devices), do: :interfaces
+  defp dns_names_field(:virtual_ips), do: :dns_names
+
+  defp virtual_ip_issues(snapshot) do
+    network_by_id = Snapshot.index(snapshot, :networks)
+    device_by_id = Snapshot.index(snapshot, :devices)
+
+    Enum.flat_map(snapshot.virtual_ips, fn virtual_ip ->
+      virtual_ip_network_issues(virtual_ip, network_by_id, snapshot.networks) ++
+        virtual_ip_owner_issues(virtual_ip, device_by_id)
+    end)
+  end
+
+  defp virtual_ip_network_issues(%{network_id: nil} = virtual_ip, _network_by_id, networks) do
+    case Enum.find(networks, &Network.contains?(&1, virtual_ip.ip)) do
+      nil -> []
+      network -> dhcp_range_issues(virtual_ip, network)
+    end
+  end
+
+  defp virtual_ip_network_issues(virtual_ip, network_by_id, _networks) do
+    case Map.fetch(network_by_id, virtual_ip.network_id) do
+      :error ->
+        [unknown(:virtual_ips, virtual_ip.id, :network_id, "network", virtual_ip.network_id)]
+
+      {:ok, network} ->
+        if Network.contains?(network, virtual_ip.ip),
+          do: dhcp_range_issues(virtual_ip, network),
+          else: [
+            Issue.error(
+              :virtual_ips,
+              virtual_ip.id,
+              :ip,
+              "#{virtual_ip.ip} is outside of #{network.name} (#{network.cidr})"
+            )
+          ]
+    end
+  end
+
+  defp dhcp_range_issues(virtual_ip, network) do
+    if Network.in_dhcp_range?(network, virtual_ip.ip),
+      do: [
+        Issue.warning(
+          :virtual_ips,
+          virtual_ip.id,
+          :ip,
+          "#{virtual_ip.ip} is in the DHCP range of #{network.name}: DHCP may lease it to a device"
+        )
+      ],
+      else: []
+  end
+
+  defp virtual_ip_owner_issues(%{owner_id: nil}, _device_by_id), do: []
+
+  defp virtual_ip_owner_issues(virtual_ip, device_by_id) do
+    if Map.has_key?(device_by_id, virtual_ip.owner_id),
+      do: [],
+      else: [unknown(:virtual_ips, virtual_ip.id, :owner_id, "device", virtual_ip.owner_id)]
+  end
+
+  # A virtual IP address must not be an interface address nor another virtual IP's;
+  # the issue goes to every record using it, so each form shows it.
+  defp virtual_ip_address_issues(snapshot) do
+    users =
+      Enum.map(snapshot.virtual_ips, &{&1.ip, {:virtual_ips, &1.id, :ip, &1.name}}) ++
+        for device <- snapshot.devices,
+            %{ip: ip} <- device.interfaces,
+            ip != nil,
+            do: {ip, {:devices, device.id, :interfaces, device.name}}
+
+    users
+    |> Enum.group_by(fn {ip, _user} -> ip end, fn {_ip, user} -> user end)
+    |> Enum.flat_map(fn {ip, ip_users} -> virtual_ip_conflicts(ip, Enum.uniq(ip_users)) end)
+  end
+
+  defp virtual_ip_conflicts(ip, users) do
+    if Enum.any?(users, &match?({:virtual_ips, _id, _field, _name}, &1)) and length(users) > 1,
+      do: Enum.map(users, &address_conflict(&1, users, ip)),
+      else: []
+  end
+
+  defp address_conflict({collection, id, field, _name} = user, users, ip) do
+    others =
+      users
+      |> Enum.reject(&(&1 == user))
+      |> Enum.map_join(", ", fn {_collection, _id, _field, name} -> name end)
+
+    Issue.error(collection, id, field, "IP address #{ip} is also used by #{others}")
   end
 
   defp conflicts([_single], _field, _label, _value), do: []

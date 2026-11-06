@@ -2,19 +2,27 @@ defmodule Belgo.Inventory.DeviceFilter do
   @moduledoc """
   Filter of the device list (`Box.DataFilter`): `query` matches the name, hostname,
   tags, IP and MAC addresses and DNS names (case insensitive), `kinds` keeps devices
-  of any of the selected kinds (none selected: every kind). Serialised in the query
-  string (`kinds=gaming,server`) so the list keeps its filter on back navigation.
+  of any of the selected kinds (none selected: every kind). `sort` and `direction`
+  order the list (`Belgo.Inventory.DeviceSorting`, applied by the list since it sorts
+  by displayed values). Serialised in the query string (`kinds=gaming,server`) so the
+  list keeps its filter on back navigation; defaults are left out.
   """
 
   use Box.DataFilter,
     fields: [
       query: [],
-      kinds: [default: []]
+      kinds: [default: []],
+      sort: [default: :name],
+      direction: [default: :asc]
     ]
 
   alias Belgo.Inventory.Device
+  alias Belgo.Inventory.DeviceSorting
 
   @kinds_separator ","
+  @default_sort :name
+  @default_direction :asc
+  @directions %{"asc" => :asc, "desc" => :desc}
 
   @type t :: %__MODULE__{}
 
@@ -24,6 +32,13 @@ defmodule Belgo.Inventory.DeviceFilter do
     if kind in kinds,
       do: %Filter{filter | kinds: List.delete(kinds, kind)},
       else: %Filter{filter | kinds: kinds ++ [kind]}
+  end
+
+  @doc "Sorts by `field`, toggling the direction when it is already the sorted field."
+  @spec sort_by(t(), DeviceSorting.field()) :: t()
+  def sort_by(%Filter{} = filter, field) do
+    {sort, direction} = DeviceSorting.next({filter.sort, filter.direction}, field)
+    %Filter{filter | sort: sort, direction: direction}
   end
 
   @doc """
@@ -47,10 +62,20 @@ defmodule Belgo.Inventory.DeviceFilter do
 
   def cast(%Filter{}, :kinds, kinds) when is_list(kinds), do: cast_kinds(kinds)
   def cast(%Filter{}, :kinds, _kinds), do: []
+
+  def cast(%Filter{}, :sort, value) when is_binary(value),
+    do: DeviceSorting.parse_field(value) || @default_sort
+
+  def cast(%Filter{}, :direction, value) when is_binary(value),
+    do: Map.get(@directions, value, @default_direction)
+
+  def cast(%Filter{}, :sort, value) when is_atom(value), do: value || @default_sort
+  def cast(%Filter{}, :direction, value) when is_atom(value), do: value || @default_direction
   def cast(%Filter{}, _field, _value), do: nil
 
   @impl Box.DataFilter
   def apply(%Filter{}, devices, _field, nil), do: devices
+  def apply(%Filter{}, devices, field, _value) when field in [:sort, :direction], do: devices
   def apply(%Filter{}, devices, :kinds, []), do: devices
 
   def apply(%Filter{}, devices, :query, query) do
@@ -63,6 +88,12 @@ defmodule Belgo.Inventory.DeviceFilter do
   @impl Box.DataFilter
   def to_query(%Filter{}, _field, nil), do: :ignore
   def to_query(%Filter{}, :kinds, []), do: :ignore
+  def to_query(%Filter{}, :sort, @default_sort), do: :ignore
+  def to_query(%Filter{}, :direction, @default_direction), do: :ignore
+
+  def to_query(%Filter{}, field, value) when field in [:sort, :direction],
+    do: Atom.to_string(value)
+
   def to_query(%Filter{}, :query, query), do: query
 
   def to_query(%Filter{}, :kinds, kinds),

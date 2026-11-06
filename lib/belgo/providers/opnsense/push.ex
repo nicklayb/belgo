@@ -13,6 +13,7 @@ defmodule Belgo.Providers.Opnsense.Push do
   alias Belgo.Network.Cidr
   alias Belgo.Network.IpAddress
   alias Belgo.Network.MacAddress
+  alias Belgo.Providers.Opnsense.Translate
   alias Belgo.Sync.DesiredState
   alias Belgo.Sync.Plan
 
@@ -21,7 +22,6 @@ defmodule Belgo.Providers.Opnsense.Push do
   @add_host_override_path "/api/unbound/settings/add_host_override"
   @set_host_override_path "/api/unbound/settings/set_host_override/"
   @managed_reservation_fields [:ip, :hostname, :description, :subnet]
-  @address_record_types ["A", "AAAA"]
 
   defmodule Operation do
     @moduledoc "One write to OPNsense."
@@ -224,19 +224,18 @@ defmodule Belgo.Providers.Opnsense.Push do
     {operations, Enum.reverse(skipped) ++ alias_skips ++ Enum.uniq(duplicate_skips)}
   end
 
-  defp actual_host_override(%{"rr" => record_type} = row)
-       when record_type in @address_record_types do
-    [
-      %{
-        uuid: row["uuid"],
-        host: downcase(row["hostname"]),
-        domain: downcase(row["domain"]),
-        ip: normalize_ip(row["server"])
-      }
-    ]
+  defp actual_host_override(row) do
+    if Translate.address_record?(row), do: [actual_address_record(row)], else: []
   end
 
-  defp actual_host_override(_row), do: []
+  defp actual_address_record(row) do
+    %{
+      uuid: row["uuid"],
+      host: downcase(row["hostname"]),
+      domain: downcase(row["domain"]),
+      ip: normalize_ip(row["server"])
+    }
+  end
 
   defp alias_keys(%{"_children" => children}) when is_list(children) do
     for %{"hostname" => host, "domain" => domain} <- children,

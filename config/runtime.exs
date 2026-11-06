@@ -18,7 +18,10 @@ data_path =
 
 config :belgo, Belgo.Inventory, storage: {Belgo.Inventory.Storage.YamlDirectory, path: data_path}
 
+config :belgo, Belgo.Config, directory: data_path
 config :belgo, Belgo.Reachability, directory: data_path
+config :belgo, Belgo.Versioning, directory: data_path
+config :belgo, Belgo.PortScan, directory: data_path
 
 config :belgo, Belgo.Discovery,
   directory: data_path,

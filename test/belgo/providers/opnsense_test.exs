@@ -110,4 +110,13 @@ defmodule Belgo.Providers.OpnsenseTest do
 
     assert [%{ips: ["10.0.0.1", "10.0.5.1"], description: "OPNsense"}] = gateways
   end
+
+  test "host overrides are address records whatever the form of their type" do
+    assert Translate.address_record?(%{"rr" => "A"})
+    assert Translate.address_record?(%{"rr" => "A (IPv4 address)"})
+    assert Translate.address_record?(%{"rr" => "AAAA (IPv6 address)"})
+    assert Translate.address_record?(%{})
+    refute Translate.address_record?(%{"rr" => "MX (Mail server)"})
+    refute Translate.address_record?(%{"rr" => "MX"})
+  end
 end

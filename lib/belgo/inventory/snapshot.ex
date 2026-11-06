@@ -12,15 +12,17 @@ defmodule Belgo.Inventory.Snapshot do
   alias Belgo.Inventory.Location
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
+  alias Belgo.Inventory.VirtualIp
 
-  defstruct locations: [], networks: [], devices: [], denylist: []
+  defstruct locations: [], networks: [], devices: [], virtual_ips: [], denylist: []
 
-  @type collection :: :locations | :networks | :devices | :denylist
-  @type entity :: Location.t() | Network.t() | Device.t() | DeniedDevice.t()
+  @type collection :: :locations | :networks | :devices | :virtual_ips | :denylist
+  @type entity :: Location.t() | Network.t() | Device.t() | VirtualIp.t() | DeniedDevice.t()
   @type t :: %Snapshot{
           locations: [Location.t()],
           networks: [Network.t()],
           devices: [Device.t()],
+          virtual_ips: [VirtualIp.t()],
           denylist: [DeniedDevice.t()]
         }
 
@@ -28,9 +30,10 @@ defmodule Belgo.Inventory.Snapshot do
     locations: Location,
     networks: Network,
     devices: Device,
+    virtual_ips: VirtualIp,
     denylist: DeniedDevice
   }
-  @collections [:locations, :networks, :devices, :denylist]
+  @collections [:locations, :networks, :devices, :virtual_ips, :denylist]
 
   @doc "Lists the collections in loading order."
   @spec collections() :: [collection()]

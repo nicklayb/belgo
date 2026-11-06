@@ -22,11 +22,13 @@ defmodule BelgoWeb.Networks.Live.Index do
   def assign_inventory(socket) do
     snapshot = socket.assigns.snapshot
 
+    # Interface addresses and virtual IPs (in their declared network, else by range).
     address_count_by_network =
       snapshot.devices
       |> Enum.flat_map(& &1.interfaces)
+      |> Kernel.++(snapshot.virtual_ips)
       |> Enum.filter(& &1.ip)
-      |> Enum.frequencies_by(& &1.network_id)
+      |> Enum.frequencies_by(&(&1.network_id || containing_network_id(snapshot.networks, &1.ip)))
 
     networks =
       Enum.map(snapshot.networks, fn network ->
@@ -46,6 +48,9 @@ defmodule BelgoWeb.Networks.Live.Index do
         {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
     end
   end
+
+  defp containing_network_id(networks, address),
+    do: Enum.find_value(networks, &(Belgo.Inventory.Network.contains?(&1, address) && &1.id))
 
   defp capacity(network) do
     case Cidr.parse(network.cidr) do
@@ -86,6 +91,16 @@ defmodule BelgoWeb.Networks.Live.Index do
           </:col>
           <:col :let={{network, _count, _capacity}} label={gettext("Range")}>
             <span class="font-mono">{network.cidr}</span>
+            <p
+              :for={
+                range <- Enum.sort_by(network.ranges, &Belgo.Network.IpAddress.sort_key(&1.start))
+              }
+              class="text-xs text-muted"
+            >
+              {range.name}
+              <span class="font-mono">{range.start} – {range.end}</span>
+              <span :if={range.kind}>· {Format.label(range.kind)}</span>
+            </p>
           </:col>
           <:col
             :let={{network, _count, _capacity}}

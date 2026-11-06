@@ -4,6 +4,7 @@ defmodule BelgoWeb.Discovery.Live do
   the inventory to reconcile.
   """
 
+  @behaviour BelgoWeb.Hooks.Discovery
   @behaviour BelgoWeb.Hooks.Inventory
 
   use BelgoWeb, :live_view
@@ -13,9 +14,12 @@ defmodule BelgoWeb.Discovery.Live do
   alias Belgo.Discovery.OutOfDhcpFilter
   alias Belgo.Discovery.Sorting
   alias Belgo.Discovery.State.ProviderStatus
+  alias Belgo.Inventory.Interface
+  alias Belgo.Inventory.Snapshot
   alias Belgo.Sync.PushReport
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Mutation
+  alias BelgoWeb.Live.Reachability
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -23,8 +27,20 @@ defmodule BelgoWeb.Discovery.Live do
      socket
      |> assign(:page_title, gettext("Discovery"))
      |> assign(:out_of_dhcp_filter, OutOfDhcpFilter.new())
-     |> assign_inventory()}
+     |> Reachability.subscribe()
+     |> assign_inventory()
+     |> assign_discovery()}
   end
+
+  # Pings the discovered devices without a recent result (the discovery server also
+  # pings them after each pull).
+  @impl BelgoWeb.Hooks.Discovery
+  def assign_discovery(socket),
+    do:
+      Reachability.check(
+        socket,
+        Correlation.discovered_addresses(socket.assigns.discovery.correlation)
+      )
 
   @impl Phoenix.LiveView
   def handle_params(params, _uri, socket),
@@ -34,6 +50,12 @@ defmodule BelgoWeb.Discovery.Live do
   def assign_inventory(socket) do
     assign(socket, :record_names, record_names(socket.assigns.snapshot))
   end
+
+  @impl Phoenix.LiveView
+  def handle_info({:reachability_changed, address_statuses}, socket),
+    do: {:noreply, Reachability.changed(socket, address_statuses)}
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
   def handle_event("refresh", _params, socket) do
@@ -104,10 +126,25 @@ defmodule BelgoWeb.Discovery.Live do
   end
 
   defp record_names(snapshot) do
-    for collection <- [:devices, :networks, :locations],
+    for collection <- [:devices, :networks, :locations, :virtual_ips],
         record <- Map.fetch!(snapshot, collection),
         into: %{} do
       {{collection, record.id}, record.name}
+    end
+  end
+
+  defp suggested_owner(%{virtual_ip_id: nil, device_id: device_id}), do: {:devices, device_id}
+  defp suggested_owner(%{virtual_ip_id: virtual_ip_id}), do: {:virtual_ips, virtual_ip_id}
+
+  defp suggested_interface_name(_snapshot, %{virtual_ip_id: id}) when is_binary(id),
+    do: gettext("Virtual IP")
+
+  defp suggested_interface_name(snapshot, dns_name) do
+    with {:ok, device} <- Snapshot.fetch(snapshot, :devices, dns_name.device_id),
+         %Interface{} = interface <- Enum.at(device.interfaces, dns_name.interface_index) do
+      interface.name || interface.ip
+    else
+      _missing -> ""
     end
   end
 
@@ -120,6 +157,7 @@ defmodule BelgoWeb.Discovery.Live do
   defp record_path({:devices, id}), do: ~p"/devices/#{id}"
   defp record_path({:networks, id}), do: ~p"/networks/#{id}/edit"
   defp record_path({:locations, id}), do: ~p"/locations/#{id}"
+  defp record_path({:virtual_ips, id}), do: ~p"/virtual-ips/#{id}"
 
   @impl Phoenix.LiveView
   def render(assigns) do
@@ -173,7 +211,7 @@ defmodule BelgoWeb.Discovery.Live do
           <.provider_status :for={provider <- @discovery.providers} provider={provider} />
         </div>
 
-        <.card title={gettext("New networks")} padded={false}>
+        <.card title={gettext("New networks")} padded={false} collapse_key="discovery-new-networks">
           <:actions>
             <.badge>{length(@correlation.new_networks)}</.badge>
           </:actions>
@@ -209,7 +247,12 @@ defmodule BelgoWeb.Discovery.Live do
           </.table>
         </.card>
 
-        <.card :if={@correlation.new_locations != []} title={gettext("New locations")} padded={false}>
+        <.card
+          :if={@correlation.new_locations != []}
+          title={gettext("New locations")}
+          padded={false}
+          collapse_key="discovery-new-locations"
+        >
           <:actions>
             <.badge>{length(@correlation.new_locations)}</.badge>
           </:actions>
@@ -240,6 +283,7 @@ defmodule BelgoWeb.Discovery.Live do
           :if={@correlation.out_of_dhcp_devices != []}
           title={gettext("Out of DHCP")}
           padded={false}
+          collapse_key="discovery-out-of-dhcp"
         >
           <:actions>
             <.badge tone={:accent}>{length(@correlation.out_of_dhcp_devices)}</.badge>
@@ -286,6 +330,7 @@ defmodule BelgoWeb.Discovery.Live do
           />
           <.discovered_devices
             :if={@filtered_out_of_dhcp != []}
+            address_statuses={@address_statuses}
             id="out-of-dhcp-devices"
             devices={@filtered_out_of_dhcp}
             sort_event="sort_out_of_dhcp"
@@ -293,7 +338,12 @@ defmodule BelgoWeb.Discovery.Live do
           />
         </.card>
 
-        <.card title={gettext("Unknown devices")} padded={false}>
+        <.card
+          title={gettext("Unknown devices")}
+          padded={false}
+          collapse_key="discovery-unknown-devices"
+          collapsed
+        >
           <:actions>
             <.badge>{length(@correlation.unknown_devices)}</.badge>
           </:actions>
@@ -304,12 +354,58 @@ defmodule BelgoWeb.Discovery.Live do
           />
           <.discovered_devices
             :if={@correlation.unknown_devices != []}
+            address_statuses={@address_statuses}
             id="unknown-devices"
             devices={@correlation.unknown_devices}
           />
         </.card>
 
-        <.card title={gettext("Divergences")} padded={false}>
+        <.card
+          :if={@correlation.dns_names != []}
+          title={gettext("DNS names")}
+          padded={false}
+          collapse_key="discovery-dns-names"
+        >
+          <:actions>
+            <.badge tone={:accent}>{length(@correlation.dns_names)}</.badge>
+          </:actions>
+          <p class="border-b border-border px-5 py-3 text-sm text-muted">
+            {gettext(
+              "Names resolving to the address of a known device, without belonging to it in Belgo: claim them as DNS names of an interface."
+            )}
+          </p>
+          <.table id="dns-names" rows={@correlation.dns_names}>
+            <:col :let={dns_name} label={gettext("Name")}>
+              <p class="font-mono">{dns_name.name}</p>
+              <p class="font-mono text-xs text-muted">{dns_name.ip}</p>
+            </:col>
+            <:col :let={dns_name} label={gettext("Suggested interface")}>
+              <.link
+                navigate={record_path(suggested_owner(dns_name))}
+                class="font-medium hover:text-accent"
+              >
+                {Map.get(@record_names, suggested_owner(dns_name), elem(suggested_owner(dns_name), 1))}
+              </.link>
+              <p class="text-xs text-muted">
+                {suggested_interface_name(@snapshot, dns_name)}
+              </p>
+            </:col>
+            <:col :let={dns_name} label={gettext("Seen in")} class="hidden md:table-cell">
+              <.source_badges observations={dns_name.observations} />
+            </:col>
+            <:action :let={dns_name}>
+              <Form.button
+                size={:small}
+                variant={:primary}
+                navigate={~p"/discovery/dns-names/#{dns_name.id}"}
+              >
+                {gettext("Claim")}
+              </Form.button>
+            </:action>
+          </.table>
+        </.card>
+
+        <.card title={gettext("Divergences")} padded={false} collapse_key="discovery-divergences">
           <:actions>
             <.badge tone={if @correlation.divergences == [], do: :neutral, else: :warning}>
               {length(@correlation.divergences)}
@@ -334,7 +430,12 @@ defmodule BelgoWeb.Discovery.Live do
           </div>
         </.card>
 
-        <.card :if={@correlation.ignored_devices != []} title={gettext("Ignored")} padded={false}>
+        <.card
+          :if={@correlation.ignored_devices != []}
+          title={gettext("Ignored")}
+          padded={false}
+          collapse_key="discovery-ignored"
+        >
           <.table id="ignored-devices" rows={@correlation.ignored_devices}>
             <:col :let={device} label={gettext("Device")}>
               <span class="text-muted">{device.hostname || device.description || "—"}</span>
@@ -363,12 +464,16 @@ defmodule BelgoWeb.Discovery.Live do
   attr(:devices, :list, required: true)
   attr(:sort_event, :string, default: nil)
   attr(:sort, :any, default: nil)
+  attr(:address_statuses, :map, required: true)
 
   defp discovered_devices(assigns) do
     ~H"""
     <.table id={@id} rows={@devices} sort_event={@sort_event} sort={@sort}>
       <:col :let={device} label={gettext("Device")} sort_field={:device}>
-        <p class="font-medium">{device.hostname || device.description || "—"}</p>
+        <p class="flex items-center gap-2 font-medium">
+          {device.hostname || device.description || "—"}
+          <.reachability_indicator status={Reachability.status(@address_statuses, device.ips)} />
+        </p>
         <p :if={device.hostname && device.description} class="text-xs text-muted">
           {device.description}
         </p>
@@ -387,6 +492,15 @@ defmodule BelgoWeb.Discovery.Live do
           navigate={~p"/devices/new?discovered=#{device.id}"}
         >
           {gettext("Claim")}
+        </Form.button>
+        <Form.button
+          :if={length(device.ips) == 1}
+          size={:small}
+          variant={:ghost}
+          navigate={~p"/virtual-ips/new?discovered=#{device.id}"}
+          title={gettext("A load balancer or floating address, not a machine")}
+        >
+          {gettext("Virtual IP")}
         </Form.button>
         <Form.button
           :if={device.macs != []}

@@ -6,6 +6,7 @@ defmodule Belgo.Fixtures do
   alias Belgo.Inventory.Location
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
+  alias Belgo.Inventory.VirtualIp
 
   @doc "A location."
   def location(attributes \\ []) do
@@ -14,6 +15,25 @@ defmodule Belgo.Fixtures do
       attributes
     )
   end
+
+  @doc "A virtual IP: the Kwik-E-Mart load balancer, answered for by Burns Node."
+  def virtual_ip(attributes \\ []) do
+    struct!(
+      %VirtualIp{
+        id: "kwik-e-mart",
+        name: "Kwik-E-Mart",
+        ip: "10.0.0.110",
+        kind: :metallb,
+        owner_id: "burns-node",
+        dns_names: ["squishee", "apu.kwik-e-mart.lan"]
+      },
+      attributes
+    )
+  end
+
+  @doc "The fixture snapshot with virtual IPs."
+  def snapshot_with_virtual_ips(virtual_ips \\ [virtual_ip()]),
+    do: %{snapshot() | virtual_ips: virtual_ips}
 
   @doc "A network."
   def network(attributes \\ []) do
@@ -80,6 +100,8 @@ defmodule Belgo.Fixtures do
           name: "Plow King",
           kind: :network,
           network_role: :switch,
+          port_count: 8,
+          poe: true,
           location_id: "basement",
           interfaces: [
             interface(

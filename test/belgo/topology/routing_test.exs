@@ -70,12 +70,25 @@ defmodule Belgo.Topology.RoutingTest do
 
     assert %Node{
              device: %{id: "plow-king"},
+             used_ports: 2,
              children: [attic],
              clients: [{%{id: "burns-node"}, _link}]
            } = plow_king
 
     assert %Node{device: %{id: "attic-switch"}, clients: [{%{id: "homepod"}, _homepod_link}]} =
              attic
+  end
+
+  test "used ports: wireless links take none, a shared port counts once" do
+    links = [
+      %Link{device_id: "burns-node", source: :inventory, port: "1"},
+      %Link{device_id: "smithers", source: :omada, port: " 1 "},
+      %Link{device_id: "itchy", source: :inventory, port: nil},
+      %Link{device_id: "homepod", source: :omada, port: nil, wireless?: true}
+    ]
+
+    assert 2 == Routing.used_ports(links)
+    assert 0 == Routing.used_ports([])
   end
 
   test "the path goes from the device up to the gateway" do

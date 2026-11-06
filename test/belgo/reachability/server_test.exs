@@ -1,18 +1,21 @@
 defmodule Belgo.Reachability.ServerTest do
   use ExUnit.Case, async: true
 
-  alias Belgo.Fixtures
   alias Belgo.Reachability
+  alias Belgo.Reachability.AddressStatus
   alias Belgo.Reachability.Server
-  alias Belgo.Reachability.Status
 
   @moduletag :tmp_dir
   @start ~U[2026-11-05 12:00:00Z]
+  @answering_address "10.0.0.10"
+  @silent_address "10.0.0.66"
 
   setup %{tmp_dir: tmp_dir} do
     File.write!(Path.join(tmp_dir, "config.yaml"), "version: 1\nping:\n  cache_duration: 15m\n")
     {:ok, clock} = Agent.start_link(fn -> @start end)
     test_process = self()
+    topic = "reachability-#{System.unique_integer([:positive])}"
+    Phoenix.PubSub.subscribe(Belgo.PubSub, topic)
 
     server =
       start_supervised!(
@@ -20,68 +23,71 @@ defmodule Belgo.Reachability.ServerTest do
          directory: tmp_dir,
          name: nil,
          pubsub: Belgo.PubSub,
+         topic: topic,
          clock: fn -> Agent.get(clock, & &1) end,
          ping: fn address, _timeout ->
            send(test_process, {:pinged, address})
-           Fixtures.Pinger.ping(address, 0)
+           Belgo.Fixtures.Pinger.ping(address, 0)
          end}
       )
 
-    device_id = "burns-node-#{System.unique_integer([:positive])}"
-    Reachability.subscribe(device_id)
-    device = Fixtures.device(id: device_id, interfaces: [Fixtures.interface(ip: "10.0.0.10")])
-
-    {:ok, server: server, clock: clock, device: device}
+    {:ok, server: server, clock: clock}
   end
 
-  defp check(context, options \\ []),
-    do: Reachability.check(context.device, Keyword.put(options, :server, context.server))
+  defp check(context, addresses, options \\ []),
+    do: Reachability.check(addresses, Keyword.put(options, :server, context.server))
 
-  defp await_result do
-    assert_receive {:reachability_changed, %Status{state: state} = status}
-                   when state != :pending,
-                   1_000
-
-    status
+  defp await_results(count) do
+    1..count//1
+    |> Enum.flat_map(fn _index -> await_changes() end)
+    |> Enum.reject(&AddressStatus.pending?/1)
+    |> Map.new(&{&1.address, &1.result})
   end
 
-  test "pings in the background, then reuses the result for the cache duration", context do
-    assert %Status{state: :pending} = check(context)
-    assert_receive {:pinged, "10.0.0.10"}
+  defp await_changes do
+    assert_receive {:reachability_changed, address_statuses}, 1_000
+    address_statuses
+  end
 
-    assert %Status{state: :up, results: %{"10.0.0.10" => :up}, checked_at: @start} =
-             await_result()
+  test "pings in the background, then reuses the results for the cache duration", context do
+    check(context, [@answering_address, @silent_address])
 
-    assert %Status{state: :up} = check(context)
+    assert [%AddressStatus{result: :pending}, %AddressStatus{result: :pending}] =
+             await_changes()
+
+    assert_receive {:pinged, @answering_address}, 1_000
+    assert_receive {:pinged, @silent_address}, 1_000
+
+    assert %{@answering_address => :up, @silent_address => :down} = await_results(1)
+
+    assert %AddressStatus{result: :up, checked_at: @start} =
+             Reachability.address_statuses(context.server)[@answering_address]
+
+    check(context, [@answering_address])
     refute_receive {:pinged, _address}, 50
 
     Agent.update(context.clock, &DateTime.add(&1, 16, :minute))
-    assert %Status{state: :pending} = check(context)
-    assert_receive {:pinged, "10.0.0.10"}
+    check(context, [@answering_address])
+    assert_receive {:pinged, @answering_address}, 1_000
   end
 
-  test "force pings again right away", context do
-    check(context)
-    await_result()
+  test "force pings again right away, only the given addresses", context do
+    check(context, [@answering_address, @silent_address])
+    assert_receive {:pinged, @silent_address}, 1_000
+    await_changes()
+    await_results(1)
 
-    assert %Status{state: :pending} = check(context, force: true)
-    assert_receive {:pinged, "10.0.0.10"}
-    assert %Status{state: :up} = await_result()
+    check(context, [@answering_address], force: true)
+    assert [%AddressStatus{result: :pending, checked_at: @start}] = await_changes()
+    assert_receive {:pinged, @answering_address}, 1_000
+    refute_receive {:pinged, @silent_address}, 50
   end
 
-  test "new addresses are pinged even with a recent result", context do
-    check(context)
-    await_result()
+  test "an address being pinged is not pinged twice", context do
+    check(context, [@silent_address])
+    check(context, [@silent_address], force: true)
 
-    device = %{context.device | interfaces: [Fixtures.interface(ip: "10.0.0.66")]}
-    assert %Status{state: :pending} = Reachability.check(device, server: context.server)
-    assert %Status{state: :down, results: %{"10.0.0.66" => :down}} = await_result()
-  end
-
-  test "a device without address is unknown and never pinged", context do
-    device = %{context.device | interfaces: []}
-
-    assert %Status{state: :unknown} = Reachability.check(device, server: context.server)
-    refute_receive {:pinged, _address}, 50
+    assert_receive {:pinged, @silent_address}, 1_000
+    refute_receive {:pinged, @silent_address}, 50
   end
 end

@@ -5,6 +5,7 @@ defmodule Belgo.Discovery do
   """
 
   alias Belgo.Discovery.Correlation.DiscoveredDevice
+  alias Belgo.Discovery.DnsNames.DiscoveredDnsName
   alias Belgo.Discovery.Server
   alias Belgo.Discovery.State
   alias Belgo.Discovery.UseCase
@@ -27,7 +28,13 @@ defmodule Belgo.Discovery do
   the background, to the providers in `write` mode.
   """
   @spec push_device(String.t(), GenServer.server()) :: :ok
-  def push_device(device_id, server \\ Server), do: GenServer.cast(server, {:push, device_id})
+  def push_device(device_id, server \\ Server),
+    do: GenServer.cast(server, {:push, {:devices, device_id}})
+
+  @doc "Pushes the DNS names of a virtual IP to the providers in write mode, in the background."
+  @spec push_virtual_ip(String.t(), GenServer.server()) :: :ok
+  def push_virtual_ip(virtual_ip_id, server \\ Server),
+    do: GenServer.cast(server, {:push, {:virtual_ips, virtual_ip_id}})
 
   @doc "Subscribes to `{:discovery_changed, state}` messages."
   @spec subscribe() :: :ok | {:error, term()}
@@ -53,4 +60,19 @@ defmodule Belgo.Discovery do
   def attach(%DiscoveredDevice{} = discovered, device_id, options) do
     Belgo.UseCase.execute(UseCase.AttachToDevice, {discovered, device_id}, options)
   end
+
+  @doc """
+  Adds a discovered DNS name to a device interface (`{:devices, device_id, position}`)
+  or to a virtual IP (`{:virtual_ips, virtual_ip_id}`).
+  """
+  @spec claim_dns_name(
+          DiscoveredDnsName.t(),
+          {:devices, String.t(), non_neg_integer()} | {:virtual_ips, String.t()},
+          Keyword.t()
+        ) ::
+          {:ok, Belgo.Inventory.Device.t() | Belgo.Inventory.VirtualIp.t()}
+          | {:error, any()}
+          | {:error, any(), any(), map()}
+  def claim_dns_name(%DiscoveredDnsName{} = discovered, target, options),
+    do: Belgo.UseCase.execute(UseCase.ClaimDnsName, {discovered, target}, options)
 end

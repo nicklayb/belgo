@@ -72,6 +72,8 @@ devices:
     location_id: bureau-nicolas
     name: Switch Bureau
     network_role: switch
+    port_count: 8
+    poe: true
   t480s:
     interfaces:
       - assignment: dynamic

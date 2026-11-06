@@ -107,7 +107,11 @@ claim forms (`/devices/new?discovered=…`, `/networks/new?discovered=…`).
   `host`, accept JSON bodies, `set_*` is a partial update (absent keys untouched),
   success is `{"result":"saved"}`, failure `{"result":"failed","validations":…}`;
   `reconfigure` answers `{"status":"ok"}`; search rows have `uuid`, raw values, and
-  `%field` descriptions (reservation `subnet` is the subnet uuid). Unbound aliases
+  `%field` descriptions (reservation `subnet` is the subnet uuid). **Measured on the
+  owner's instance:** host override search rows give `rr` as its label
+  (`"A (IPv4 address)"`), with no `%rr`; `Translate.address_record?/1` keeps the
+  first word. Before that fix every host override was ignored, so pushes created
+  duplicates instead of updating (cleanup is manual, Belgo never deletes). Unbound aliases
   appear as `_children` of host rows (shape not verified, parsed defensively).
   The pull was validated against the owner's real instance (read-only token).
 
@@ -160,7 +164,13 @@ first addressed interface only, other interfaces are named through their
   access_point, forces `kind: network`); APs and switches **are** devices. Links reuse
   `Interface.switch_id` / `switch_port`; network devices without interface (unmanaged
   switches, no MAC) use the device-level `uplink_id` / `uplink_port` instead
-  ("Plugged into" in the form, used when no interface is plugged). Live uplinks from providers (`Correlation.uplinks`, `Belgo.Discovery.Uplink`)
+  ("Plugged into" in the form, used when no interface is plugged). Switches (owner) have an
+  optional `port_count` and a `poe` flag (cleared for any other role); Routing shows
+  `used/total ports` next to switches (`Routing.used_ports/1`: wired links plugged
+  into it, a port shared by several links counts once, a link without port counts
+  one, the switch's own uplink is not counted; red when over capacity), and PoE
+  switches get a bolt icon (`Components.Inventory.poe_indicator/1`) in Routing, the
+  device list and the device page. Live uplinks from providers (`Correlation.uplinks`, `Belgo.Discovery.Uplink`)
   win over the inventory and are never persisted (roaming must not churn git).
   `Belgo.Topology.Routing` builds links, the tree and paths (cycles cut). OPNsense
   emits its Kea subnet routers as one `:opnsense_gateway` device (shared `identity`,
@@ -195,9 +205,15 @@ first addressed interface only, other interfaces are named through their
   labels unique per device, suggested labels in `MetadataEntry.suggested_labels/0`);
   no empty predefined fields (owner).
 - `Belgo.Search` (pure) powers the global search modal (`Components.SearchModal`, a
-  LiveComponent rendered once in `Layouts.app`, opened from the sidebar or Ctrl/⌘+K;
-  `assets/js/app.js` prevents the browser's own Ctrl+K) and the *Out of DHCP*
-  filters (text + provider). Known devices by default, discovery on demand.
+  LiveComponent rendered once in `Layouts.app`) and the *Out of DHCP* filters
+  (text + provider). Known devices by default, discovery on demand. The modal is a
+  native `<dialog>` opened **in the browser** by the `SearchDialog` hook
+  (`assets/js/hooks/search_dialog.js`) from `[data-search-open]` or Ctrl/⌘+K:
+  `showModal()` + `focus()` run in the click / key handler, because a focus
+  requested after a server round trip (or `JS.focus`, deferred by
+  `requestAnimationFrame`) can be ignored (Safari, owner wants the field focused).
+  `JS.ignore_attributes("open")` keeps it open across patches; `app.js` still
+  prevents the browser's own Ctrl+K.
 - Embedded list forms (metadata, interfaces): the "Add" button sits above the entries,
   so the browser sends `*_sort[] = new` first; `Inventory.SortParams.new_last/2` puts
   new entries last (else the new row takes index 0 and fields being typed in swap).
@@ -246,17 +262,130 @@ first addressed interface only, other interfaces are named through their
   non-network kind drops `network_role`. `UseCase.UpdateDevices` saves every device
   or none (steps `{:device, id}`), then pushes each.
 - Global settings: `config.yaml` next to the inventory (`Belgo.Config`, read when
-  needed, invalid → logged, defaults). Durations parsed by `Belgo.Duration` (shared
+  needed, invalid → logged, defaults; `Config.current/0` uses `config :belgo,
+  Belgo.Config, directory:`). `theme: auto | light | dark` (owner):
+  `Plugs.Theme` assigns it, the root layout sets `<html data-theme>`; colour tokens
+  are `light-dark(light, dark)` in `app.css`, driven by `color-scheme` (auto: `light
+  dark`), so there is a single token list and native controls follow the theme. Durations parsed by `Belgo.Duration` (shared
   with provider `interval`).
-- Reachability (owner): the device page pings on display (connected only) and shows a
-  dot next to the name (green up / red down / yellow pending; click = ping now).
-  `Belgo.Reachability.Server` keeps results in memory, reused for
-  `ping.cache_duration` (default 15m) for the same addresses; one check per device at
-  a time; broadcast on `reachability:<device_id>`. Up = at least one IP answers.
+- Reachability (owner): a dot next to device names (green up / red down / yellow
+  pending) on the device page (click = ping now), the device list and Discovery
+  (unknown and out of DHCP devices). Pages ping on display (connected only); the
+  discovery server also pings `Correlation.discovered_addresses/1` after each pull
+  (owner: see quickly which discovered devices do not answer).
+  `Belgo.Reachability.Server` keeps one `AddressStatus` per **address** (shared by
+  inventory and discovery), in memory, reused for `ping.cache_duration` (default
+  15m); an address being pinged is never pinged twice; at most 32 pings at a time
+  per check. Pending addresses are broadcast at once, results grouped every 250 ms
+  (`{:reachability_changed, [AddressStatus]}` on topic `reachability`).
+  `Reachability.Status.build/2` aggregates a device: up = at least one IP answers.
+  Views use `BelgoWeb.Live.Reachability` (subscribe / check / changed / status).
+  The overview's Devices stat (owner) pings every device on display and shows how
+  many do not answer (`Status.count_states/2`; "Pinging…" / "All answer" otherwise,
+  devices without address left out).
   `Reachability.Pinger` runs iputils `ping -n -c 1 -W s` (exit 0 answered, 1 not;
   measured on the owner's machine, unprivileged ICMP allowed by systemd's
   `ping_group_range`); `BELGO_PING_PATH` set in the image (busybox also has a ping).
   Tests inject `:ping` and `:clock`.
+- Git versioning (owner): `git` in `config.yaml` (`Config.Git`, absent = disabled).
+  `Belgo.Versioning.Server` inits the data directory as its **own** repository
+  (`.git` in it; a parent repository does not count, e.g. `./data` in dev), commits
+  at boot, then debounces `{:inventory_changed, _}` by `commit_delay` (5m) and
+  commits on terminate (`trap_exit`). Pushes `HEAD` every `push_interval` (1h) to
+  `remote` (URL or name) / `branch` in a task, skipped when unchanged since the last
+  push. **Never pulls, never forces** (owner). Commands in `Versioning.Git`
+  (`BELGO_GIT_PATH`, `safe.directory` = the directory, `GIT_TERMINAL_PROMPT=0`,
+  identity and `commit.gpgsign=false` via `-c`). HTTPS token `BELGO_GIT_TOKEN`
+  sent as a basic `http.extraHeader` through `GIT_CONFIG_*` env (never in argv).
+  The image ships `gitMinimal` and `GIT_SSH` (openssh). Tests use real git in
+  `tmp_dir` with a bare remote.
+- Discovery *DNS names* (owner): `Belgo.Discovery.DnsNames` (pure) lists DNS
+  observations whose name Belgo does not own (no `DesiredState` record, not a
+  conflict) and whose IP is an inventory interface's (`Correlation.dns_names`,
+  `DiscoveredDnsName` with suggested `device_id` / `interface_index`). Claim page
+  `/discovery/dns-names/:id` (`Discovery.Live.ClaimDnsName`, back to Discovery with
+  a flash linking the device, `BelgoWeb.FlashMessage`): device + addressed
+  interface selects, warning when the interface IP differs; `UseCase.ClaimDnsName`
+  appends the name (short when its domain is the interface network's,
+  `DnsNames.stored_name/2`) then pushes. The name also stays a divergence of the
+  device until claimed.
+- Wake-on-LAN (owner): *Wake* button per interface with MAC on the device page.
+  `Belgo.WakeOnLan.wake/3`: `MagicPacket` (pure), `Sender` (`:gen_udp` broadcast
+  port 9 to `255.255.255.255` + the network's last address), then a `Watch`
+  (GenServer under `Belgo.WakeOnLan.Supervisor`, one per device via
+  `Belgo.WakeOnLan.Registry`) pings every `wake_on_lan.ping_interval` (5s) until up
+  or `wake_on_lan.timeout` (1m, a last ping at the timeout), broadcasts
+  `{:wake_on_lan, Outcome}` on `wake_on_lan`. `BelgoWeb.Hooks.Notifications`
+  (on_mount of every page) turns it into a flash wherever the owner is. Tests
+  inject `send` / `ping` (`config :belgo, Belgo.WakeOnLan`, fixtures never touch the
+  network).
+- Open ports (owner: never disturb the device): `Belgo.PortScan.Server` (like
+  Reachability: per address, in memory, `port_scan.cache_duration` 1h, pending
+  broadcast then result, `{:port_scan_changed, [AddressScan]}` on `port_scan`).
+  `Scanner` = TCP connect + immediate close, nothing sent, 8 concurrent,
+  `port_scan.timeout` 1s, only `PortScan.Ports` (~40 common ports with service
+  names); no SYN scan (needs raw sockets). Device page card with *Refresh*
+  (force). Tests inject `:scan` (`Belgo.Fixtures.PortScanner`).
+- Search dialog keyboard: arrows move a `data-active` highlight over
+  `[data-search-result]` links while the focus stays in the field (wraps), Enter
+  follows it (the first result by default); typing resets it, `updated()` puts it
+  back after patches.
+- Collapsible cards (owner): `card` with `collapse_key` (and `collapsed` for a closed
+  default) renders a `<details>` with the `Collapsible` hook, which stores the
+  choice in `localStorage` (`belgo:collapsible:<key>`), so it survives page changes
+  and reloads; `JS.ignore_attributes("open")` keeps it across patches. Used by every
+  Discovery card, *Unknown devices* collapsed by default (owner). The stored state is
+  applied when the hook mounts (a closed default may show open for an instant).
+- Linked flashes render segments on one line (`flash_segment`): the message `<p>`
+  is `whitespace-pre-line` for plain strings, multi-line HEEx made a huge block.
+- Virtual IPs (owner): collection `virtual_ips` (`Inventory.VirtualIp`: name, ip,
+  network_id, kind metallb | kube_vip | keepalived | other, owner_id device,
+  dns_names, notes). `DesiredState` adds their DNS records (`DnsRecord.virtual_ip_id`,
+  `DnsRecord.owner/1`), never DHCP / clients; `for_owner/2` filters by
+  `{:devices | :virtual_ips, id}`; pushes go through `Discovery.push_virtual_ip/1`
+  (`Sync.after_save(:virtual_ips, …)`). Audit: unknown network / owner, outside the
+  network, in the DHCP range (warning), address shared with an interface or another
+  virtual IP (error on every user), DNS names shared between devices and virtual IPs.
+  References: owner device and network cannot be deleted. Correlation:
+  `release_floating_mac` drops the MAC of AdGuard / Omada client observations on a
+  virtual IP (MetalLB L2 answers ARP with the leader node MAC), virtual IPs claim
+  observations by IP and DNS name, divergences use collection `:virtual_ips`;
+  `DnsNames` can suggest a virtual IP (`virtual_ip_id`), the claim page target is
+  `devices:<id>` or `virtual_ips:<id>`. Pages `/virtual-ips` (list, show with DNS
+  names / ports / divergences, form; `?discovered=` from an unknown address,
+  `?owner_id=` from the owner's page). Measured on the owner's network: the MetalLB
+  address 192.168.1.110 ignores pings but serves 80 / 443, hence
+  `Reachability.Status.with_open_ports/2` (virtual IP pages count open ports as up).
+  `BelgoWeb.Live.PortScans` and `Components.Inventory.open_ports/1` are shared with
+  the device page.
+- Devices list sorting (owner): `Inventory.DeviceSorting` (pure: name, placement
+  label, first IP; missing values last) through `DeviceFilter` `sort` / `direction`
+  (in the URL, defaults left out), sortable headers of `table`.
+- Reserved address check (owner): `Discovery.ReservedAddresses.conflicts/2`: a
+  reserved interface on an address a Kea reservation holds for another MAC (from
+  `Discovery.State.observations/1`). Device form only (validate + refused save):
+  inventory duplicates were already Audit errors. Not enforced in use cases (the
+  discovery state is not part of the inventory).
+- Logical ranges (owner): `Network.ranges` (embedded `AddressRange`: name, start,
+  end, optional device kind; inside the network, no overlap; sort / drop params
+  `ranges_sort` / `ranges_drop`). `Inventory.AddressAllocation` (pure):
+  `used_addresses/3` (inventory but the edited device, virtual IPs, gateways, every
+  observation IP), `suggest/4` (first free, never network / broadcast address),
+  `suggest_params/4` for the device form `validate` event: on a kind change, fills
+  interfaces without IP or outside the kind's ranges (network set, dynamic becomes
+  reserved / static); an added interface (`"new"` sort entry, materialised as an
+  index) is filled too. The form shows the range under the IP while it holds the
+  suggestion (`address_suggestions`). Editing never changes an address by itself
+  (owner: a Media TV outside the Media range): `suggest_interfaces/4` offers the
+  next free address under the IP (`range_suggestions`, `#range-suggestion-<i>`), the
+  button fills the field through `JS.dispatch("belgo:set-value")` (listener in
+  `app.js`), which then sends the change like typing.
+- Stale address divergence (owner): an Omada client (live source, `@live_address_sources`)
+  whose MAC belongs to a reserved / static interface but seen at another IP is a
+  device divergence ("… is seen at X, Belgo assigns Y: restart it (or renew its DHCP
+  lease)…"), in Overview and on the device page. AdGuard persistent clients are
+  configuration Belgo pushes (not live), auto clients have no MAC: not used.
+  Measured on the owner's network: Sony Bravia seen at .158, assigned .37.
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

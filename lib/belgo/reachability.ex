@@ -1,36 +1,43 @@
 defmodule Belgo.Reachability do
   @moduledoc """
-  Whether devices answer pings. Results live in memory only
-  (`Belgo.Reachability.Server`) and are reused for `ping.cache_duration`
-  (`config.yaml`, 15 minutes by default).
+  Whether addresses answer pings. Results are kept per address, in memory only
+  (`Belgo.Reachability.Server`), and reused for `ping.cache_duration` (`config.yaml`,
+  15 minutes by default), so a device and a discovered device sharing an address
+  share its result. `Belgo.Reachability.Status.build/2` turns them into a device status.
   """
 
-  alias Belgo.Inventory.Device
+  alias Belgo.Reachability.AddressStatus
   alias Belgo.Reachability.Server
-  alias Belgo.Reachability.Status
+
+  @topic "reachability"
 
   @doc """
-  Returns the status of a device, pinging its addresses in the background when the
-  last result is missing, stale, or for other addresses. `force: true` pings anyway
-  (unless a check is already running).
+  Pings, in the background, the addresses without a recent result. `force: true`
+  pings them anyway. Addresses already being pinged are left alone.
   """
-  @spec check(Device.t(), Keyword.t()) :: Status.t()
-  def check(%Device{} = device, options \\ []) do
-    GenServer.call(
+  @spec check([String.t()], Keyword.t()) :: :ok
+  def check(addresses, options \\ []) do
+    GenServer.cast(
       Keyword.get(options, :server, Server),
-      {:check, device.id, Device.ip_addresses(device), Keyword.get(options, :force, false)}
+      {:check, Enum.uniq(addresses), Keyword.get(options, :force, false)}
     )
   end
 
-  @doc "Returns the last known status of a device, without pinging."
-  @spec status(String.t(), GenServer.server()) :: Status.t() | nil
-  def status(device_id, server \\ Server), do: GenServer.call(server, {:status, device_id})
+  @doc "Returns the status of every address checked so far, by address."
+  @spec address_statuses(GenServer.server()) :: %{String.t() => AddressStatus.t()}
+  def address_statuses(server \\ Server), do: GenServer.call(server, :address_statuses)
 
-  @doc "PubSub topic of a device's status changes."
-  @spec topic(String.t()) :: String.t()
-  def topic(device_id), do: "reachability:#{device_id}"
+  @doc "Merges changed address statuses into those already known."
+  @spec merge(%{String.t() => AddressStatus.t()}, [AddressStatus.t()]) ::
+          %{String.t() => AddressStatus.t()}
+  def merge(address_statuses, changed),
+    do: Enum.into(changed, address_statuses, &{&1.address, &1})
 
-  @doc "Subscribes to `{:reachability_changed, status}` messages of a device."
-  @spec subscribe(String.t()) :: :ok | {:error, term()}
-  def subscribe(device_id), do: Phoenix.PubSub.subscribe(Belgo.PubSub, topic(device_id))
+  @doc "PubSub topic of the address status changes."
+  @spec topic() :: String.t()
+  def topic, do: @topic
+
+  @doc "Subscribes to `{:reachability_changed, [AddressStatus.t()]}` messages."
+  @spec subscribe() :: :ok | {:error, term()}
+  def subscribe, do: Phoenix.PubSub.subscribe(Belgo.PubSub, @topic)
 end

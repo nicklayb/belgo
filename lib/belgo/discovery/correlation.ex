@@ -8,16 +8,22 @@ defmodule Belgo.Discovery.Correlation do
 
     * ignored, when one of its MAC addresses is in the denylist
     * claimed, when one of its MAC or IP addresses, or one of its DNS names, belongs
-      to an inventory device; differences become divergences, reconciled manually
+      to an inventory device or virtual IP; differences become divergences, reconciled
+      manually. The MAC address reported with a virtual IP (clients seen by AdGuard
+      Home or Omada) is the one of whichever machine answers for it right now: it is
+      dropped, so the virtual IP never merges with that machine.
     * unknown otherwise, suggested for claiming; unknown devices whose addresses are
       all outside the DHCP range of their network (static or reserved addresses) are
       listed apart as out of DHCP. A network without range in the inventory uses the
       range reported by a provider (OPNsense Kea pool), without writing it.
 
   Location observations (Home Assistant floors and areas) are handled by
-  `Belgo.Discovery.Locations`.
+  `Belgo.Discovery.Locations`. DNS names resolving to an inventory address without
+  belonging to Belgo are `dns_names` (`Belgo.Discovery.DnsNames`), to claim.
   """
 
+  alias Belgo.Discovery.DnsNames
+  alias Belgo.Discovery.DnsNames.DiscoveredDnsName
   alias Belgo.Discovery.Locations
   alias Belgo.Discovery.Locations.DiscoveredLocation
   alias Belgo.Discovery.Observation
@@ -26,8 +32,10 @@ defmodule Belgo.Discovery.Correlation do
   alias Belgo.Inventory.Identifier
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
+  alias Belgo.Inventory.VirtualIp
   alias Belgo.Network.IpAddress
   alias Belgo.Sync.DesiredState
+  alias Belgo.Sync.DesiredState.DnsRecord
 
   defmodule DiscoveredDevice do
     @moduledoc "Observations describing one machine unknown to the inventory."
@@ -106,6 +114,7 @@ defmodule Belgo.Discovery.Correlation do
             ignored_devices: [],
             new_networks: [],
             new_locations: [],
+            dns_names: [],
             divergences: []
 
   @type t :: %__MODULE__{
@@ -117,6 +126,7 @@ defmodule Belgo.Discovery.Correlation do
           ignored_devices: [DiscoveredDevice.t()],
           new_networks: [DiscoveredNetwork.t()],
           new_locations: [DiscoveredLocation.t()],
+          dns_names: [DiscoveredDnsName.t()],
           divergences: [Divergence.t()]
         }
 
@@ -127,7 +137,13 @@ defmodule Belgo.Discovery.Correlation do
   @spec build(Snapshot.t(), [Observation.t()]) :: t()
   def build(%Snapshot{} = snapshot, observations) do
     observations_by_kind = Enum.group_by(observations, & &1.kind)
-    device_observations = Map.get(observations_by_kind, :device, [])
+    context = device_context(snapshot)
+
+    device_observations =
+      observations_by_kind
+      |> Map.get(:device, [])
+      |> Enum.map(&release_floating_mac(&1, context))
+
     network_observations = Map.get(observations_by_kind, :network, [])
 
     {new_networks, network_divergences} = correlate_networks(snapshot, network_observations)
@@ -135,7 +151,6 @@ defmodule Belgo.Discovery.Correlation do
     {new_locations, location_divergences} =
       Locations.correlate(snapshot, Map.get(observations_by_kind, :location, []))
 
-    context = device_context(snapshot)
     conflicts = Enum.map(conflicts(device_observations), &own_conflict(&1, context))
 
     {ignored, claimed, unknown} =
@@ -162,6 +177,13 @@ defmodule Belgo.Discovery.Correlation do
       ignored_devices: sort_devices(ignored),
       new_networks: new_networks,
       new_locations: new_locations,
+      dns_names:
+        DnsNames.build(
+          snapshot,
+          device_observations,
+          context.desired_state,
+          Enum.map(conflicts, & &1.name)
+        ),
       divergences:
         claimed
         |> Enum.flat_map(fn {discovered, devices} ->
@@ -186,6 +208,23 @@ defmodule Belgo.Discovery.Correlation do
       nil -> {:error, :not_found}
       discovered -> {:ok, discovered}
     end
+  end
+
+  @doc "Finds an unowned DNS name by identifier."
+  @spec fetch_dns_name(t(), String.t()) :: {:ok, DiscoveredDnsName.t()} | {:error, :not_found}
+  def fetch_dns_name(%__MODULE__{} = correlation, id) do
+    case Enum.find(correlation.dns_names, &(&1.id == id)) do
+      nil -> {:error, :not_found}
+      discovered -> {:ok, discovered}
+    end
+  end
+
+  @doc "Lists the IP addresses of the unknown devices (out of DHCP included), to ping them."
+  @spec discovered_addresses(t()) :: [String.t()]
+  def discovered_addresses(%__MODULE__{} = correlation) do
+    (correlation.unknown_devices ++ correlation.out_of_dhcp_devices)
+    |> Enum.flat_map(& &1.ips)
+    |> Enum.uniq()
   end
 
   @doc "Finds a new network by identifier."
@@ -305,14 +344,41 @@ defmodule Belgo.Discovery.Correlation do
       device_by_ip:
         for({device, %{ip: ip}} <- interfaces, ip != nil, into: %{}, do: {ip, device}),
       device_by_dns_name: device_by_dns_name(snapshot, desired_state),
+      owner_by_dns_name: owner_by_dns_name(snapshot, desired_state),
+      virtual_ip_by_ip: Map.new(snapshot.virtual_ips, &{&1.ip, &1}),
       desired_state: desired_state
     }
   end
 
   defp device_by_dns_name(snapshot, desired_state) do
     device_by_id = Snapshot.index(snapshot, :devices)
-    Map.new(desired_state.dns_records, &{&1.name, Map.fetch!(device_by_id, &1.device_id)})
+
+    for %DnsRecord{device_id: device_id, virtual_ip_id: nil} = record <-
+          desired_state.dns_records,
+        into: %{},
+        do: {record.name, Map.fetch!(device_by_id, device_id)}
   end
+
+  # Devices and virtual IPs, by the DNS names they own.
+  defp owner_by_dns_name(snapshot, desired_state) do
+    record_by_owner =
+      for collection <- [:devices, :virtual_ips],
+          record <- Map.fetch!(snapshot, collection),
+          into: %{},
+          do: {{collection, record.id}, record}
+
+    Map.new(desired_state.dns_records, fn record ->
+      {record.name, Map.fetch!(record_by_owner, DnsRecord.owner(record))}
+    end)
+  end
+
+  @floating_mac_sources [:adguard_client, :adguard_auto_client, :omada_client]
+
+  defp release_floating_mac(%Observation{source: source, ip: ip} = observation, context)
+       when source in @floating_mac_sources and is_map_key(context.virtual_ip_by_ip, ip),
+       do: %{observation | mac: nil, uplink_mac: nil}
+
+  defp release_floating_mac(observation, _context), do: observation
 
   defp classify(discovered, context) do
     devices =
@@ -323,6 +389,7 @@ defmodule Belgo.Discovery.Correlation do
           |> device_of())
       ) ++
         Enum.map(discovered.ips, &Map.get(context.device_by_ip, &1)) ++
+        Enum.map(discovered.ips, &Map.get(context.virtual_ip_by_ip, &1)) ++
         named_devices(discovered, context)
 
     cond do
@@ -333,7 +400,7 @@ defmodule Belgo.Discovery.Correlation do
         {:claimed,
          devices
          |> Enum.reject(&is_nil/1)
-         |> Enum.uniq_by(& &1.id)}
+         |> Enum.uniq_by(&{&1.__struct__, &1.id})}
 
       true ->
         :unknown
@@ -342,7 +409,7 @@ defmodule Belgo.Discovery.Correlation do
 
   defp named_devices(discovered, context) do
     for observation <- discovered.observations, Observation.dns_record?(observation) do
-      Map.get(context.device_by_dns_name, Observation.fqdn(observation))
+      Map.get(context.owner_by_dns_name, Observation.fqdn(observation))
     end
   end
 
@@ -419,18 +486,46 @@ defmodule Belgo.Discovery.Correlation do
         :error -> Map.get(context.device_by_ip, observation.ip)
       end
 
-    if owner && observation.description != owner.name,
-      do: [
-        divergence(
-          owner,
-          observation,
-          "client name is #{observation.description}, Belgo has #{owner.name}"
-        )
-      ],
-      else: []
+    name_divergences =
+      if owner && observation.description != owner.name,
+        do: [
+          divergence(
+            owner,
+            observation,
+            "client name is #{observation.description}, Belgo has #{owner.name}"
+          )
+        ],
+        else: []
+
+    name_divergences ++ stale_address_divergences(observation, context)
   end
 
   defp observation_divergences(_observation, _devices, _context), do: []
+
+  @live_address_sources [:omada_client]
+
+  # A client seen right now (Omada) at another address than the one Belgo assigns to
+  # its interface: the device still holds its old lease, a restart (or lease renewal)
+  # makes it take the new one. Dynamic interfaces have no assigned address.
+  defp stale_address_divergences(%Observation{source: source} = observation, context)
+       when source in @live_address_sources and is_binary(observation.ip) do
+    case Map.fetch(context.interface_by_mac, observation.mac) do
+      {:ok, {device, %{assignment: assignment, ip: ip} = interface}}
+      when assignment in [:reserved, :static] and is_binary(ip) and ip != observation.ip ->
+        [
+          divergence(
+            device,
+            observation,
+            "#{Device.interface_label(device, interface)} is seen at #{observation.ip}, Belgo assigns #{ip}: restart it (or renew its DHCP lease) to take the new address"
+          )
+        ]
+
+      _same_or_unknown ->
+        []
+    end
+  end
+
+  defp stale_address_divergences(_observation, _context), do: []
 
   defp fallback([], devices), do: devices
   defp fallback(owners, _devices), do: owners
@@ -450,10 +545,10 @@ defmodule Belgo.Discovery.Correlation do
     |> Enum.map(fn {_different?, message} -> divergence(device, observation, message) end)
   end
 
-  defp divergence(device, observation, message) do
+  defp divergence(record, observation, message) do
     %Divergence{
-      collection: :devices,
-      id: device.id,
+      collection: if(match?(%VirtualIp{}, record), do: :virtual_ips, else: :devices),
+      id: record.id,
       provider: observation.provider,
       message: message
     }

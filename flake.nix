@@ -77,6 +77,10 @@
               # iputils ping (busybox also ships one); needs unprivileged ICMP
               # (net.ipv4.ping_group_range) or CAP_NET_RAW.
               "BELGO_PING_PATH=${pkgs.iputils}/bin/ping"
+              # Versioning of /data (`git` in config.yaml); SSH remotes use GIT_SSH,
+              # overridable with GIT_SSH_COMMAND (keys, known_hosts).
+              "BELGO_GIT_PATH=${pkgs.gitMinimal}/bin/git"
+              "GIT_SSH=${pkgs.openssh}/bin/ssh"
               "RELEASE_TMP=/tmp"
               "RELEASE_DISTRIBUTION=none"
               # Required by the release script, meaningless without distribution.
@@ -105,6 +109,7 @@
             pkgs.tailwindcss_4
             pkgs.esbuild
             pkgs.iputils
+            pkgs.git
           ];
 
           shellHook = ''

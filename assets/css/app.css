@@ -8,50 +8,42 @@
 @custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
 
 /*
- * Semantic colour tokens. Components only use these, so the dark theme is a matter
- * of overriding the variables below.
+ * Semantic colour tokens, as light-dark(light, dark). Components only use these. The
+ * theme comes from `theme` in config.yaml, set on <html data-theme>: `auto` follows
+ * the system (color-scheme: light dark), `light` and `dark` force it.
  */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --color-canvas: oklch(0.985 0.002 286);
-  --color-surface: oklch(1 0 0);
-  --color-surface-muted: oklch(0.967 0.003 286);
-  --color-border: oklch(0.92 0.004 286);
-  --color-foreground: oklch(0.21 0.006 286);
-  --color-muted: oklch(0.552 0.016 286);
-  --color-accent: oklch(0.55 0.21 277);
-  --color-accent-foreground: oklch(0.99 0 0);
-  --color-accent-soft: oklch(0.955 0.025 277);
-  --color-success: oklch(0.55 0.15 152);
-  --color-success-soft: oklch(0.96 0.04 156);
-  --color-warning: oklch(0.6 0.15 65);
-  --color-warning-soft: oklch(0.965 0.05 90);
-  --color-danger: oklch(0.56 0.22 27);
-  --color-danger-soft: oklch(0.965 0.02 17);
+  --color-canvas: light-dark(oklch(0.985 0.002 286), oklch(0.145 0.004 286));
+  --color-surface: light-dark(oklch(1 0 0), oklch(0.185 0.005 286));
+  --color-surface-muted: light-dark(oklch(0.967 0.003 286), oklch(0.225 0.006 286));
+  --color-border: light-dark(oklch(0.92 0.004 286), oklch(0.28 0.006 286));
+  --color-foreground: light-dark(oklch(0.21 0.006 286), oklch(0.96 0.002 286));
+  --color-muted: light-dark(oklch(0.552 0.016 286), oklch(0.7 0.012 286));
+  --color-accent: light-dark(oklch(0.55 0.21 277), oklch(0.68 0.17 277));
+  --color-accent-foreground: light-dark(oklch(0.99 0 0), oklch(0.15 0.02 277));
+  --color-accent-soft: light-dark(oklch(0.955 0.025 277), oklch(0.28 0.07 277));
+  --color-success: light-dark(oklch(0.55 0.15 152), oklch(0.72 0.15 152));
+  --color-success-soft: light-dark(oklch(0.96 0.04 156), oklch(0.27 0.05 152));
+  --color-warning: light-dark(oklch(0.6 0.15 65), oklch(0.78 0.14 75));
+  --color-warning-soft: light-dark(oklch(0.965 0.05 90), oklch(0.28 0.05 70));
+  --color-danger: light-dark(oklch(0.56 0.22 27), oklch(0.7 0.18 25));
+  --color-danger-soft: light-dark(oklch(0.965 0.02 17), oklch(0.28 0.07 25));
 }
 
 @layer base {
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --color-canvas: oklch(0.145 0.004 286);
-      --color-surface: oklch(0.185 0.005 286);
-      --color-surface-muted: oklch(0.225 0.006 286);
-      --color-border: oklch(0.28 0.006 286);
-      --color-foreground: oklch(0.96 0.002 286);
-      --color-muted: oklch(0.7 0.012 286);
-      --color-accent: oklch(0.68 0.17 277);
-      --color-accent-foreground: oklch(0.15 0.02 277);
-      --color-accent-soft: oklch(0.28 0.07 277);
-      --color-success: oklch(0.72 0.15 152);
-      --color-success-soft: oklch(0.27 0.05 152);
-      --color-warning: oklch(0.78 0.14 75);
-      --color-warning-soft: oklch(0.28 0.05 70);
-      --color-danger: oklch(0.7 0.18 25);
-      --color-danger-soft: oklch(0.28 0.07 25);
-      color-scheme: dark;
-    }
+  :root {
+    color-scheme: light dark;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
   }
 
   body {

@@ -1,7 +1,8 @@
 defmodule Belgo.Search do
   @moduledoc """
-  Searches the inventory, and optionally the discovery, by almost anything: name,
-  hostname, MAC, IP, DNS names, tags, notes, location, metadata… Pure functions.
+  Searches the inventory (devices and virtual IPs), and optionally the discovery, by
+  almost anything: name, hostname, MAC, IP, DNS names, tags, notes, location,
+  metadata… Pure functions.
 
   Matching is case insensitive; MAC addresses also match without separators
   (`0200000010` finds `02:00:00:00:00:10`). Exact matches come first, then prefixes,
@@ -24,7 +25,7 @@ defmodule Belgo.Search do
     defstruct [:type, :id, :title, :subtitle, :field, :value, score: 2]
 
     @type t :: %__MODULE__{
-            type: :device | :discovered,
+            type: :device | :virtual_ip | :discovered,
             id: String.t(),
             title: String.t(),
             subtitle: String.t() | nil,
@@ -52,6 +53,7 @@ defmodule Belgo.Search do
           end
 
         (Enum.flat_map(snapshot.devices, &device_result(&1, snapshot, normalized)) ++
+           Enum.flat_map(snapshot.virtual_ips, &virtual_ip_result(&1, normalized)) ++
            Enum.flat_map(discovered, &discovered_result(&1, normalized)))
         |> Enum.sort_by(&{&1.score, &1.type == :discovered, String.downcase(&1.title)})
         |> Enum.take(Keyword.get(options, :limit, @default_limit))
@@ -77,6 +79,27 @@ defmodule Belgo.Search do
         id: device.id,
         title: device.name,
         subtitle: Device.hostname(device),
+        field: field,
+        value: value,
+        score: score
+      }
+    end)
+  end
+
+  defp virtual_ip_result(virtual_ip, query) do
+    ([
+       {"Name", virtual_ip.name},
+       {"Identifier", virtual_ip.id},
+       {"IP", virtual_ip.ip},
+       {"Notes", virtual_ip.notes}
+     ] ++ Enum.map(virtual_ip.dns_names, &{"DNS name", &1}))
+    |> best_match(query)
+    |> to_result(fn {field, value, score} ->
+      %Result{
+        type: :virtual_ip,
+        id: virtual_ip.id,
+        title: virtual_ip.name,
+        subtitle: virtual_ip.ip,
         field: field,
         value: value,
         score: score

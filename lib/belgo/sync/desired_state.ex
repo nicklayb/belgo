@@ -12,21 +12,25 @@ defmodule Belgo.Sync.DesiredState do
 
   Every DHCP reservation and client name of a device uses the device hostname or
   name, never the interface name, since it is the same machine. DNS records come
-  only from the interfaces' `dns_names` (the hostname never creates one): a name
-  without a dot is completed with the network domain, others are used as is.
+  only from the interfaces' `dns_names` (the hostname never creates one) and from
+  virtual IPs' `dns_names`: a name without a dot is completed with the network
+  domain, others are used as is. Virtual IPs only produce DNS records.
   """
 
   alias Belgo.Inventory.Device
+  alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
+  alias Belgo.Inventory.VirtualIp
   alias Belgo.Network.IpAddress
 
   defmodule DnsRecord do
     @moduledoc """
     A DNS name resolving to an address. `name` is the full name; `host` and `domain`
     split it for systems storing them apart (Unbound). `domain` is `nil` for a bare
-    name, when the network has no domain.
+    name, when the network has no domain. It belongs to a device (`device_id`) or to a
+    virtual IP (`virtual_ip_id`), see `owner/1`.
     """
-    defstruct [:name, :host, :domain, :address, :description, :device_id]
+    defstruct [:name, :host, :domain, :address, :description, :device_id, :virtual_ip_id]
 
     @type t :: %__MODULE__{
             name: String.t(),
@@ -34,8 +38,14 @@ defmodule Belgo.Sync.DesiredState do
             domain: String.t() | nil,
             address: String.t(),
             description: String.t(),
-            device_id: String.t()
+            device_id: String.t() | nil,
+            virtual_ip_id: String.t() | nil
           }
+
+    @doc "The record owning the name: `{:devices, id}` or `{:virtual_ips, id}`."
+    @spec owner(t()) :: {:devices | :virtual_ips, String.t()}
+    def owner(%__MODULE__{virtual_ip_id: nil, device_id: device_id}), do: {:devices, device_id}
+    def owner(%__MODULE__{virtual_ip_id: virtual_ip_id}), do: {:virtual_ips, virtual_ip_id}
   end
 
   defmodule DhcpReservation do
@@ -92,10 +102,14 @@ defmodule Belgo.Sync.DesiredState do
     network_by_id = Snapshot.index(snapshot, :networks)
     entries = Enum.map(snapshot.devices, &device_entries(&1, network_by_id))
 
+    virtual_ip_records =
+      Enum.flat_map(snapshot.virtual_ips, &virtual_ip_dns_records(&1, snapshot.networks))
+
     %__MODULE__{
       dns_records:
         entries
         |> Enum.flat_map(& &1.dns_records)
+        |> Kernel.++(virtual_ip_records)
         |> Enum.sort_by(&{&1.name, &1.address}),
       dhcp_reservations:
         entries
@@ -114,15 +128,53 @@ defmodule Belgo.Sync.DesiredState do
 
   @doc "Keeps only the entries produced by one device."
   @spec for_device(t(), String.t()) :: t()
-  def for_device(%__MODULE__{} = desired_state, device_id) do
+  def for_device(%__MODULE__{} = desired_state, device_id),
+    do: for_owner(desired_state, {:devices, device_id})
+
+  @doc "Keeps only the entries of one device or virtual IP (DNS records only for it)."
+  @spec for_owner(t(), {:devices | :virtual_ips, String.t()}) :: t()
+  def for_owner(%__MODULE__{} = desired_state, {:devices, device_id}) do
     keep = fn entries -> Enum.filter(entries, &(&1.device_id == device_id)) end
 
     %__MODULE__{
-      dns_records: keep.(desired_state.dns_records),
+      dns_records:
+        Enum.filter(desired_state.dns_records, &(DnsRecord.owner(&1) == {:devices, device_id})),
       dhcp_reservations: keep.(desired_state.dhcp_reservations),
       client_names: keep.(desired_state.client_names),
       clients: keep.(desired_state.clients)
     }
+  end
+
+  def for_owner(%__MODULE__{} = desired_state, {:virtual_ips, virtual_ip_id}) do
+    %__MODULE__{
+      dns_records: Enum.filter(desired_state.dns_records, &(&1.virtual_ip_id == virtual_ip_id))
+    }
+  end
+
+  @doc "The domain of the network of an address: its declared network, else by range."
+  @spec network_domain([Network.t()], String.t() | nil, String.t() | nil) :: String.t() | nil
+  def network_domain(networks, network_id, address) do
+    Enum.find_value(networks, fn network ->
+      (network.id == network_id or (address != nil and Network.contains?(network, address))) &&
+        network.domain
+    end)
+  end
+
+  defp virtual_ip_dns_records(%VirtualIp{} = virtual_ip, networks) do
+    domain = network_domain(networks, virtual_ip.network_id, virtual_ip.ip)
+
+    Enum.map(virtual_ip.dns_names, fn name ->
+      {host, record_domain} = split_name(name, domain)
+
+      %DnsRecord{
+        name: Enum.join(Enum.reject([host, record_domain], &is_nil/1), "."),
+        host: host,
+        domain: record_domain,
+        address: virtual_ip.ip,
+        description: virtual_ip.name,
+        virtual_ip_id: virtual_ip.id
+      }
+    end)
   end
 
   defp device_entries(device, network_by_id) do

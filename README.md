@@ -7,7 +7,7 @@ names AdGuard Home, OPNsense and Omada must agree on.
 ## Data
 
 The inventory lives in YAML files (`locations.yaml`, `networks.yaml`,
-`devices.yaml`, `denylist.yaml`) in `BELGO_DATA_PATH`, each mapping identifiers to
+`devices.yaml`, `virtual_ips.yaml`, `denylist.yaml`) in `BELGO_DATA_PATH`, each mapping identifiers to
 entries. Nothing else is persisted: the same files
 always give the same result. Files can be edited by hand (then use *Reload files*)
 and versioned with git. See `examples/inventory` for the format.
@@ -17,10 +17,38 @@ and versioned with git. See `examples/inventory` for the format.
 `config.yaml`, next to the inventory files (see `examples/inventory/config.yaml`),
 holds settings that are not about providers. Every key is optional:
 
-* `ping.cache_duration` (`15m`): a device page pings the device (green: answers,
-  red: no answer, yellow: checking) and reuses the result this long; clicking the
-  indicator pings again right away. Results are kept in memory only.
+* `theme` (`auto`): `auto` follows the system, `light` and `dark` force a theme
+  (applies on the next page load).
+* `ping.cache_duration` (`15m`): devices are pinged and shown with a dot (green:
+  answers, red: no answer, yellow: checking) on the device page, the device list
+  and Discovery. Unknown devices are pinged as soon as a provider reports them.
+  Results are kept per address, in memory only, and reused this long; clicking the
+  dot on a device page pings again right away.
 * `ping.timeout` (`2s`): how long to wait for an answer.
+* `wake_on_lan.ping_interval` (`5s`) / `wake_on_lan.timeout` (`1m`): the *Wake*
+  button of an interface (with a MAC address) sends a wake-on-LAN magic packet (UDP
+  broadcast on port 9, to `255.255.255.255` and to the broadcast address of the
+  interface network), then pings the device this often until it answers or the
+  timeout elapses; a notice tells either way, on whatever page is open. Broadcasts
+  do not cross routers: Belgo must be on the device's network (host networking in a
+  container) unless the router forwards directed broadcasts.
+* `port_scan.cache_duration` (`1h`) / `port_scan.timeout` (`1s`): a device page
+  lists the TCP ports of its addresses that accept connections, among about forty
+  common ones (SSH, HTTP(S), SMB, Proxmox, Home Assistant, Plex…). Each check is a
+  plain connection closed right away, nothing is sent, eight at a time: no
+  privilege needed and nothing that disturbs the device (its services may log a
+  closed connection). Results are kept in memory; *Refresh* checks again.
+* `git` (absent: disabled, `git:` alone uses the defaults): versions the data directory. Belgo makes it a git
+  repository when it is not one yet and commits changes once the files are left
+  alone for `git.commit_delay` (`5m`), and before stopping. Commits are authored by
+  `git.author_name` / `git.author_email` (`Belgo` / `belgo@localhost`).
+  With `git.remote` (a URL or a remote name), new commits are pushed every
+  `git.push_interval` (`1h`) to `git.branch` (the current branch by default).
+  Belgo never pulls nor forces: when the remote moved on, the push fails and is
+  logged until you reconcile it by hand. Credentials never go in the files: SSH
+  remotes use your SSH setup (`GIT_SSH_COMMAND="ssh -i … -o UserKnownHostsFile=…"`
+  in a container), HTTPS remotes the `BELGO_GIT_TOKEN` secret (and
+  `BELGO_GIT_USERNAME`, `x-access-token` by default; both accept `_FILE`).
 
 ## Discovery
 
@@ -30,6 +58,11 @@ Providers are optional and configured in `providers.yaml`, next to the inventory
 then suggests what they know and the inventory does not: claim a suggestion to save
 it, or ignore it (its MAC addresses go to `denylist.yaml`). Differences with records
 already in the inventory are shown as divergences, reconciled manually.
+
+DNS names reported by a provider (Unbound host overrides) that resolve to the
+address of a known device without belonging to it in Belgo are listed in *DNS
+names*: claiming one preselects the interface holding that address (another device
+and interface can be chosen) and adds the name to the interface.
 
 A network can declare its DHCP range (dynamic pool). When it does not, the range
 reported by OPNsense (first Kea pool of the subnet) is used, without being written.
@@ -80,6 +113,30 @@ DNS names belong to an interface address: a short name gets the network domain
 names DHCP reservations, it never creates a DNS record. Names duplicated in Unbound
 are shown in *Overview* and never written until fixed in OPNsense.
 
+## Logical ranges
+
+A network can name parts of itself (`.1`–`.5` routing, `.10`–`.20` servers, `.70`–`.110`
+IoT…) in its form. A range tied to a device kind suggests addresses: choosing that
+kind for a device (or adding an interface to it) fills its interfaces without
+address, or outside the range, with the first address of the range nothing uses
+(inventory, virtual IPs, gateways, and every address providers report). The hint
+under the field tells where it comes from; edit it freely.
+
+A DHCP reservation on an address OPNsense already reserves for another MAC address
+is refused by the device form (the push would fail).
+
+## Virtual IPs
+
+Addresses that are not machines (a MetalLB or kube-vip load balancer address, a
+keepalived floating address) live in `virtual_ips.yaml`: name, IP, network, kind,
+owner device (the cluster or host answering for it) and DNS names. Their DNS names
+are pushed as Unbound host overrides like device ones; they never get a DHCP
+reservation nor a client name. Discovery recognises them: the MAC address a client
+table reports with a virtual IP (whichever node answers right now) never ties it to
+that node, DNS names pointing to it can be claimed for it, and an unknown address
+can be claimed as a virtual IP. Load balancer addresses often ignore pings: one
+accepting TCP connections counts as answering.
+
 ## Routing
 
 Network devices (`kind: network`) have a role: gateway, switch or access point. They
@@ -127,7 +184,7 @@ just docker-build   # nix build .#dockerImage + docker load
 
 The image runs as `nobody` (65534) and expects a writable volume on `/data`.
 
-Device pages ping the device (iputils `ping`, `BELGO_PING_PATH`). As `nobody`, this
+Belgo pings devices (iputils `ping`, `BELGO_PING_PATH`). As `nobody`, this
 needs unprivileged ICMP: on Kubernetes, allow it with the safe sysctl
 `net.ipv4.ping_group_range: "0 2147483647"` in the pod `securityContext.sysctls`
 (or grant `CAP_NET_RAW`). Most systemd hosts already allow it.

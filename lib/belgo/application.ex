@@ -9,8 +9,12 @@ defmodule Belgo.Application do
       {Phoenix.PubSub, name: Belgo.PubSub},
       {Task.Supervisor, name: Belgo.TaskSupervisor},
       {Belgo.Inventory.Store, storage: inventory_storage(), pubsub: Belgo.PubSub},
-      {Belgo.Discovery.Server, discovery_options()},
       {Belgo.Reachability.Server, reachability_options()},
+      {Belgo.PortScan.Server, port_scan_options()},
+      {Registry, keys: :unique, name: Belgo.WakeOnLan.Registry},
+      {DynamicSupervisor, name: Belgo.WakeOnLan.Supervisor, strategy: :one_for_one},
+      {Belgo.Discovery.Server, discovery_options()},
+      {Belgo.Versioning.Server, versioning_options()},
       BelgoWeb.Endpoint
     ]
 
@@ -27,11 +31,24 @@ defmodule Belgo.Application do
     :belgo
     |> Application.fetch_env!(Belgo.Discovery)
     |> Keyword.put(:pubsub, Belgo.PubSub)
+    |> Keyword.put_new(:reachability, Belgo.Reachability.Server)
   end
 
   defp reachability_options do
     :belgo
     |> Application.get_env(Belgo.Reachability, [])
+    |> Keyword.put(:pubsub, Belgo.PubSub)
+  end
+
+  defp port_scan_options do
+    :belgo
+    |> Application.fetch_env!(Belgo.PortScan)
+    |> Keyword.put(:pubsub, Belgo.PubSub)
+  end
+
+  defp versioning_options do
+    :belgo
+    |> Application.fetch_env!(Belgo.Versioning)
     |> Keyword.put(:pubsub, Belgo.PubSub)
   end
 

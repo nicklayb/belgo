@@ -1,46 +1,81 @@
 defmodule Belgo.Reachability.Status do
   @moduledoc """
-  Whether a device answers pings: `:pending` while checking, `:up` when at least one of
-  its addresses answers, `:down` when none does, `:unknown` without address. `results`
-  holds the answer of each address (`:up`, `:down` or `{:error, reason}`).
+  Whether a device answers pings, built from the statuses of its addresses:
+  `:up` when at least one address answers, `:pending` while one is being pinged (and
+  none answers), `:down` when every pinged address failed, `:unchecked` when none was
+  pinged yet, `:unknown` without address. `results` holds each pinged address' result.
+
+  Some addresses never answer pings although they serve (a MetalLB address in L2
+  mode, measured on the owner's network): `with_open_ports/2` counts open TCP ports
+  as an answer, listed in `open_ports`.
   """
 
-  @enforce_keys [:device_id, :state, :addresses]
-  defstruct [:device_id, :state, :checked_at, addresses: [], results: %{}]
+  alias Belgo.Reachability.AddressStatus
 
-  @type state :: :pending | :up | :down | :unknown
-  @type result :: :up | :down | {:error, any()}
+  @enforce_keys [:state, :addresses]
+  defstruct [:state, :checked_at, addresses: [], results: %{}, open_ports: []]
+
+  @type state :: :pending | :up | :down | :unchecked | :unknown
   @type t :: %__MODULE__{
-          device_id: String.t(),
           state: state(),
           addresses: [String.t()],
-          results: %{String.t() => result()},
-          checked_at: DateTime.t() | nil
+          results: %{String.t() => AddressStatus.result()},
+          checked_at: DateTime.t() | nil,
+          open_ports: [:inet.port_number()]
         }
 
-  @doc "Builds the status of a finished check from the answer of each address."
-  @spec from_results(String.t(), %{String.t() => result()}, DateTime.t()) :: t()
-  def from_results(device_id, results, checked_at) do
-    state =
-      if Enum.any?(results, fn {_address, result} -> result == :up end), do: :up, else: :down
+  @doc "Builds the status of a device's addresses from the known address statuses."
+  @spec build([String.t()], %{String.t() => AddressStatus.t()}) :: t()
+  def build([], _address_statuses), do: %__MODULE__{state: :unknown, addresses: []}
+
+  def build(addresses, address_statuses) do
+    addresses = Enum.sort(Enum.uniq(addresses))
+
+    known =
+      for address <- addresses,
+          Map.has_key?(address_statuses, address),
+          do: address_statuses[address]
+
+    results = Map.new(known, &{&1.address, &1.result})
 
     %__MODULE__{
-      device_id: device_id,
-      state: state,
-      addresses: Enum.sort(Map.keys(results)),
+      state: state(Map.values(results)),
+      addresses: addresses,
       results: results,
-      checked_at: checked_at
+      checked_at: last_checked_at(known)
     }
   end
 
-  @doc "Returns `true` when the status answers for these addresses and is younger than `max_age`."
-  @spec fresh?(t() | nil, [String.t()], non_neg_integer(), DateTime.t()) :: boolean()
-  def fresh?(nil, _addresses, _max_age, _now), do: false
-  def fresh?(%__MODULE__{state: :pending}, _addresses, _max_age, _now), do: false
-  def fresh?(%__MODULE__{checked_at: nil}, _addresses, _max_age, _now), do: false
+  @doc "Marks the status as answering when TCP ports are open although pings fail."
+  @spec with_open_ports(t(), [:inet.port_number()]) :: t()
+  def with_open_ports(%__MODULE__{} = status, []), do: status
 
-  def fresh?(%__MODULE__{} = status, addresses, max_age, now) do
-    status.addresses == Enum.sort(addresses) and
-      DateTime.diff(now, status.checked_at, :millisecond) < max_age
+  def with_open_ports(%__MODULE__{state: state} = status, open_ports)
+      when state in [:down, :unchecked],
+      do: %{status | state: :up, open_ports: open_ports}
+
+  def with_open_ports(%__MODULE__{} = status, _open_ports), do: status
+
+  @doc "Counts the devices in each state, from the addresses of each device."
+  @spec count_states([[String.t()]], %{String.t() => AddressStatus.t()}) ::
+          %{state() => non_neg_integer()}
+  def count_states(addresses_by_device, address_statuses),
+    do: Enum.frequencies_by(addresses_by_device, &build(&1, address_statuses).state)
+
+  defp state([]), do: :unchecked
+
+  defp state(results) do
+    cond do
+      :up in results -> :up
+      :pending in results -> :pending
+      true -> :down
+    end
+  end
+
+  defp last_checked_at(address_statuses) do
+    address_statuses
+    |> Enum.map(& &1.checked_at)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.max(DateTime, fn -> nil end)
   end
 end

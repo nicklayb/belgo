@@ -56,11 +56,49 @@ defmodule BelgoWeb.Components.Core do
   attr(:title, :string, default: nil)
   attr(:class, :any, default: nil)
   attr(:padded, :boolean, default: true)
+
+  attr(:collapse_key, :string,
+    default: nil,
+    doc: "makes the card collapsible; its state is remembered under this key"
+  )
+
+  attr(:collapsed, :boolean, default: false, doc: "collapsed until the user opens it")
   attr(:rest, :global)
   slot(:actions)
   slot(:inner_block, required: true)
 
-  @doc "A bordered surface grouping related content."
+  @doc """
+  A bordered surface grouping related content. With `collapse_key`, a click on its
+  header collapses it; the browser remembers the choice (`Collapsible` hook), the
+  default being open unless `collapsed`.
+  """
+  def card(%{collapse_key: key} = assigns) when is_binary(key) do
+    ~H"""
+    <section class={["rounded-xl border border-border bg-surface shadow-xs", @class]} {@rest}>
+      <details
+        id={"collapsible-#{@collapse_key}"}
+        phx-hook="Collapsible"
+        phx-mounted={JS.ignore_attributes("open")}
+        data-collapse-key={@collapse_key}
+        open={!@collapsed}
+        class="group"
+      >
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-5 py-3 select-none group-open:rounded-b-none group-open:border-b group-open:border-border hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
+          <h2 class="flex items-center gap-1.5 text-sm font-semibold">
+            <.icon
+              name="hero-chevron-right-mini"
+              class="size-4 text-muted transition-transform group-open:rotate-90"
+            />
+            {@title}
+          </h2>
+          <div class="flex gap-2">{render_slot(@actions)}</div>
+        </summary>
+        <div class={@padded && "p-5"}>{render_slot(@inner_block)}</div>
+      </details>
+    </section>
+    """
+  end
+
   def card(assigns) do
     ~H"""
     <section class={["rounded-xl border border-border bg-surface shadow-xs", @class]} {@rest}>
@@ -120,6 +158,7 @@ defmodule BelgoWeb.Components.Core do
   attr(:value, :any, required: true)
   attr(:icon, :string, required: true)
   attr(:navigate, :string, required: true)
+  slot(:detail, doc: "a short line under the label")
 
   @doc "A key figure linking to its page."
   def stat(assigns) do
@@ -134,6 +173,7 @@ defmodule BelgoWeb.Components.Core do
       <div>
         <p class="text-2xl font-semibold tabular-nums">{@value}</p>
         <p class="text-sm text-muted group-hover:text-foreground">{@label}</p>
+        <p :if={@detail != []} class="mt-0.5 text-xs">{render_slot(@detail)}</p>
       </div>
     </.link>
     """
@@ -242,8 +282,18 @@ defmodule BelgoWeb.Components.Core do
     """
   end
 
+  attr(:segment, :any, required: true)
+
+  # On one line: whitespace around segments would show in the message.
+  defp flash_segment(%{segment: {:link, label, path}} = assigns) do
+    assigns = assign(assigns, label: label, path: path)
+    ~H|<.link navigate={@path} class="font-medium underline hover:no-underline">{@label}</.link>|
+  end
+
+  defp flash_segment(assigns), do: ~H"{@segment}"
+
   attr(:kind, :atom, required: true)
-  attr(:message, :string, default: nil)
+  attr(:message, :any, default: nil, doc: "a string or a `BelgoWeb.FlashMessage`")
 
   defp flash(assigns) do
     ~H"""
@@ -261,7 +311,10 @@ defmodule BelgoWeb.Components.Core do
         name={if @kind == :info, do: "hero-check-circle-mini", else: "hero-exclamation-circle-mini"}
         class="mt-0.5 size-5 shrink-0"
       />
-      <p class="flex-1 whitespace-pre-line">{@message}</p>
+      <p :if={is_binary(@message)} class="flex-1 whitespace-pre-line">{@message}</p>
+      <p :if={!is_binary(@message)} class="flex-1">
+        <.flash_segment :for={segment <- elem(@message, 1)} segment={segment} />
+      </p>
       <button
         type="button"
         aria-label={gettext("Dismiss")}

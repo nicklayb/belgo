@@ -1,0 +1,14 @@
+---
+# Managed by Belgo. Hand edits are welcome, reload Belgo to apply them.
+version: 1
+virtual_ips:
+  ingress:
+    dns_names:
+      - photos
+      - registry
+    ip: 192.168.1.110
+    kind: metallb
+    name: Ingress
+    network_id: lan
+    notes: MetalLB address of the cluster ingress, answered by whichever node leads.
+    owner_id: hal

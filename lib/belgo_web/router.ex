@@ -9,6 +9,7 @@ defmodule BelgoWeb.Router do
     plug(:protect_from_forgery)
     plug(:put_secure_browser_headers)
     plug(BelgoWeb.Plugs.Authenticate)
+    plug(BelgoWeb.Plugs.Theme)
   end
 
   scope "/", BelgoWeb do
@@ -23,11 +24,13 @@ defmodule BelgoWeb.Router do
         BelgoWeb.Hooks.Authenticated,
         BelgoWeb.Hooks.CurrentPath,
         BelgoWeb.Hooks.Inventory,
-        BelgoWeb.Hooks.Discovery
+        BelgoWeb.Hooks.Discovery,
+        BelgoWeb.Hooks.Notifications
       ] do
       live("/", Dashboard.Live, :show)
 
       live("/discovery", Discovery.Live, :show)
+      live("/discovery/dns-names/:id", Discovery.Live.ClaimDnsName, :new)
 
       live("/devices", Devices.Live.Index, :index)
       live("/devices/new", Devices.Live.Form, :new)
@@ -42,6 +45,11 @@ defmodule BelgoWeb.Router do
 
       live("/hosting", Hosting.Live, :show)
       live("/routing", Routing.Live, :show)
+
+      live("/virtual-ips", VirtualIps.Live.Index, :index)
+      live("/virtual-ips/new", VirtualIps.Live.Form, :new)
+      live("/virtual-ips/:id", VirtualIps.Live.Show, :show)
+      live("/virtual-ips/:id/edit", VirtualIps.Live.Form, :edit)
 
       live("/networks", Networks.Live.Index, :index)
       live("/networks/new", Networks.Live.Form, :new)

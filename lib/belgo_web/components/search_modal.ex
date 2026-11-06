@@ -1,7 +1,11 @@
 defmodule BelgoWeb.Components.SearchModal do
   @moduledoc """
-  The global search: opened from the sidebar field or with Ctrl/⌘+K, closed with
-  Escape or a click outside. Searches the known devices, and the discovery when
+  The global search: a native `<dialog>` opened in the browser (`SearchDialog` hook)
+  from any `[data-search-open]` element or with Ctrl/⌘+K, closed with Escape, a click
+  outside or a result. Opening and focusing the field happen in the click / key
+  handler itself (no server round trip), which browsers such as Safari require to
+  focus a field. Arrow keys move through the results, Enter follows the selected
+  one (the first by default). Searches the known devices, and the discovery when
   "Include discovery" is checked. Reads the current snapshot and discovery on each
   search, so it needs nothing from the page it is rendered in.
   """
@@ -17,25 +21,12 @@ defmodule BelgoWeb.Components.SearchModal do
   alias Belgo.Search
   alias Phoenix.LiveView.JS
 
-  @shortcut_key "k"
-
   @impl Phoenix.LiveComponent
   def mount(socket) do
-    {:ok, assign(socket, open?: false, query: "", include_discovery?: false, results: [])}
+    {:ok, assign(socket, query: "", include_discovery?: false, results: [])}
   end
 
   @impl Phoenix.LiveComponent
-  def handle_event("open", _params, socket), do: {:noreply, assign(socket, :open?, true)}
-  def handle_event("close", _params, socket), do: {:noreply, assign(socket, :open?, false)}
-
-  def handle_event("shortcut", %{"key" => @shortcut_key} = params, socket) do
-    if params["ctrl_key"] || params["meta_key"],
-      do: {:noreply, assign(socket, :open?, true)},
-      else: {:noreply, socket}
-  end
-
-  def handle_event("shortcut", _params, socket), do: {:noreply, socket}
-
   def handle_event("search", %{"search" => params}, socket) do
     query = Map.get(params, "query", "")
     include_discovery? = Map.get(params, "include_discovery") == "true"
@@ -52,6 +43,7 @@ defmodule BelgoWeb.Components.SearchModal do
   end
 
   defp result_path(%Search.Result{type: :device, id: id}), do: ~p"/devices/#{id}"
+  defp result_path(%Search.Result{type: :virtual_ip, id: id}), do: ~p"/virtual-ips/#{id}"
 
   defp result_path(%Search.Result{type: :discovered, id: id}),
     do: ~p"/devices/new?discovered=#{id}"
@@ -59,16 +51,15 @@ defmodule BelgoWeb.Components.SearchModal do
   @impl Phoenix.LiveComponent
   def render(assigns) do
     ~H"""
-    <div id={@id} phx-window-keydown="shortcut" phx-key="k" phx-target={@myself}>
-      <div
-        :if={@open?}
-        class="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[10vh]"
-        phx-window-keydown="close"
-        phx-key="Escape"
-        phx-target={@myself}
+    <div id={@id}>
+      <dialog
+        id="search-dialog"
+        phx-hook="SearchDialog"
+        phx-mounted={JS.ignore_attributes("open")}
+        aria-label={gettext("Search")}
+        class="mx-auto mt-[10vh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40"
       >
-        <div class="absolute inset-0" phx-click="close" phx-target={@myself}></div>
-        <div class="relative w-full max-w-2xl overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+        <div>
           <.form for={%{}} as={:search} phx-change="search" phx-submit="search" phx-target={@myself}>
             <div class="flex items-center gap-3 border-b border-border px-4">
               <.icon name="hero-magnifying-glass" class="size-5 text-muted" />
@@ -80,7 +71,7 @@ defmodule BelgoWeb.Components.SearchModal do
                 placeholder={gettext("Name, MAC, IP, DNS name, serial number…")}
                 autocomplete="off"
                 phx-debounce="100"
-                phx-mounted={JS.focus()}
+                autofocus
                 class="w-full border-0 bg-transparent py-3 text-base focus:ring-0 focus:outline-none"
               />
             </div>
@@ -96,13 +87,18 @@ defmodule BelgoWeb.Components.SearchModal do
               {gettext("Include discovery")}
             </label>
           </.form>
-          <ul :if={@results != []} class="max-h-[60vh] divide-y divide-border overflow-y-auto">
+          <ul
+            :if={@results != []}
+            id="search-results"
+            role="listbox"
+            class="max-h-[60vh] divide-y divide-border overflow-y-auto"
+          >
             <li :for={result <- @results}>
               <.link
                 navigate={result_path(result)}
-                phx-click="close"
-                phx-target={@myself}
-                class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-surface-muted"
+                data-search-result
+                role="option"
+                class="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-surface-muted data-active:bg-surface-muted data-active:ring-2 data-active:ring-inset data-active:ring-accent"
               >
                 <span class="min-w-0">
                   <span class="block truncate font-medium">{result.title}</span>
@@ -113,6 +109,7 @@ defmodule BelgoWeb.Components.SearchModal do
                 <.badge :if={result.type == :discovered} tone={:accent}>
                   {gettext("Discovered")}
                 </.badge>
+                <.badge :if={result.type == :virtual_ip}>{gettext("Virtual IP")}</.badge>
               </.link>
             </li>
           </ul>
@@ -123,7 +120,7 @@ defmodule BelgoWeb.Components.SearchModal do
             {gettext("Search devices by almost anything.")}
           </p>
         </div>
-      </div>
+      </dialog>
     </div>
     """
   end

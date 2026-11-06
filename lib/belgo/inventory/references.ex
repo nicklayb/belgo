@@ -20,7 +20,8 @@ defmodule Belgo.Inventory.References do
         Enum.any?(device.interfaces, &(&1.network_id == id))
       end)
 
-    describe(:devices, devices)
+    describe(:devices, devices) ++
+      describe(:virtual_ips, Enum.filter(snapshot.virtual_ips, &(&1.network_id == id)))
   end
 
   def list(%Snapshot{} = snapshot, :devices, id) do
@@ -31,9 +32,11 @@ defmodule Belgo.Inventory.References do
              Enum.any?(device.interfaces, &(&1.switch_id == id)))
       end)
 
-    describe(:devices, devices)
+    describe(:devices, devices) ++
+      describe(:virtual_ips, Enum.filter(snapshot.virtual_ips, &(&1.owner_id == id)))
   end
 
+  def list(%Snapshot{}, :virtual_ips, _id), do: []
   def list(%Snapshot{}, :denylist, _id), do: []
 
   defp describe(collection, records) do

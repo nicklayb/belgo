@@ -37,6 +37,11 @@ defmodule BelgoWeb.Navigation do
       %Item{label: gettext("Hosting"), path: "/hosting", icon: "hero-rectangle-stack"},
       %Item{label: gettext("Routing"), path: "/routing", icon: "hero-share"},
       %Item{label: gettext("Networks"), path: "/networks", icon: "hero-globe-alt"},
+      %Item{
+        label: gettext("Virtual IPs"),
+        path: "/virtual-ips",
+        icon: "hero-arrows-pointing-in"
+      },
       %Item{label: gettext("Sync"), path: "/sync", icon: "hero-arrow-path"}
     ]
   end

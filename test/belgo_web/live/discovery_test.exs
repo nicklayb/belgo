@@ -25,6 +25,29 @@ defmodule BelgoWeb.DiscoveryTest do
       assert html =~ "reservation of 02:00:00:00:00:11 uses 10.0.0.99, Belgo has 10.0.0.11"
     end
 
+    test "cards are collapsible, unknown devices collapsed by default", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/discovery")
+
+      assert has_element?(
+               view,
+               ~s(details[phx-hook="Collapsible"][data-collapse-key="discovery-new-networks"][open])
+             )
+
+      assert has_element?(view, ~s(details[data-collapse-key="discovery-unknown-devices"]))
+      refute has_element?(view, ~s(details[data-collapse-key="discovery-unknown-devices"][open]))
+      # Collapsed content is still rendered, the browser only hides it.
+      assert has_element?(view, "#unknown-devices", "moe-pc")
+    end
+
+    test "unknown devices are pinged and show whether they answer", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/discovery")
+
+      assert Enum.find_value(1..20, fn _attempt ->
+               has_element?(view, ~s(#unknown-devices [data-reachability][data-state="down"])) ||
+                 (Process.sleep(50) && nil)
+             end)
+    end
+
     test "claiming a device prefills the form and saves it", %{conn: conn} do
       {:ok, view, html} = live(conn, ~p"/devices/new?discovered=mac-02-00-00-00-05-01")
 
@@ -46,6 +69,119 @@ defmodule BelgoWeb.DiscoveryTest do
                  dns_names: ["moe-pc", "tavern"]
                }
              ] = device.interfaces
+    end
+
+    test "claims a DNS name on the interface holding its address", %{conn: conn} do
+      release_assistant_name()
+      {:ok, view, _html} = live(conn, ~p"/discovery")
+
+      assert has_element?(view, "#dns-names", "assistant.springfield.lan")
+      assert has_element?(view, "#dns-names", "Smithers")
+
+      {:ok, claim, _html} =
+        live(conn, ~p"/discovery/dns-names/dns-assistant-springfield-lan-10-0-0-11")
+
+      assert has_element?(
+               claim,
+               ~s(#claim-dns-name_target option[value="devices:smithers"][selected])
+             )
+
+      assert has_element?(claim, "#claim-summary", "assistant")
+      refute has_element?(claim, "#claim-address-warning")
+
+      submitted = render_submit(form(claim, "#claim-dns-name"))
+      assert {:error, {:live_redirect, %{to: "/discovery"}}} = submitted
+
+      # Back on Discovery, the notice links to the device.
+      {:ok, discovery, _html} = follow_redirect(submitted, conn)
+
+      assert has_element?(
+               discovery,
+               ~s(#flash-info a[href="/devices/smithers"]),
+               "Smithers"
+             )
+
+      assert has_element?(discovery, "#flash-info", "assistant.springfield.lan added to")
+
+      # No whitespace between the segments (the notice once became a huge block).
+      assert render(element(discovery, "#flash-info p")) =~
+               ~r{assistant.springfield.lan added to <a [^>]*>Smithers</a>\.}
+
+      refute has_element?(discovery, "#dns-names", "assistant.springfield.lan")
+
+      assert {:ok, device} = Snapshot.fetch(Inventory.snapshot(), :devices, "smithers")
+      assert ["smithers", "assistant"] == hd(device.interfaces).dns_names
+    end
+
+    test "a DNS name can be claimed by another device", %{conn: conn} do
+      release_assistant_name()
+
+      {:ok, claim, _html} =
+        live(conn, ~p"/discovery/dns-names/dns-assistant-springfield-lan-10-0-0-11")
+
+      claim
+      |> form("#claim-dns-name", claim: %{target: "devices:burns-node"})
+      |> render_change()
+
+      assert has_element?(claim, "#claim-address-warning", "10.0.0.10")
+
+      assert {:error, {:live_redirect, %{to: "/discovery"}}} =
+               claim
+               |> form("#claim-dns-name")
+               |> render_submit()
+
+      assert {:ok, device} = Snapshot.fetch(Inventory.snapshot(), :devices, "burns-node")
+      assert "assistant" in hd(device.interfaces).dns_names
+    end
+
+    test "a reservation on an address OPNsense reserved for another MAC is refused", %{
+      conn: conn
+    } do
+      # Moe's PC, claimed with the address OPNsense reserved for Nelson's phone.
+      {:ok, view, _html} = live(conn, ~p"/devices/new?discovered=mac-02-00-00-00-05-01")
+
+      html =
+        view
+        |> form("#device-form", device: %{interfaces: %{"0" => %{ip: "10.0.0.66"}}})
+        |> render_submit()
+
+      assert html =~
+               "10.0.0.66 is already reserved in OPNsense for 02:00:00:00:06:66 (nelson-iphone)"
+
+      assert {:error, :not_found} = Snapshot.fetch(Inventory.snapshot(), :devices, "moe-pc")
+    end
+
+    test "choosing a kind with a logical range suggests its first free address", %{conn: conn} do
+      {:ok, _network} =
+        Inventory.update(
+          :networks,
+          "springfield",
+          %{
+            "ranges" => [
+              %{"name" => "IoT", "start" => "10.0.0.66", "end" => "10.0.0.80", "kind" => "iot"}
+            ]
+          },
+          user: :system
+        )
+
+      {:ok, view, _html} = live(conn, ~p"/devices/new?discovered=mac-02-00-00-00-05-01")
+
+      html =
+        view
+        |> form("#device-form", device: %{kind: "iot"})
+        |> render_change()
+
+      # 10.0.0.66 is reserved in OPNsense for Nelson's phone: 10.0.0.67 is the first free one.
+      assert has_element?(view, ~s(input[name="device[interfaces][0][ip]"][value="10.0.0.67"]))
+      assert html =~ "First free address of IoT (10.0.0.66 – 10.0.0.80)."
+
+      assert {:error, {:live_redirect, %{to: "/devices/moe-pc"}}} =
+               view
+               |> form("#device-form")
+               |> render_submit()
+
+      assert {:ok, %{interfaces: [%{ip: "10.0.0.67"}]}} =
+               Snapshot.fetch(Inventory.snapshot(), :devices, "moe-pc")
     end
 
     test "devices outside the DHCP range are listed apart", %{conn: conn} do
@@ -328,5 +464,22 @@ defmodule BelgoWeb.DiscoveryTest do
     |> LazyHTML.from_document()
     |> LazyHTML.query("#out-of-dhcp-devices tr td:first-child p:first-child")
     |> Enum.map(&String.downcase(LazyHTML.text(&1)))
+  end
+
+  # Smithers owns assistant.springfield.lan in the fixtures, which OPNsense reports.
+  defp release_assistant_name do
+    {:ok, smithers} = Snapshot.fetch(Inventory.snapshot(), :devices, "smithers")
+    attributes = Belgo.Inventory.Codec.encode(smithers)
+
+    interfaces =
+      Enum.map(attributes["interfaces"], &Map.put(&1, "dns_names", ["smithers"]))
+
+    {:ok, _device} =
+      Inventory.update(:devices, "smithers", Map.put(attributes, "interfaces", interfaces),
+        user: :system
+      )
+
+    # The discovery server recorrelates on the inventory change, queued before this call.
+    Belgo.Discovery.state()
   end
 end

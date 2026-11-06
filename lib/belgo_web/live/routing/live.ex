@@ -9,6 +9,7 @@ defmodule BelgoWeb.Routing.Live do
 
   use BelgoWeb, :live_view
 
+  alias Belgo.Inventory.Device
   alias Belgo.Topology.Routing
   alias Belgo.Topology.Routing.Node
   alias BelgoWeb.Format
@@ -71,6 +72,31 @@ defmodule BelgoWeb.Routing.Live do
   end
 
   attr(:node, Node, required: true)
+
+  defp port_usage(assigns) do
+    ~H"""
+    <span
+      id={"ports-#{@node.device.id}"}
+      title={gettext("Ports used by the devices plugged into it")}
+      class={[
+        "rounded-md px-1.5 py-0.5 font-mono text-xs tabular-nums ring-1 ring-inset",
+        over_capacity?(@node) && "bg-danger-soft text-danger ring-danger",
+        !over_capacity?(@node) && "text-muted ring-border"
+      ]}
+    >
+      <%= if @node.device.port_count do %>
+        {gettext("%{used}/%{total} ports", used: @node.used_ports, total: @node.device.port_count)}
+      <% else %>
+        {ngettext("1 port used", "%{count} ports used", @node.used_ports)}
+      <% end %>
+    </span>
+    """
+  end
+
+  defp over_capacity?(%Node{device: %Device{port_count: nil}}), do: false
+  defp over_capacity?(%Node{} = node), do: node.used_ports > node.device.port_count
+
+  attr(:node, Node, required: true)
   attr(:depth, :integer, default: 0)
 
   defp routing_node(assigns) do
@@ -81,6 +107,8 @@ defmodule BelgoWeb.Routing.Live do
         <.link navigate={~p"/devices/#{@node.device.id}"} class="font-semibold hover:text-accent">
           {@node.device.name}
         </.link>
+        <.poe_indicator device={@node.device} />
+        <.port_usage :if={Device.switch?(@node.device)} node={@node} />
         <span class="text-xs text-muted">{Format.label(@node.device.network_role)}</span>
         <.link_details :if={@node.link} link={@node.link} />
         <.badge :if={@node.clients != []} class="ml-auto">

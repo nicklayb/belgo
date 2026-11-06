@@ -3,12 +3,17 @@ defmodule Belgo.Inventory.Network do
   An IP network (subnet / VLAN) devices get their addresses from.
 
   `dhcp_start` / `dhcp_end` delimit the dynamic DHCP pool, when known: addresses
-  outside of it are static or reserved.
+  outside of it are static or reserved. `ranges` are logical ranges
+  (`Belgo.Inventory.AddressRange`): names for parts of the network, optionally tied
+  to a device kind to suggest addresses. They must belong to the network and not
+  overlap.
   """
 
   use Belgo, :schema
 
+  alias Belgo.Inventory.AddressRange
   alias Belgo.Inventory.Identifier
+  alias Belgo.Inventory.SortParams
   alias Belgo.Inventory.Types
   alias Belgo.Network.Cidr
   alias Belgo.Network.IpAddress
@@ -28,13 +33,17 @@ defmodule Belgo.Inventory.Network do
     field(:dhcp_start, Types.IpAddress)
     field(:dhcp_end, Types.IpAddress)
     field(:notes, :string)
+    embeds_many(:ranges, AddressRange, on_replace: :delete)
   end
 
   @doc "Builds a changeset validating the network on its own."
   @spec changeset(t(), map()) :: Ecto.Changeset.t()
   def changeset(network, params) do
+    params = SortParams.new_last(params, ["ranges_sort"])
+
     network
     |> cast(params, @fields)
+    |> cast_embed(:ranges, sort_param: :ranges_sort, drop_param: :ranges_drop)
     |> Identifier.put_default(:name)
     |> validate_required(@required)
     |> Identifier.validate(:id)
@@ -46,6 +55,7 @@ defmodule Belgo.Inventory.Network do
     |> validate_format(:domain, @domain_format, message: "must be a valid domain name")
     |> validate_gateway_in_range()
     |> validate_dhcp_range()
+    |> validate_ranges()
   end
 
   @doc "Returns `true` when the address (string) belongs to the network range."
@@ -113,6 +123,26 @@ defmodule Belgo.Inventory.Network do
       true ->
         changeset
     end
+  end
+
+  defp validate_ranges(changeset) do
+    cidr = get_field(changeset, :cidr)
+    ranges = Enum.filter(get_field(changeset, :ranges), &(&1.start && &1.end))
+
+    outside =
+      for range <- ranges,
+          cidr,
+          not (contains?(%__MODULE__{cidr: cidr}, range.start) and
+                 contains?(%__MODULE__{cidr: cidr}, range.end)),
+          do: "#{range.name} must belong to #{cidr}"
+
+    overlapping =
+      for {left_range, position} <- Enum.with_index(ranges),
+          right_range <- Enum.drop(ranges, position + 1),
+          AddressRange.overlap?(left_range, right_range),
+          do: "#{left_range.name} and #{right_range.name} overlap"
+
+    Enum.reduce(outside ++ overlapping, changeset, &add_error(&2, :ranges, &1))
   end
 
   defp validate_gateway_in_range(changeset) do

@@ -40,7 +40,10 @@ defmodule BelgoWeb.Format do
     adguard: "AdGuard Home",
     omada: "Omada",
     home_assistant: "Home Assistant",
-    access_point: "Access point"
+    access_point: "Access point",
+    metallb: "MetalLB",
+    kube_vip: "kube-vip",
+    keepalived: "keepalived"
   }
 
   @doc "Turns an atom such as `:virtual_machine` into `Virtual machine`."

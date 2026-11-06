@@ -5,7 +5,9 @@ defmodule BelgoWeb.Networks.Live.Form do
 
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.Suggestion
+  alias Belgo.Inventory.Device
   alias Belgo.Inventory.Network
+  alias BelgoWeb.Format
   alias BelgoWeb.Live.RecordForm
 
   @impl Phoenix.LiveView
@@ -96,6 +98,58 @@ defmodule BelgoWeb.Networks.Live.Form do
             />
           </div>
         </.card>
+
+        <.card title={gettext("Logical ranges")} class="mt-6">
+          <:actions>
+            <Form.button
+              size={:small}
+              name="network[ranges_sort][]"
+              value="new"
+              phx-click={JS.dispatch("change")}
+            >
+              <.icon name="hero-plus-micro" class="size-4" /> {gettext("Add")}
+            </Form.button>
+          </:actions>
+          <p class="mb-3 text-sm text-muted">
+            {gettext(
+              "Name parts of the network (routing, servers, IoT…). With a kind, new devices of that kind get the first free address of the range."
+            )}
+          </p>
+          <div id="network-ranges" class="space-y-3">
+            <.inputs_for :let={range_form} field={@form[:ranges]}>
+              <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_9rem_9rem_10rem_auto] sm:items-start">
+                <input type="hidden" name="network[ranges_sort][]" value={range_form.index} />
+                <Form.input
+                  field={range_form[:name]}
+                  placeholder={gettext("Name")}
+                  phx-mounted={Form.blank?(range_form[:name]) && JS.focus()}
+                />
+                <Form.input field={range_form[:start]} placeholder="192.168.1.70" />
+                <Form.input field={range_form[:end]} placeholder="192.168.1.110" />
+                <Form.input
+                  field={range_form[:kind]}
+                  type="select"
+                  prompt={gettext("Any kind")}
+                  options={Format.options(Device.kinds())}
+                />
+                <Form.button
+                  variant={:danger}
+                  size={:small}
+                  name="network[ranges_drop][]"
+                  value={range_form.index}
+                  phx-click={JS.dispatch("change")}
+                  class="sm:mt-1.5"
+                  title={gettext("Remove")}
+                >
+                  <.icon name="hero-trash-micro" class="size-4" />
+                </Form.button>
+              </div>
+            </.inputs_for>
+          </div>
+          <input type="hidden" name="network[ranges_drop][]" />
+          <Form.errors errors={Form.visible_errors(@form[:ranges])} />
+        </.card>
+
         <div class="mt-6 flex justify-end gap-2">
           <Form.button navigate={~p"/networks"}>{gettext("Cancel")}</Form.button>
           <Form.button type="submit" variant={:primary} phx-disable-with={gettext("Saving…")}>

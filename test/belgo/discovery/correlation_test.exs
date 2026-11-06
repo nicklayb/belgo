@@ -2,6 +2,8 @@ defmodule Belgo.Discovery.CorrelationTest do
   use ExUnit.Case, async: true
 
   alias Belgo.Discovery.Correlation
+  alias Belgo.Discovery.DnsNames
+  alias Belgo.Discovery.DnsNames.DiscoveredDnsName
   alias Belgo.Discovery.Suggestion
   alias Belgo.Fixtures
   alias Belgo.Fixtures.OpnsenseClient
@@ -249,5 +251,103 @@ defmodule Belgo.Discovery.CorrelationTest do
              Correlation.divergences_for(correlation, :devices, "smithers"),
              & &1.message
            )
+  end
+
+  test "lists DNS names resolving to a known device without belonging to it", %{
+    observations: observations
+  } do
+    snapshot = without_assistant_name(Fixtures.snapshot())
+    correlation = Correlation.build(snapshot, observations)
+
+    # smithers.springfield.lan belongs to Smithers (a divergence), moe's names come
+    # with the unknown device.
+    assert [
+             %DiscoveredDnsName{
+               name: "assistant.springfield.lan",
+               ip: "10.0.0.11",
+               device_id: "smithers",
+               interface_index: 0,
+               providers: [:opnsense]
+             } = dns_name
+           ] = correlation.dns_names
+
+    assert {:ok, ^dns_name} = Correlation.fetch_dns_name(correlation, dns_name.id)
+  end
+
+  test "DNS names are stored short in their network domain" do
+    dns_name = %DiscoveredDnsName{
+      id: "dns-tavern",
+      name: "tavern.springfield.lan",
+      hostname: "tavern",
+      domain: "springfield.lan",
+      ip: "10.0.0.50",
+      device_id: "moe-pc",
+      interface_index: 0
+    }
+
+    assert "tavern" == DnsNames.stored_name(dns_name, "springfield.lan")
+    assert "tavern.springfield.lan" == DnsNames.stored_name(dns_name, "shelbyville.lan")
+    assert "tavern.springfield.lan" == DnsNames.stored_name(dns_name, nil)
+  end
+
+  describe "a device still using its old address" do
+    test "is a divergence when Omada sees it elsewhere than its reserved address" do
+      correlation = Correlation.build(Fixtures.snapshot(), [omada_client("10.0.0.143")])
+
+      assert [
+               %Correlation.Divergence{
+                 collection: :devices,
+                 id: "burns-node",
+                 provider: :omada,
+                 message:
+                   "Burns Node (eth0) is seen at 10.0.0.143, Belgo assigns 10.0.0.10: restart it (or renew its DHCP lease) to take the new address"
+               }
+             ] = Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
+    end
+
+    test "is fine at its address, and dynamic interfaces have no assigned address" do
+      correlation = Correlation.build(Fixtures.snapshot(), [omada_client("10.0.0.10")])
+      assert [] == Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
+
+      snapshot = Fixtures.snapshot()
+
+      devices =
+        Enum.map(snapshot.devices, fn
+          %{id: "burns-node", interfaces: [interface]} = device ->
+            %{device | interfaces: [%{interface | assignment: :dynamic}]}
+
+          device ->
+            device
+        end)
+
+      correlation =
+        Correlation.build(%{snapshot | devices: devices}, [omada_client("10.0.0.143")])
+
+      assert [] == Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
+    end
+  end
+
+  defp omada_client(ip) do
+    %Belgo.Discovery.Observation{
+      provider: :omada,
+      source: :omada_client,
+      kind: :device,
+      mac: "02:00:00:00:00:10",
+      ip: ip,
+      description: "Burns Node"
+    }
+  end
+
+  defp without_assistant_name(snapshot) do
+    devices =
+      Enum.map(snapshot.devices, fn
+        %{id: "smithers", interfaces: [interface]} = device ->
+          %{device | interfaces: [%{interface | dns_names: ["smithers"]}]}
+
+        device ->
+          device
+      end)
+
+    %{snapshot | devices: devices}
   end
 end

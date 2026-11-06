@@ -79,8 +79,7 @@ defmodule BelgoWeb.Components.Layouts do
     <div class="px-3 pb-3">
       <button
         type="button"
-        phx-click="open"
-        phx-target="#global-search"
+        data-search-open
         class="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted ring-1 ring-border ring-inset hover:text-foreground"
       >
         <.icon name="hero-magnifying-glass-mini" class="size-4" />

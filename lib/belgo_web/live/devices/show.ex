@@ -1,5 +1,8 @@
 defmodule BelgoWeb.Devices.Live.Show do
-  @moduledoc "Everything known about a device: placement, interfaces, guests and synced records."
+  @moduledoc """
+  Everything known about a device: placement, interfaces (with wake-on-LAN), open
+  ports, guests and synced records.
+  """
 
   @behaviour BelgoWeb.Hooks.Discovery
   @behaviour BelgoWeb.Hooks.Inventory
@@ -11,35 +14,24 @@ defmodule BelgoWeb.Devices.Live.Show do
   alias Belgo.Inventory.Audit
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.Snapshot
-  alias Belgo.Reachability
-  alias Belgo.Reachability.Status
   alias Belgo.Sync.DesiredState
   alias Belgo.Topology.DeviceNode
   alias Belgo.Topology.Physical
   alias Belgo.Topology.Routing
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Mutation
+  alias Belgo.WakeOnLan
+  alias BelgoWeb.Live.PortScans
+  alias BelgoWeb.Live.Reachability
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
     {:ok,
      socket
      |> assign(:device_id, id)
-     |> assign(:reachability, nil)
-     |> subscribe_reachability(id)
+     |> Reachability.subscribe()
+     |> PortScans.subscribe()
      |> assign_inventory()}
-  end
-
-  defp subscribe_reachability(socket, device_id) do
-    if connected?(socket), do: Reachability.subscribe(device_id)
-    socket
-  end
-
-  # Pings on display only (connected), reusing a recent result.
-  defp assign_reachability(socket, device) do
-    if connected?(socket),
-      do: assign(socket, :reachability, Reachability.check(device)),
-      else: assign(socket, :reachability, Reachability.status(device.id))
   end
 
   @impl BelgoWeb.Hooks.Inventory
@@ -51,11 +43,13 @@ defmodule BelgoWeb.Devices.Live.Show do
         socket
         |> assign(:page_title, device.name)
         |> assign(:device, device)
-        |> assign_reachability(device)
+        |> Reachability.check(Device.ip_addresses(device))
+        |> PortScans.scan(Device.ip_addresses(device))
         |> assign(:path, Physical.device_path(snapshot, device))
         |> assign(:network_by_id, Snapshot.index(snapshot, :networks))
         |> assign(:device_by_id, Snapshot.index(snapshot, :devices))
         |> assign(:guests, DeviceNode.build(device, DeviceNode.guests_by_host(snapshot)).guests)
+        |> assign(:virtual_ips, Enum.filter(snapshot.virtual_ips, &(&1.owner_id == device.id)))
         |> assign(
           :issues,
           snapshot
@@ -91,16 +85,35 @@ defmodule BelgoWeb.Devices.Live.Show do
   end
 
   @impl Phoenix.LiveView
-  def handle_info({:reachability_changed, %Status{device_id: device_id} = status}, socket)
-      when device_id == socket.assigns.device_id,
-      do: {:noreply, assign(socket, :reachability, status)}
+  def handle_info({:reachability_changed, address_statuses}, socket),
+    do: {:noreply, Reachability.changed(socket, address_statuses)}
+
+  def handle_info({:port_scan_changed, address_scans}, socket),
+    do: {:noreply, PortScans.changed(socket, address_scans)}
 
   def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
   def handle_event("ping", _params, socket) do
     {:noreply,
-     assign(socket, :reachability, Reachability.check(socket.assigns.device, force: true))}
+     Reachability.check(socket, Device.ip_addresses(socket.assigns.device), force: true)}
+  end
+
+  def handle_event("refresh-ports", _params, socket),
+    do:
+      {:noreply, PortScans.scan(socket, Device.ip_addresses(socket.assigns.device), force: true)}
+
+  def handle_event("wake", %{"index" => index}, socket) do
+    device = socket.assigns.device
+
+    with {position, ""} <- Integer.parse(index),
+         %{mac: mac} = interface when mac != nil <- Enum.at(device.interfaces, position) do
+      result = WakeOnLan.wake(device, interface, socket.assigns.snapshot.networks)
+      {:noreply, put_wake_flash(socket, device, result)}
+    else
+      _invalid ->
+        {:noreply, put_flash(socket, :error, gettext("This interface has no MAC address."))}
+    end
   end
 
   def handle_event("push", _params, socket) do
@@ -134,11 +147,21 @@ defmodule BelgoWeb.Devices.Live.Show do
     >
       <.page_header title={@device.name} back={~p"/devices"}>
         <:title_suffix>
-          <.reachability_indicator status={@reachability} />
+          <.reachability_indicator
+            id="reachability"
+            clickable
+            status={Reachability.status(@address_statuses, Device.ip_addresses(@device))}
+          />
         </:title_suffix>
         <:subtitle>
           <span class="inline-flex flex-wrap items-center gap-2">
             <.badge>{Format.label(@device.kind)}</.badge>
+            <.badge :if={Device.poe?(@device)} tone={:warning}>
+              <.icon name="hero-bolt-micro" class="size-3" /> {gettext("PoE")}
+            </.badge>
+            <.badge :if={Device.switch?(@device) && @device.port_count}>
+              {ngettext("1 port", "%{count} ports", @device.port_count)}
+            </.badge>
             <.platform_badges platforms={@device.platforms} />
             <span class="font-mono">{Device.hostname(@device)}</span>
           </span>
@@ -209,7 +232,39 @@ defmodule BelgoWeb.Devices.Live.Show do
                   {gettext("Port %{port}", port: interface.switch_port)}
                 </p>
               </:col>
+              <:action :let={interface}>
+                <Form.button
+                  :if={interface.mac}
+                  id={"wake-#{interface_position(@device, interface)}"}
+                  size={:small}
+                  variant={:ghost}
+                  phx-click="wake"
+                  phx-value-index={interface_position(@device, interface)}
+                  title={gettext("Send a wake-on-LAN magic packet")}
+                >
+                  <.icon name="hero-power-mini" class="size-4" /> {gettext("Wake")}
+                </Form.button>
+              </:action>
             </.table>
+          </.card>
+
+          <.card
+            :if={Device.ip_addresses(@device) != []}
+            title={gettext("Open ports")}
+            padded={false}
+          >
+            <:actions>
+              <Form.button
+                id="refresh-ports"
+                size={:small}
+                variant={:ghost}
+                phx-click="refresh-ports"
+                title={gettext("Check the ports again")}
+              >
+                <.icon name="hero-arrow-path-mini" class="size-4" /> {gettext("Refresh")}
+              </Form.button>
+            </:actions>
+            <.open_ports address_scans={@address_scans} addresses={Device.ip_addresses(@device)} />
           </.card>
 
           <.card :if={@link} title={gettext("Network")}>
@@ -229,6 +284,40 @@ defmodule BelgoWeb.Devices.Live.Show do
                 <.network_path hops={@network_path} />
               </:item>
             </.properties>
+          </.card>
+
+          <.card title={gettext("Virtual IPs")} padded={false}>
+            <:actions>
+              <Form.button
+                size={:small}
+                variant={:ghost}
+                navigate={~p"/virtual-ips/new?owner_id=#{@device.id}"}
+              >
+                <.icon name="hero-plus-mini" class="size-4" /> {gettext("Add")}
+              </Form.button>
+            </:actions>
+            <p :if={@virtual_ips == []} class="px-5 py-3 text-sm text-muted">
+              {gettext("Load balancer or floating addresses this device answers for.")}
+            </p>
+            <ul :if={@virtual_ips != []} id="owned-virtual-ips" class="divide-y divide-border text-sm">
+              <li
+                :for={virtual_ip <- @virtual_ips}
+                class="flex items-center justify-between gap-3 px-5 py-2.5"
+              >
+                <.link
+                  navigate={~p"/virtual-ips/#{virtual_ip.id}"}
+                  class="font-medium hover:text-accent"
+                >
+                  {virtual_ip.name}
+                </.link>
+                <span class="inline-flex items-center gap-3">
+                  <span class="text-xs text-muted">
+                    {ngettext("1 DNS name", "%{count} DNS names", length(virtual_ip.dns_names))}
+                  </span>
+                  <span class="font-mono text-muted">{virtual_ip.ip}</span>
+                </span>
+              </li>
+            </ul>
           </.card>
 
           <.card :if={@guests != []} title={gettext("Guests")}>
@@ -270,6 +359,43 @@ defmodule BelgoWeb.Devices.Live.Show do
   end
 
   def render(assigns), do: ~H""
+
+  defp put_wake_flash(socket, device, {:ok, :watching}) do
+    put_flash(
+      socket,
+      :info,
+      gettext("Magic packet sent to %{name}, waiting for it to answer.", name: device.name)
+    )
+  end
+
+  defp put_wake_flash(socket, device, {:ok, :already_watching}) do
+    put_flash(
+      socket,
+      :info,
+      gettext("Magic packet sent to %{name} again, still waiting for it to answer.",
+        name: device.name
+      )
+    )
+  end
+
+  defp put_wake_flash(socket, device, {:ok, :not_watched}) do
+    put_flash(
+      socket,
+      :info,
+      gettext(
+        "Magic packet sent to %{name}. Without IP address, Belgo cannot tell when it is awake.",
+        name: device.name
+      )
+    )
+  end
+
+  defp put_wake_flash(socket, _device, {:error, reason}) do
+    put_flash(
+      socket,
+      :error,
+      gettext("Unable to send the magic packet: %{reason}", reason: inspect(reason))
+    )
+  end
 
   attr(:device, Device, required: true)
   attr(:path, :map, required: true)
@@ -346,6 +472,9 @@ defmodule BelgoWeb.Devices.Live.Show do
     </.empty_state>
     """
   end
+
+  defp interface_position(device, interface),
+    do: Enum.find_index(device.interfaces, &(&1 == interface))
 
   defp network_name(_network_by_id, nil), do: "—"
 

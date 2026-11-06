@@ -67,8 +67,9 @@ defmodule Belgo.Fixtures.OpnsenseClient do
       host_override("moe-host", "moe-pc", "10.0.0.50"),
       host_override("moe-tavern", "tavern", "10.0.0.50"),
       host_override("assistant", "assistant", "10.0.0.11"),
-      host_override("smithers-wrong", "smithers", "10.0.0.10"),
-      Map.put(host_override("mail", "mail", "10.0.0.25"), "rr", "MX")
+      # Search rows give the record type label (measured on a real OPNsense).
+      Map.put(host_override("smithers-wrong", "smithers", "10.0.0.10"), "rr", "A (IPv4 address)"),
+      Map.put(host_override("mail", "mail", "10.0.0.25"), "rr", "MX (Mail server)")
     ]
   end
 

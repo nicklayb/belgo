@@ -8,8 +8,11 @@ defmodule BelgoWeb.Devices.Live.Form do
   alias Belgo.Discovery
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.Matching
+  alias Belgo.Discovery.ReservedAddresses
+  alias Belgo.Discovery.State
   alias Belgo.Discovery.Suggestion
   alias Belgo.Inventory
+  alias Belgo.Inventory.AddressAllocation
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.Interface
   alias Belgo.Inventory.MetadataLabels
@@ -30,6 +33,7 @@ defmodule BelgoWeb.Devices.Live.Form do
           |> assign(:discovered, discovered)
           |> assign_attach_form(discovered)
           |> assign(:page_title, page_title(device, discovered))
+          |> assign(:address_suggestions, %{})
           |> assign_inventory()
           |> assign_form(initial_params(discovered, socket.assigns.snapshot, params))
 
@@ -67,7 +71,12 @@ defmodule BelgoWeb.Devices.Live.Form do
 
   @impl Phoenix.LiveView
   def handle_event("validate", %{"device" => params}, socket) do
-    {:noreply, assign_form(socket, params, :validate)}
+    {params, suggestions} = suggest_addresses(socket, params)
+
+    {:noreply,
+     socket
+     |> assign_form(params, :validate)
+     |> update(:address_suggestions, &Map.merge(&1, suggestions))}
   end
 
   def handle_event("attach", %{"attach" => %{"device_id" => device_id}}, socket)
@@ -88,21 +97,26 @@ defmodule BelgoWeb.Devices.Live.Form do
     do: {:noreply, put_flash(socket, :error, gettext("Choose a device first."))}
 
   def handle_event("save", %{"device" => params}, socket) do
+    case reservation_conflicts(socket, params) do
+      [] -> {:noreply, save_device(socket, params)}
+      _conflicts -> {:noreply, assign_form(socket, params, :validate)}
+    end
+  end
+
+  defp save_device(socket, params) do
     case save(socket, params) do
       {:ok, device} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, gettext("%{name} saved.", name: device.name))
-         |> push_navigate(to: ~p"/devices/#{device.id}")}
+        socket
+        |> put_flash(:info, gettext("%{name} saved.", name: device.name))
+        |> push_navigate(to: ~p"/devices/#{device.id}")
 
       {:error, :record, %Ecto.Changeset{} = changeset, _changes} ->
-        {:noreply,
-         socket
-         |> assign(:form, to_form(changeset, action: :validate))
-         |> assign(:placement, current_placement(changeset, params))}
+        socket
+        |> assign(:form, to_form(changeset, action: :validate))
+        |> assign(:placement, current_placement(changeset, params))
 
       error ->
-        {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
+        put_flash(socket, :error, Mutation.describe_error(error))
     end
   end
 
@@ -112,12 +126,79 @@ defmodule BelgoWeb.Devices.Live.Form do
   defp save(%{assigns: %{device: device}} = socket, params),
     do: Inventory.update(:devices, device.id, params, Mutation.options(socket))
 
+  # Shown while the field still holds the suggested address.
+  defp address_hint(suggestions, interface_form) do
+    current_ip = interface_form[:ip].value
+
+    case Map.fetch(suggestions, interface_form.index) do
+      {:ok, %{ip: ^current_ip, range: range}} ->
+        gettext("First free address of %{range} (%{start} – %{end}).",
+          range: range.name,
+          start: range.start,
+          end: range.end
+        )
+
+      _none ->
+        nil
+    end
+  end
+
+  # Addresses from the logical ranges of the device kind (see AddressAllocation).
+  defp suggest_addresses(socket, params) do
+    snapshot = socket.assigns.snapshot
+    device_id = socket.assigns.device && socket.assigns.device.id
+
+    used =
+      AddressAllocation.used_addresses(
+        snapshot,
+        State.observations(socket.assigns.discovery),
+        device_id
+      )
+
+    previous_kind = Ecto.Changeset.get_field(socket.assigns.form.source, :kind)
+
+    AddressAllocation.suggest_params(params, previous_kind, snapshot, used)
+  end
+
+  # Reserved interfaces must not take an address a provider reserved for another MAC.
+  defp reservation_conflicts(socket, params) do
+    socket.assigns.snapshot
+    |> Inventory.change(:devices, socket.assigns.device, params)
+    |> Ecto.Changeset.apply_changes()
+    |> ReservedAddresses.conflicts(State.observations(socket.assigns.discovery))
+  end
+
   defp assign_form(socket, params, action \\ nil) do
-    changeset = Inventory.change(socket.assigns.snapshot, :devices, socket.assigns.device, params)
+    changeset =
+      socket.assigns.snapshot
+      |> Inventory.change(:devices, socket.assigns.device, params)
+      |> add_reservation_errors(State.observations(socket.assigns.discovery))
 
     socket
     |> assign(:form, to_form(changeset, action: action))
     |> assign(:placement, current_placement(changeset, params))
+    |> assign(:range_suggestions, range_suggestions(socket, changeset))
+  end
+
+  # Offered (not applied) for interfaces outside the ranges of the device kind.
+  defp range_suggestions(socket, changeset) do
+    snapshot = socket.assigns.snapshot
+    device_id = socket.assigns.device && socket.assigns.device.id
+    observations = State.observations(socket.assigns.discovery)
+
+    AddressAllocation.suggest_interfaces(
+      snapshot,
+      Ecto.Changeset.get_field(changeset, :kind),
+      Ecto.Changeset.get_field(changeset, :interfaces),
+      AddressAllocation.used_addresses(snapshot, observations, device_id)
+    )
+  end
+
+  defp add_reservation_errors(changeset, observations) do
+    changeset
+    |> Ecto.Changeset.apply_changes()
+    |> ReservedAddresses.conflicts(observations)
+    |> Enum.reduce(changeset, &Ecto.Changeset.add_error(&2, :interfaces, &1))
   end
 
   defp current_placement(_changeset, %{"placement" => placement}) when placement != "",
@@ -166,6 +247,8 @@ defmodule BelgoWeb.Devices.Live.Form do
   defp page_title(%Device{name: name}, _discovered), do: gettext("Edit %{name}", name: name)
 
   defp network_role_set?(form), do: form[:network_role].value not in [nil, ""]
+
+  defp switch?(form), do: to_string(form[:network_role].value) == "switch"
 
   defp list_value(values) when is_list(values), do: Enum.join(values, ", ")
   defp list_value(value), do: value
@@ -255,6 +338,21 @@ defmodule BelgoWeb.Devices.Live.Form do
               prompt={gettext("None")}
               options={Format.options(Device.network_roles())}
               hint={gettext("Gateways, switches and access points appear in Routing.")}
+            />
+            <Form.input
+              :if={switch?(@form)}
+              field={@form[:port_count]}
+              type="number"
+              min="1"
+              label={gettext("Number of ports")}
+              placeholder="8"
+            />
+            <Form.input
+              :if={switch?(@form)}
+              field={@form[:poe]}
+              type="checkbox"
+              label={gettext("Supplies PoE")}
+              class="sm:mt-7"
             />
             <Form.input
               :if={network_role_set?(@form)}
@@ -422,7 +520,35 @@ defmodule BelgoWeb.Devices.Live.Form do
                     label={gettext("Addressing")}
                     options={Enum.map(Interface.assignments(), &{Format.assignment(&1), &1})}
                   />
-                  <Form.input field={interface_form[:ip]} label={gettext("IP address")} />
+                  <div>
+                    <Form.input
+                      field={interface_form[:ip]}
+                      label={gettext("IP address")}
+                      hint={address_hint(@address_suggestions, interface_form)}
+                    />
+                    <p
+                      :if={@range_suggestions[interface_form.index]}
+                      id={"range-suggestion-#{interface_form.index}"}
+                      class="mt-1 text-xs text-muted"
+                    >
+                      {gettext("Next free address of %{range}:",
+                        range: @range_suggestions[interface_form.index].range.name
+                      )}
+                      <button
+                        type="button"
+                        phx-click={
+                          JS.dispatch("belgo:set-value",
+                            to: "##{interface_form[:ip].id}",
+                            detail: %{value: @range_suggestions[interface_form.index].ip}
+                          )
+                        }
+                        title={gettext("Use this address")}
+                        class="font-mono font-medium text-accent underline hover:no-underline"
+                      >
+                        {@range_suggestions[interface_form.index].ip}
+                      </button>
+                    </p>
+                  </div>
                   <Form.input
                     field={interface_form[:network_id]}
                     type="select"

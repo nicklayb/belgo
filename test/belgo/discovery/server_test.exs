@@ -7,6 +7,7 @@ defmodule Belgo.Discovery.ServerTest do
   require Logger
 
   alias Belgo.Discovery
+  alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.Server
   alias Belgo.Fixtures
   alias Belgo.Inventory.Snapshot
@@ -27,22 +28,27 @@ defmodule Belgo.Discovery.ServerTest do
     {:ok, inventory: inventory, topic: topic}
   end
 
-  defp start_server(context, url, extra_options \\ "") do
+  defp start_server(context, url, extra_options \\ "", server_options \\ []) do
     File.write!(
       Path.join(context.tmp_dir, "providers.yaml"),
       "version: 1\nproviders:\n  opnsense:\n    url: #{url}\n" <> extra_options
     )
 
-    start_supervised!(
-      {Server,
-       directory: context.tmp_dir,
-       inventory: context.inventory,
-       environment: @environment,
-       pubsub: Belgo.PubSub,
-       topic: context.topic,
-       refresh_on_start: false,
-       name: nil}
-    )
+    options =
+      Keyword.merge(
+        [
+          directory: context.tmp_dir,
+          inventory: context.inventory,
+          environment: @environment,
+          pubsub: Belgo.PubSub,
+          topic: context.topic,
+          refresh_on_start: false,
+          name: nil
+        ],
+        server_options
+      )
+
+    start_supervised!({Server, options})
   end
 
   defp await_pull do
@@ -72,6 +78,31 @@ defmodule Belgo.Discovery.ServerTest do
 
     assert log =~
              ~r/\[info\] \[discovery\] \[opnsense\] completed in \d+ms: 4 kea_reservation, 2 kea_subnet, 2 opnsense_gateway, 4 unbound_host_override/
+  end
+
+  test "pings the unknown devices after a pull", context do
+    test_process = self()
+
+    reachability =
+      start_supervised!(
+        {Belgo.Reachability.Server,
+         directory: context.tmp_dir,
+         name: nil,
+         ping: fn address, _timeout ->
+           send(test_process, {:pinged, address})
+           :down
+         end}
+      )
+
+    server =
+      start_server(context, "https://opnsense.springfield.lan", "", reachability: reachability)
+
+    Discovery.refresh(server)
+    state = await_pull()
+    addresses = Correlation.discovered_addresses(state.correlation)
+    assert addresses != []
+
+    for address <- addresses, do: assert_receive({:pinged, ^address}, 1_000)
   end
 
   test "logs failures and exposes them", context do

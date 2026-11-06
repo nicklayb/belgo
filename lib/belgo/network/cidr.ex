@@ -45,6 +45,15 @@ defmodule Belgo.Network.Cidr do
     1 <<< (IpAddress.family_bit_size(address) - prefix_length)
   end
 
+  @doc "Returns the last address of the range (the IPv4 broadcast address)."
+  @spec last_address(t()) :: IpAddress.t()
+  def last_address(%Cidr{address: address} = cidr) do
+    address
+    |> IpAddress.to_integer()
+    |> Kernel.+(size(cidr) - 1)
+    |> IpAddress.from_integer(address)
+  end
+
   defp network_address(address, prefix_length) do
     host_bit_size = IpAddress.family_bit_size(address) - prefix_length
 

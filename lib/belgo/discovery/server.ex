@@ -18,6 +18,8 @@ defmodule Belgo.Discovery.Server do
     * `:environment` – secrets environment, defaults to the process environment
     * `:pubsub` / `:topic` – where to broadcast, no broadcast without `:pubsub`
     * `:refresh_on_start` – pull at boot, defaults to `true`
+    * `:reachability` – reachability server pinging the unknown devices after each
+      pull (`Belgo.Reachability.check/2`, recent results reused), none by default
     * `:name` – process name, defaults to the module name
   """
 
@@ -27,6 +29,7 @@ defmodule Belgo.Discovery.Server do
   alias Belgo.Discovery.State
   alias Belgo.Inventory
   alias Belgo.Providers.Settings
+  alias Belgo.Reachability
   alias Belgo.Providers.Settings.Configured
   alias Belgo.Sync.DesiredState
   alias Belgo.Sync.PushReport
@@ -56,6 +59,7 @@ defmodule Belgo.Discovery.Server do
       environment: Keyword.get_lazy(options, :environment, &System.get_env/0),
       inventory: inventory,
       pubsub: pubsub,
+      reachability: Keyword.get(options, :reachability),
       topic: Keyword.get(options, :topic, @default_topic),
       tasks: %{},
       timers: %{},
@@ -77,7 +81,7 @@ defmodule Belgo.Discovery.Server do
   def handle_cast({:refresh, provider_key}, state),
     do: {:noreply, with_settings(state, &start_pulls(state, &1, [provider_key]))}
 
-  def handle_cast({:push, device_id}, state), do: {:noreply, push(state, device_id)}
+  def handle_cast({:push, {_collection, _id} = owner}, state), do: {:noreply, push(state, owner)}
 
   @impl GenServer
   def handle_info(:refresh, state), do: {:noreply, refresh(state)}
@@ -131,24 +135,25 @@ defmodule Belgo.Discovery.Server do
     |> Map.update!(:public, &State.start(&1, module.key()))
   end
 
-  defp push(state, device_id), do: with_settings(state, &start_pushes(state, &1, device_id))
+  defp push(state, owner), do: with_settings(state, &start_pushes(state, &1, owner))
 
-  defp start_pushes(state, settings, device_id) do
+  # `owner` is `{:devices, id}` or `{:virtual_ips, id}`; runs and logs use the id.
+  defp start_pushes(state, settings, {_collection, record_id} = owner) do
     desired_state =
       state.inventory
       |> Inventory.snapshot()
       |> DesiredState.build()
-      |> DesiredState.for_device(device_id)
+      |> DesiredState.for_owner(owner)
 
     state = Map.update!(state, :public, &State.configure(&1, settings))
 
     writable = Settings.writable(settings)
 
     if writable == [],
-      do: Logger.debug("[push] [#{device_id}] skipped, no provider in write mode")
+      do: Logger.debug("[push] [#{record_id}] skipped, no provider in write mode")
 
     Enum.reduce(writable, state, fn %Configured{module: module, config: config}, accumulator ->
-      start_task(accumulator, module, {:push, device_id}, fn ->
+      start_task(accumulator, module, {:push, record_id}, fn ->
         module.push(config, desired_state)
       end)
     end)
@@ -187,6 +192,7 @@ defmodule Belgo.Discovery.Server do
     %{state | tasks: tasks}
     |> record_result(module, run, result)
     |> recompute()
+    |> ping_discovered(run)
     |> broadcast()
   end
 
@@ -206,6 +212,18 @@ defmodule Belgo.Discovery.Server do
       &State.complete_push(&1, module.key(), device_id, result, DateTime.utc_now())
     )
   end
+
+  defp ping_discovered(%{reachability: nil} = state, _run), do: state
+
+  defp ping_discovered(state, :pull) do
+    state.public.correlation
+    |> Correlation.discovered_addresses()
+    |> Reachability.check(server: state.reachability)
+
+    state
+  end
+
+  defp ping_discovered(state, _run), do: state
 
   defp schedule_pull(state, provider_key) do
     with {:ok, previous} <- Map.fetch(state.timers, provider_key),

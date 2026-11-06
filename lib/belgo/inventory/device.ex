@@ -13,7 +13,8 @@ defmodule Belgo.Inventory.Device do
   (`kind: network`) can have a `network_role` (gateway, switch, access point) placing
   them in the routing; a device is plugged where its interfaces' `switch_id` says, or,
   for network devices without interface (unmanaged switches), where `uplink_id` /
-  `uplink_port` say.
+  `uplink_port` say. Switches can declare their number of ports (`port_count`) and
+  whether they supply Power over Ethernet (`poe`); other devices never keep them.
   """
 
   use Belgo, :schema
@@ -29,7 +30,7 @@ defmodule Belgo.Inventory.Device do
   @virtualizations ~w(virtual_machine lxc container)a
   @placements ~w(location host portable unplaced)a
   @network_roles ~w(gateway switch access_point)a
-  @fields ~w(id name hostname kind network_role uplink_id uplink_port location_id host_id virtualization portable platforms tags notes)a
+  @fields ~w(id name hostname kind network_role port_count poe uplink_id uplink_port location_id host_id virtualization portable platforms tags notes)a
   @required ~w(id name kind)a
   @list_fields ~w(platforms tags)
   @sort_params ~w(interfaces_sort metadata_sort)
@@ -43,6 +44,8 @@ defmodule Belgo.Inventory.Device do
     field(:hostname, :string)
     field(:kind, Ecto.Enum, values: @kinds, default: :other)
     field(:network_role, Ecto.Enum, values: @network_roles)
+    field(:port_count, :integer)
+    field(:poe, :boolean, default: false)
     field(:uplink_id, :string)
     field(:uplink_port, :string)
     field(:location_id, :string)
@@ -77,6 +80,14 @@ defmodule Belgo.Inventory.Device do
   @doc "Returns `true` for gateways, switches and access points."
   @spec network_node?(t()) :: boolean()
   def network_node?(%__MODULE__{network_role: role}), do: role != nil
+
+  @doc "Returns `true` for switches."
+  @spec switch?(t()) :: boolean()
+  def switch?(%__MODULE__{network_role: role}), do: role == :switch
+
+  @doc "Returns `true` for switches supplying Power over Ethernet."
+  @spec poe?(t()) :: boolean()
+  def poe?(%__MODULE__{} = device), do: switch?(device) and device.poe
 
   @doc "Lists the placement modes."
   @spec placements() :: [atom()]
@@ -120,6 +131,7 @@ defmodule Belgo.Inventory.Device do
     |> update_change(:hostname, &String.downcase/1)
     |> validate_format(:hostname, @hostname_format, message: "must be a valid DNS label")
     |> put_network_kind()
+    |> validate_switch()
     |> validate_placement()
   end
 
@@ -200,6 +212,12 @@ defmodule Belgo.Inventory.Device do
       true ->
         changeset
     end
+  end
+
+  defp validate_switch(changeset) do
+    if get_field(changeset, :network_role) == :switch,
+      do: validate_number(changeset, :port_count, greater_than: 0),
+      else: change(changeset, port_count: nil, poe: false)
   end
 
   defp put_network_kind(changeset) do

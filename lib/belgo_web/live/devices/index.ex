@@ -7,8 +7,10 @@ defmodule BelgoWeb.Devices.Live.Index do
 
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.DeviceFilter
+  alias Belgo.Inventory.DeviceSorting
   alias Belgo.Topology.Physical
   alias BelgoWeb.Format
+  alias BelgoWeb.Live.Reachability
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -17,6 +19,7 @@ defmodule BelgoWeb.Devices.Live.Index do
       |> assign(:page_title, gettext("Devices"))
       |> assign(:filter, DeviceFilter.new())
       |> assign(:selected_ids, MapSet.new())
+      |> Reachability.subscribe()
 
     {:ok, socket}
   end
@@ -33,25 +36,46 @@ defmodule BelgoWeb.Devices.Live.Index do
   def assign_inventory(socket) do
     snapshot = socket.assigns.snapshot
 
-    devices =
+    filter = socket.assigns.filter
+
+    rows =
       snapshot.devices
-      |> DeviceFilter.apply_filter(socket.assigns.filter)
-      |> Enum.sort_by(&String.downcase(&1.name))
+      |> DeviceFilter.apply_filter(filter)
+      |> Enum.map(&{&1, placement_label(snapshot, &1)})
+      |> DeviceSorting.sort(filter.sort, filter.direction)
 
     existing_ids = MapSet.new(snapshot.devices, & &1.id)
     kind_counts = DeviceFilter.kind_counts(socket.assigns.filter, snapshot.devices)
 
     socket
-    |> assign(:devices, Enum.map(devices, &{&1, placement_label(snapshot, &1)}))
+    |> assign(:devices, rows)
     |> update(:selected_ids, &MapSet.intersection(&1, existing_ids))
     |> assign(:kind_facets, kind_facets(kind_counts, socket.assigns.filter.kinds))
+    |> Reachability.check(Enum.flat_map(snapshot.devices, &Device.ip_addresses/1))
   end
+
+  @impl Phoenix.LiveView
+  def handle_info({:reachability_changed, address_statuses}, socket),
+    do: {:noreply, Reachability.changed(socket, address_statuses)}
+
+  def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
   def handle_event("filter", params, socket) do
     filter = DeviceFilter.update(socket.assigns.filter, params)
 
     {:noreply, push_patch(socket, to: devices_path(filter), replace: true)}
+  end
+
+  def handle_event("sort", %{"field" => name}, socket) do
+    case DeviceSorting.parse_field(name) do
+      nil ->
+        {:noreply, socket}
+
+      field ->
+        filter = DeviceFilter.sort_by(socket.assigns.filter, field)
+        {:noreply, push_patch(socket, to: devices_path(filter), replace: true)}
+    end
   end
 
   def handle_event("toggle-kind", %{"kind" => name}, socket) do
@@ -241,6 +265,8 @@ defmodule BelgoWeb.Devices.Live.Index do
           rows={@devices}
           row_id={fn {device, _placement} -> "device-#{device.id}" end}
           row_click={fn {device, _placement} -> JS.navigate(~p"/devices/#{device.id}") end}
+          sort_event="sort"
+          sort={{@filter.sort, @filter.direction}}
         >
           <:col :let={{device, _placement}} label="" class="w-0 pr-0" skip_row_click>
             <input
@@ -252,14 +278,30 @@ defmodule BelgoWeb.Devices.Live.Index do
               class="size-4 cursor-pointer rounded border-border accent-accent"
             />
           </:col>
-          <:col :let={{device, _placement}} label={gettext("Name")}>
-            <.device_link device={device} />
+          <:col :let={{device, _placement}} label={gettext("Name")} sort_field={:name}>
+            <div class="flex min-w-0 items-center gap-2">
+              <.device_link device={device} />
+              <.poe_indicator device={device} />
+              <.reachability_indicator status={
+                Reachability.status(@address_statuses, Device.ip_addresses(device))
+              } />
+            </div>
             <p class="mt-0.5 font-mono text-xs text-muted">{Device.hostname(device)}</p>
           </:col>
-          <:col :let={{_device, placement}} label={gettext("Placement")} class="hidden md:table-cell">
+          <:col
+            :let={{_device, placement}}
+            label={gettext("Placement")}
+            class="hidden md:table-cell"
+            sort_field={:placement}
+          >
             <span class="text-muted">{placement}</span>
           </:col>
-          <:col :let={{device, _placement}} label={gettext("Addresses")} class="hidden sm:table-cell">
+          <:col
+            :let={{device, _placement}}
+            label={gettext("Addresses")}
+            class="hidden sm:table-cell"
+            sort_field={:address}
+          >
             <p :for={address <- Device.ip_addresses(device)} class="font-mono text-xs">{address}</p>
           </:col>
           <:col :let={{device, _placement}} label={gettext("Tags")} class="hidden lg:table-cell">

@@ -40,12 +40,16 @@ defmodule Belgo.Topology.Routing do
   end
 
   defmodule Node do
-    @moduledoc "A network node with the nodes and the clients connected to it."
-    defstruct [:device, :link, children: [], clients: []]
+    @moduledoc """
+    A network node with the nodes and the clients connected to it. `used_ports` counts
+    the ports taken by wired devices plugged into it (see `Routing.used_ports/1`).
+    """
+    defstruct [:device, :link, used_ports: 0, children: [], clients: []]
 
     @type t :: %__MODULE__{
             device: Device.t(),
             link: Link.t() | nil,
+            used_ports: non_neg_integer(),
             children: [t()],
             clients: [{Device.t(), Link.t()}]
           }
@@ -129,12 +133,34 @@ defmodule Belgo.Topology.Routing do
     end
   end
 
+  @doc """
+  Counts the ports taken on a switch by the links plugged into it: wireless links
+  take none, links on the same port share it, a link without port takes one.
+  The switch's own uplink is not counted (it may use a dedicated port, like SFP).
+  """
+  @spec used_ports([Link.t()]) :: non_neg_integer()
+  def used_ports(links) do
+    {with_port, without_port} =
+      links
+      |> Enum.reject(& &1.wireless?)
+      |> Enum.split_with(&(&1.port not in [nil, ""]))
+
+    length(Enum.uniq_by(with_port, &port_key/1)) + length(without_port)
+  end
+
+  defp port_key(%Link{port: port}) do
+    port
+    |> to_string()
+    |> String.trim()
+    |> String.downcase()
+  end
+
   defp node(device, links, linked_by_switch, device_by_id, visited) do
     visited = MapSet.put(visited, device.id)
+    plugged = Map.get(linked_by_switch, device.id, [])
 
     {nodes, clients} =
-      linked_by_switch
-      |> Map.get(device.id, [])
+      plugged
       |> Enum.reject(&MapSet.member?(visited, &1.device_id))
       |> Enum.map(&{Map.fetch!(device_by_id, &1.device_id), &1})
       |> Enum.split_with(fn {linked, _link} -> Device.network_node?(linked) end)
@@ -142,6 +168,7 @@ defmodule Belgo.Topology.Routing do
     %Node{
       device: device,
       link: Map.get(links, device.id),
+      used_ports: used_ports(plugged),
       children:
         nodes
         |> Enum.map(fn {linked, _link} -> linked end)

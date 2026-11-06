@@ -23,3 +23,9 @@ config :belgo, Belgo.Discovery,
   }
 
 config :belgo, Belgo.Reachability, ping: &Belgo.Fixtures.Pinger.ping/2
+
+config :belgo, Belgo.PortScan, scan: &Belgo.Fixtures.PortScanner.open_ports/3
+
+config :belgo, Belgo.WakeOnLan,
+  send: &Belgo.Fixtures.WakeOnLan.send_packet/2,
+  ping: &Belgo.Fixtures.Pinger.ping/2

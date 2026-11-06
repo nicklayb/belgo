@@ -37,6 +37,23 @@ defmodule Belgo.Discovery.Suggestion do
     |> Enum.map(fn {_position, interface} -> interface end)
   end
 
+  @doc """
+  Virtual IP params from a discovered address (a load balancer address seen with DNS
+  names): its first address, its network and the DNS names pointing to it.
+  """
+  @spec virtual_ip_params(DiscoveredDevice.t(), Snapshot.t()) :: map()
+  def virtual_ip_params(%DiscoveredDevice{ips: [ip | _ips]} = discovered, %Snapshot{} = snapshot) do
+    %{
+      "name" => discovered.hostname || discovered.description || ip,
+      "ip" => ip,
+      "network_id" => network_id(snapshot, ip),
+      "dns_names" => dns_names(discovered, ip, snapshot)
+    }
+  end
+
+  def virtual_ip_params(%DiscoveredDevice{} = discovered, _snapshot),
+    do: %{"name" => discovered.hostname || discovered.description}
+
   @doc "Network params from a discovered network."
   @spec network_params(DiscoveredNetwork.t()) :: map()
   def network_params(%DiscoveredNetwork{} = discovered) do

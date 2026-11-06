@@ -7,6 +7,7 @@ defmodule Belgo.Providers.Opnsense.Translate do
   alias Belgo.Network.MacAddress
 
   @provider :opnsense
+  @address_record_types ["A", "AAAA"]
 
   @doc """
   Kea subnets become network observations. The first pool (`start - end`) gives the
@@ -98,11 +99,29 @@ defmodule Belgo.Providers.Opnsense.Translate do
     end)
   end
 
+  @doc """
+  Whether an Unbound host override row is an address record (A / AAAA). Search rows
+  give `rr` as its label, `A (IPv4 address)` (measured on the owner's OPNsense), or
+  as the raw value `A`: only the first word counts. A missing `rr` is an address.
+  """
+  @spec address_record?(map()) :: boolean()
+  def address_record?(%{"rr" => record_type}) when is_binary(record_type) do
+    record_type
+    |> String.split(" ", parts: 2)
+    |> List.first()
+    |> String.upcase()
+    |> Kernel.in(@address_record_types)
+  end
+
+  def address_record?(%{"rr" => nil}), do: true
+  def address_record?(%{"rr" => _record_type}), do: false
+  def address_record?(_row), do: true
+
   @doc "Unbound A / AAAA host overrides become device observations."
   @spec host_overrides([map()]) :: [Observation.t()]
   def host_overrides(rows) do
     rows
-    |> Enum.filter(&(&1["rr"] in ["A", "AAAA", nil] and normalize_ip(&1["server"]) != nil))
+    |> Enum.filter(&(address_record?(&1) and normalize_ip(&1["server"]) != nil))
     |> Enum.map(fn row ->
       %Observation{
         provider: @provider,

@@ -12,6 +12,26 @@ defmodule BelgoWeb.PagesTest do
     end
   end
 
+  test "the theme of config.yaml is set on the page", %{conn: conn} do
+    directory = Application.fetch_env!(:belgo, Belgo.Config)[:directory]
+    path = Path.join(directory, "config.yaml")
+    on_exit(fn -> File.rm(path) end)
+
+    assert page_html(conn) =~ ~s(data-theme="auto")
+
+    File.write!(path, "version: 1\ntheme: dark\n")
+    assert page_html(conn) =~ ~s(data-theme="dark")
+
+    File.write!(path, "version: 1\ntheme: neon\n")
+    assert page_html(conn) =~ ~s(data-theme="auto")
+  end
+
+  defp page_html(conn) do
+    conn
+    |> get(~p"/")
+    |> html_response(200)
+  end
+
   test "the health check needs no authentication", %{conn: conn} do
     assert "ok" ==
              conn
@@ -19,36 +39,44 @@ defmodule BelgoWeb.PagesTest do
              |> text_response(200)
   end
 
+  # Results are shared by every test (one server per application): a recent result
+  # may already exist, so the tests wait for the expected state rather than a ping.
+  defp await_state(view, selector, state) do
+    Enum.find_value(1..20, fn _attempt ->
+      render(view)
+      has_element?(view, ~s(#{selector}[data-state="#{state}"])) || (Process.sleep(50) && nil)
+    end)
+  end
+
   test "the device page pings the device and pings again on click", %{conn: conn} do
-    Belgo.Reachability.subscribe("burns-node")
+    Belgo.Reachability.subscribe()
     {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
-
-    # A recent result (from an earlier test) is reused without pinging again.
-    if match?(%{state: :pending}, Belgo.Reachability.status("burns-node")),
-      do: assert_receive({:reachability_changed, %{state: :up}}, 1_000)
-
-    render(view)
-    assert has_element?(view, ~s(#reachability[data-state="up"]))
+    assert await_state(view, "#reachability", "up")
 
     view
     |> element("#reachability")
     |> render_click()
 
-    assert_receive {:reachability_changed, %{state: :pending}}, 1_000
-    assert_receive {:reachability_changed, %{state: :up}}, 1_000
-    render(view)
-    assert has_element?(view, ~s(#reachability[data-state="up"]))
+    assert_receive {:reachability_changed, [%{address: "10.0.0.10", result: :pending}]}, 1_000
+    assert await_state(view, "#reachability", "up")
   end
 
   test "a device that does not answer is shown as down", %{conn: conn} do
-    Belgo.Reachability.subscribe("smithers")
     {:ok, view, _html} = live(conn, ~p"/devices/smithers")
+    assert await_state(view, "#reachability", "down")
+  end
 
-    if match?(%{state: :pending}, Belgo.Reachability.status("smithers")),
-      do: assert_receive({:reachability_changed, %{state: :down}}, 1_000)
+  test "the overview counts the devices that do not answer", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert await_state(view, "#devices-reachability [data-state]", "down")
+    # Only Burns Node (10.0.0.10) answers among the fixture devices with an address.
+    assert render(element(view, "#devices-reachability")) =~ ~r/\d+ do not answer/
+  end
 
-    render(view)
-    assert has_element?(view, ~s(#reachability[data-state="down"]))
+  test "the device list shows whether each device answers", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices")
+    assert await_state(view, "#device-burns-node [data-reachability]", "up")
+    assert await_state(view, "#device-smithers [data-reachability]", "down")
   end
 
   test "the device page shows where a guest physically is", %{conn: conn} do
@@ -243,11 +271,24 @@ defmodule BelgoWeb.PagesTest do
   end
 
   test "the routing page shows the tree from the gateway", %{conn: conn} do
-    {:ok, _view, html} = live(conn, ~p"/routing")
+    {:ok, view, html} = live(conn, ~p"/routing")
 
     assert html =~ "Power Plant"
     assert html =~ "Plow King"
     assert html =~ "New switch"
+    # Other tests may plug devices into Plow King (shared inventory).
+    assert render(element(view, "#ports-plow-king")) =~ ~r{\d+/8 ports}
+    assert has_element?(view, "[data-poe]")
+  end
+
+  test "PoE switches have an icon in the device list and on their page", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices")
+    assert has_element?(view, "#device-plow-king [data-poe]")
+    refute has_element?(view, "#device-burns-node [data-poe]")
+
+    {:ok, _view, html} = live(conn, ~p"/devices/plow-king")
+    assert html =~ "PoE"
+    assert html =~ "8 ports"
   end
 
   test "an unmanaged switch can be created from the routing page", %{conn: conn} do
@@ -256,6 +297,8 @@ defmodule BelgoWeb.PagesTest do
     assert html =~ "Role in the network"
 
     assert html =~ "Plugged into"
+    assert html =~ "Number of ports"
+    assert html =~ "Supplies PoE"
 
     assert {:error, {:live_redirect, %{to: "/devices/attic-switch"}}} =
              view
@@ -264,7 +307,9 @@ defmodule BelgoWeb.PagesTest do
                  name: "Attic Switch",
                  placement: "unplaced",
                  uplink_id: "plow-king",
-                 uplink_port: "8"
+                 uplink_port: "8",
+                 port_count: "16",
+                 poe: "true"
                }
              )
              |> render_submit()
@@ -275,12 +320,15 @@ defmodule BelgoWeb.PagesTest do
               network_role: :switch,
               uplink_id: "plow-king",
               uplink_port: "8",
+              port_count: 16,
+              poe: true,
               interfaces: []
             }} =
              Snapshot.fetch(Inventory.snapshot(), :devices, "attic-switch")
 
-    {:ok, _view, html} = live(conn, ~p"/routing")
+    {:ok, view, html} = live(conn, ~p"/routing")
     assert html =~ "Attic Switch"
+    assert render(element(view, "#ports-attic-switch")) =~ "0/16 ports"
   end
 
   test "a device page shows its network path", %{conn: conn} do
@@ -389,16 +437,13 @@ defmodule BelgoWeb.PagesTest do
     end
   end
 
-  test "the search modal opens and finds devices", %{conn: conn} do
+  test "the search dialog is opened by the browser and finds devices", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
 
-    refute has_element?(view, "#search-input")
-
-    view
-    |> with_target("#global-search")
-    |> render_click("open", %{})
-
-    assert has_element?(view, "#search-input")
+    # Opening and focusing happen in the browser (SearchDialog hook), see search_dialog.js.
+    assert has_element?(view, ~s(dialog#search-dialog[phx-hook="SearchDialog"]))
+    assert has_element?(view, "#search-input[autofocus]")
+    assert has_element?(view, "button[data-search-open]")
 
     html =
       view
@@ -407,11 +452,111 @@ defmodule BelgoWeb.PagesTest do
 
     assert html =~ "Burns Node"
     assert html =~ "Serial number"
+  end
 
+  test "the device page lists the open ports and checks them again on demand", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
+
+    assert eventually(fn -> has_element?(view, "#open-ports-table", "Proxmox") end)
+    assert has_element?(view, "#open-ports-table", "SSH")
+
+    render_click(element(view, "#refresh-ports"))
+    assert eventually(fn -> has_element?(view, "#open-ports-table", "8006") end)
+  end
+
+  test "wake-on-LAN sends the magic packet and tells when the device answers", %{conn: conn} do
+    Phoenix.PubSub.subscribe(Belgo.PubSub, Belgo.Fixtures.WakeOnLan.topic())
+    {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
+
+    html = render_click(element(view, "#wake-0"))
+    assert html =~ "Magic packet sent to Burns Node"
+
+    assert_receive {:magic_packet, packet, ["255.255.255.255", "10.0.0.255"]}
+    assert 102 == byte_size(packet)
+
+    # The fixture pinger answers for Burns Node: the notice shows up on the page.
+    assert eventually(fn -> render(view) =~ "Burns Node is awake" end)
+  end
+
+  test "the device list sorts by address and keeps the order in the URL", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices")
+
+    render_click(element(view, ~s(th button[phx-value-field="address"])))
+    assert_patch(view, ~p"/devices?sort=address")
+
+    render_click(element(view, ~s(th button[phx-value-field="address"])))
+    assert_patch(view, ~p"/devices?direction=desc&sort=address")
+
+    {:ok, sorted, _html} = live(conn, ~p"/devices?sort=address&direction=desc")
+
+    ids =
+      Regex.scan(~r/id="device-([a-z0-9-]+)"/, render(sorted), capture: :all_but_first)
+
+    # Descending addresses: Smithers (10.0.0.11) comes before Burns Node (10.0.0.10).
+    assert Enum.find_index(ids, &(&1 == ["smithers"])) <
+             Enum.find_index(ids, &(&1 == ["burns-node"]))
+  end
+
+  test "a network gets logical ranges from its form", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/networks/springfield/edit")
+
+    # The "Add" button dispatches the form change event in the browser.
     view
-    |> with_target("#global-search")
-    |> render_click("close", %{})
+    |> form("#network-form")
+    |> render_change(%{"network" => %{"ranges_sort" => ["new"]}})
 
-    refute has_element?(view, "#search-input")
+    assert {:error, {:live_redirect, %{to: "/networks"}}} =
+             view
+             |> form("#network-form",
+               network: %{
+                 ranges: %{
+                   "0" => %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: "network"}
+                 }
+               }
+             )
+             |> render_submit()
+
+    assert {:ok,
+            %{ranges: [%{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: :network}]}} =
+             Belgo.Inventory.Snapshot.fetch(Belgo.Inventory.snapshot(), :networks, "springfield")
+
+    {:ok, _index, html} = live(conn, ~p"/networks")
+    assert html =~ "Routing"
+  end
+
+  test "editing a device offers the next free address of its kind's range", %{conn: conn} do
+    {:ok, _network} =
+      Belgo.Inventory.update(
+        :networks,
+        "springfield",
+        %{
+          "ranges" => [
+            %{"name" => "Media", "start" => "10.0.0.30", "end" => "10.0.0.40", "kind" => "media"}
+          ]
+        },
+        user: :system
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/devices/tv-living-room/edit")
+
+    # The TV keeps 10.0.0.20 until the offered address is used.
+    assert has_element?(view, ~s(input[name="device[interfaces][0][ip]"][value="10.0.0.20"]))
+    assert has_element?(view, "#range-suggestion-0", "Next free address of Media")
+    assert has_element?(view, "#range-suggestion-0 button", "10.0.0.30")
+
+    # The button fills the field in the browser, which then sends it like typing.
+    view
+    |> form("#device-form", device: %{interfaces: %{"0" => %{ip: "10.0.0.30"}}})
+    |> render_change()
+
+    refute has_element?(view, "#range-suggestion-0")
+  end
+
+  defp eventually(check, attempts \\ 40) do
+    cond do
+      check.() -> true
+      attempts == 0 -> false
+      true -> Process.sleep(25) && eventually(check, attempts - 1)
+    end
   end
 end

@@ -1,8 +1,30 @@
 # Global settings of Belgo. Every key is optional.
 version: 1
+# auto (follows the system), light or dark. Applies on the next page load.
+theme: auto
 ping:
-  # A device page pings the device; the result is reused for this long
-  # (clicking the indicator pings again right away).
+  # Devices (inventory and discovery) are pinged; each address' result is
+  # reused for this long (clicking the dot on a device page pings again).
   cache_duration: 15m
   # How long to wait for an answer.
   timeout: 2s
+wake_on_lan:
+  # After a wake-on-LAN, the device is pinged this often until it answers…
+  ping_interval: 5s
+  # …or for this long at most; a notice tells either way.
+  timeout: 1m
+port_scan:
+  # Open ports of a device (shown on its page) are reused for this long.
+  cache_duration: 1h
+  # How long to wait for each port.
+  timeout: 1s
+# Versions this directory with git (remove the key to disable). Never pulls.
+# git:
+#   # Commit once the files are left alone this long.
+#   commit_delay: 5m
+#   author_name: Belgo
+#   author_email: belgo@localhost
+#   # Optional: pushed every push_interval (credentials: SSH setup or BELGO_GIT_TOKEN).
+#   remote: git@github.com:simpson/homelab.git
+#   branch: main
+#   push_interval: 1h

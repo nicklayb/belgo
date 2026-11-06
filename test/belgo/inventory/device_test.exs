@@ -25,6 +25,29 @@ defmodule Belgo.Inventory.DeviceTest do
     assert nil == device.placement
   end
 
+  test "switches keep their number of ports and PoE, other devices never do" do
+    switch_params = %{
+      "name" => "Plow King",
+      "network_role" => "switch",
+      "port_count" => "8",
+      "poe" => "true"
+    }
+
+    switch = Ecto.Changeset.apply_changes(changeset(switch_params))
+
+    assert %Device{kind: :network, port_count: 8, poe: true} = switch
+    assert Device.poe?(switch)
+
+    access_point =
+      Ecto.Changeset.apply_changes(changeset(%{switch_params | "network_role" => "access_point"}))
+
+    assert %Device{port_count: nil, poe: false} = access_point
+    refute Device.poe?(%Device{poe: true})
+
+    assert %{port_count: [_must_be_positive]} =
+             errors(changeset(%{switch_params | "port_count" => "0"}))
+  end
+
   test "rejects contradicting placements coming from files" do
     changeset = changeset(%{"name" => "Krusty", "location_id" => "basement", "portable" => true})
 
