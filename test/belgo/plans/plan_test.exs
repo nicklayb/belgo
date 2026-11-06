@@ -72,6 +72,26 @@ defmodule Belgo.Plans.PlanTest do
       assert "Lisa: unknown level grenier" in messages
     end
 
+    test "anchors must resolve", %{plan: plan} do
+      params =
+        plan
+        |> Codec.encode()
+        |> Map.put("id", plan.id)
+        |> update_in(["zones"], fn zones ->
+          Enum.map(zones, fn
+            %{"id" => "studio"} = studio -> put_in(studio, ["anchor", "zone_id"], "kwik-e-mart")
+            zone -> zone
+          end)
+        end)
+
+      assert {:error, changeset} = Codec.decode(:plans, params)
+
+      assert "Studio: anchored to unknown room kwik-e-mart" in Enum.map(
+               Keyword.get_values(changeset.errors, :zones),
+               &elem(&1, 0)
+             )
+    end
+
     test "levels must not form a cycle" do
       assert {:error, changeset} =
                Codec.decode(:plans, %{
@@ -105,9 +125,10 @@ defmodule Belgo.Plans.PlanTest do
       warnings = Analysis.build(plan, snapshot).warnings
       assert [%{kind: :outside_zone, device_id: "hades"}] = warnings
 
-      # The studio keeps its wall at x = 500: the door stays on a wall, unlike one
-      # moved into the middle of a room.
-      plan = %{plan | openings: Enum.map(plan.openings, &%{&1 | x: 250})}
+      # The studio is anchored to the office's east wall: it follows, with the door
+      # on that wall. A door pushed past the end of its wall is reported.
+      assert [] == Enum.filter(warnings, &(&1.kind == :opening_off_wall))
+      plan = %{plan | openings: Enum.map(plan.openings, &%{&1 | offset: 1000})}
       assert Enum.any?(Analysis.build(plan, snapshot).warnings, &(&1.kind == :opening_off_wall))
     end
 
@@ -138,12 +159,18 @@ defmodule Belgo.Plans.PlanTest do
 
     test "a room touching nothing is an orphan", %{plan: plan, snapshot: snapshot} do
       plan =
-        update_zone(plan, "chambre-bebe", &%{&1 | rectangles: [%{hd(&1.rectangles) | x: 5000}]})
+        update_zone(
+          plan,
+          "chambre-bebe",
+          &%{&1 | anchor: nil, rectangles: [%{hd(&1.rectangles) | x: 5000, y: 0}]}
+        )
 
       analysis = Analysis.build(plan, snapshot)
 
       assert ["chambre-bebe"] == analysis.orphan_zone_ids
       assert Enum.any?(analysis.warnings, &(&1.kind == :orphan_zone))
+      # Being a root (not anchored) is fine: only the orphan is reported.
+      assert [:orphan_zone] == Enum.map(analysis.warnings, & &1.kind)
     end
   end
 

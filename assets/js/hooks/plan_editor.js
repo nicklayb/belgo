@@ -3,13 +3,16 @@
 // grid; the server applies the edit and redraws. Previews go to the overlay group,
 // which LiveView leaves alone (phx-update="ignore").
 //
-// data-tool: select (move / resize / pick), draw (a new zone), rectangle (add to the
+// data-tool: select (move root rooms / resize / pick; anchored rooms, marked
+// data-anchored, are only selected), draw (a new zone), rectangle (add to the
 // selected zone), split, door, opening, place (a device, see data-device).
 //
 // The view (zoom and pan) belongs to the browser: the server's viewBox only sets the
 // first frame (`data-fit`, used by "Fit"), LiveView ignores later changes of it
 // (JS.ignore_attributes). Wheel zooms around the cursor; Space + drag or the middle
 // button pans. Keyboard shortcuts (outside form fields) are sent as `key` events.
+// Walls use non-scaling strokes; symbols and labels ([data-screen] groups) are
+// rescaled after every view change so they keep their screen size.
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 const MINIMUM_SIZE_STEPS = 1
 const ZOOM_STEP = 1.2
@@ -38,6 +41,8 @@ export default {
     this.onKeyup = event => { if (event.key === " ") this.spaceHeld = false }
     window.addEventListener("keydown", this.onKeydown)
     window.addEventListener("keyup", this.onKeyup)
+    this.resizeObserver = new ResizeObserver(() => this.applyScreenSizes())
+    this.resizeObserver.observe(this.el)
     this.applyView()
   },
 
@@ -50,6 +55,7 @@ export default {
   destroyed() {
     window.removeEventListener("keydown", this.onKeydown)
     window.removeEventListener("keyup", this.onKeyup)
+    this.resizeObserver?.disconnect()
   },
 
   applyView() {
@@ -57,6 +63,24 @@ export default {
     if (!svg) return
     if (!this.view) this.view = svg.getAttribute("viewBox").split(" ").map(Number)
     svg.setAttribute("viewBox", this.view.join(" "))
+    this.applyScreenSizes()
+  },
+
+  // Symbols, labels and grid lines are sized in screen pixels: their groups are
+  // scaled by the plan units per pixel, the larger ratio since the drawing keeps
+  // its proportions.
+  applyScreenSizes() {
+    const svg = this.svg()
+    const {width, height} = svg.getBoundingClientRect()
+    if (width === 0 || height === 0) return
+    const scale = Math.max(this.view[2] / width, this.view[3] / height)
+
+    svg.querySelectorAll("[data-screen]").forEach(group => {
+      group.setAttribute("transform", `translate(${group.dataset.x} ${group.dataset.y}) scale(${scale})`)
+    })
+    svg.querySelectorAll("[data-screen-stroke]").forEach(line => {
+      line.setAttribute("stroke-width", Number(line.dataset.screenStroke) * scale)
+    })
   },
 
   fit() {
@@ -179,6 +203,9 @@ export default {
         this.begin(event, {kind: "resize", zone, index, corner, rectangle: this.rectangleOf(zone, index), origin: point})
       } else if (opening) {
         this.pushEvent("select-opening", {index: Number(opening.dataset.openingIndex)})
+      } else if (zoneRectangle && zoneRectangle.hasAttribute("data-anchored")) {
+        // Anchored rooms follow their parent: they are selected, never dragged.
+        this.pushEvent("select-zone", {zone_id: zoneRectangle.dataset.zone, index: Number(zoneRectangle.dataset.index)})
       } else if (zoneRectangle) {
         const {zone, index} = zoneRectangle.dataset
         const rectangles = this.svg().querySelectorAll(`rect[data-zone="${zone}"]:not([data-handle])`).length

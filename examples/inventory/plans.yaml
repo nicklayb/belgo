@@ -1,6 +1,11 @@
 ---
 # Managed by Belgo. Hand edits are welcome, reload Belgo to apply them.
 # Distances in centimetres; levels sit `offset` levels above their base.
+# Rooms are anchored to each other: an anchored room stores its size and the wall
+# of its parent it lies against (start / end = left / right end of that wall seen
+# from inside the parent, offset from that end, or center); its other rectangles
+# and its devices are relative to its first rectangle's top-left corner. Root rooms
+# (no anchor) keep absolute x / y. Openings sit on a room wall the same way.
 version: 1
 plans:
   maison:
@@ -37,9 +42,10 @@ plans:
       - id: studio
         level_id: sous-sol
         name: Studio
+        anchor: {zone_id: bureau-nicolas, side: east, align: start, offset: 0}
         rectangles:
-          - {depth: 400, width: 500, x: 500, y: 0}
-          - {depth: 400, width: 1000, x: 0, y: 400}
+          - {depth: 400, width: 500}
+          - {depth: 400, width: 1000, x: -500, y: 400}
       - id: garage
         level_id: garage
         name: Garage
@@ -51,6 +57,12 @@ plans:
         name: Salon
         rectangles:
           - {depth: 800, width: 1000, x: 0, y: 0}
+      - id: salle-de-bain
+        level_id: rez-de-chaussee
+        name: Salle de bain
+        anchor: {zone_id: salon, side: north, align: start, offset: 100}
+        rectangles:
+          - {depth: 250, width: 300}
       - id: chambre
         level_id: etage
         name: Chambre
@@ -59,15 +71,21 @@ plans:
       - id: chambre-bebe
         level_id: etage
         name: Chambre bébé
+        anchor: {zone_id: chambre, side: south, align: center}
         rectangles:
-          - {depth: 400, width: 600, x: 1000, y: 400}
+          - {depth: 400, width: 600}
       - id: terrain
         name: Terrain
         rectangles:
           - {depth: 1800, width: 2600, x: -500, y: -500}
     openings:
-      - {axis: vertical, kind: door, level_id: sous-sol, width: 90, x: 500, y: 100}
-      - {axis: horizontal, kind: opening, level_id: etage, width: 120, x: 1200, y: 400}
+      - {zone_id: bureau-nicolas, side: east, align: start, offset: 100, width: 90, kind: door}
+      - {zone_id: chambre, side: south, align: end, offset: 200, width: 120, kind: opening}
+      # The entrance: 150 cm wide, 50 cm from the left of the salon's south wall.
+      - {zone_id: salon, side: south, align: start, offset: 50, width: 150, kind: door}
+      - {zone_id: salle-de-bain, side: south, align: center, width: 80, kind: door}
     placements:
       - {anchor: floor, device_id: hades, height: 0, x: 80, y: 320, zone_id: bureau-nicolas}
       - {anchor: wall, device_id: apple-tv-salon, height: 120, x: 500, y: 0, zone_id: salon}
+      # Relative to the studio's first rectangle (at 500, 0 once laid out).
+      - {anchor: float, device_id: t480s, height: 80, x: -200, y: 600, zone_id: studio}

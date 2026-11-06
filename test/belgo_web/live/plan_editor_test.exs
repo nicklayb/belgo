@@ -60,7 +60,12 @@ defmodule BelgoWeb.PlanEditorTest do
 
     plan = saved_plan("742-evergreen-terrace")
     assert ["Room 1", "Room 2", "Ground floor"] == Enum.map(plan.zones, & &1.name)
-    assert [%{kind: :door, axis: :vertical, x: 500}] = plan.openings
+    # The door belongs to the wall of Room 1 it was put on; Room 2 is anchored there.
+    assert [%{kind: :door, zone_id: "room-1", side: :east, align: :start, offset: 155}] =
+             plan.openings
+
+    assert %{anchor: %{zone_id: "room-1", side: :east}} =
+             Enum.find(plan.zones, &(&1.id == "room-2"))
 
     assert %{base_id: "basement", offset: 1.0} =
              Enum.find(plan.levels, &(&1.id == "ground-floor"))
@@ -83,8 +88,10 @@ defmodule BelgoWeb.PlanEditorTest do
     })
 
     assert has_element?(view, "#plan-warnings [data-warning=orphan_zone]")
+    # Anchoring is optional (owner): a room drawn on its own is not reported.
+    refute has_element?(view, "#plan-warnings [data-warning=unanchored_zone]")
 
-    render_click(element(view, "#plan-warnings button", "Anchor"))
+    render_click(element(view, "#plan-warnings button[phx-click=anchor]"))
     refute has_element?(view, "#plan-warnings [data-warning=orphan_zone]")
   end
 
@@ -213,6 +220,98 @@ defmodule BelgoWeb.PlanEditorTest do
     render_hook(view, "extend-room", %{"zone_id" => "room-1", "index" => index})
     assert has_element?(view, ~s(#plan-tree [data-tree="rectangle:room-3:0"]), "800 × 300")
     refute has_element?(view, ~s([data-extend="room-1"][data-side=south]))
+
+    # It is anchored to Room 1: selected, never dragged; aligned in its panel.
+    assert has_element?(view, ~s(#plan-tree [data-tree="zone:room-3"]), "on Room 1")
+    assert has_element?(view, ~s(#plan-editor-canvas rect[data-zone="room-3"][data-anchored]))
+    assert has_element?(view, "#plan-zone-anchor", "south wall of Room 1")
+
+    render_hook(view, "move", %{
+      "zone_id" => "room-3",
+      "index" => 0,
+      "whole" => true,
+      "delta_x" => 100,
+      "delta_y" => 0
+    })
+
+    assert render(view) =~ "Room 3 is anchored"
+    assert has_element?(view, ~s(#plan-editor-canvas rect[data-zone="room-3"][x="0"][y="400"]))
+
+    view
+    |> form("#anchor-form", anchor: %{previous_align: "start", align: "start", offset: "100"})
+    |> render_change()
+
+    send(view.pid, :autosave)
+    assert has_element?(view, "#plan-save-status[data-status=saved]")
+
+    assert %{anchor: %{side: :south, align: :start, offset: 100}, rectangles: [%{x: nil}]} =
+             Enum.find(saved_plan("742-evergreen-terrace").zones, &(&1.id == "room-3"))
+  end
+
+  test "anchoring a room by hand, orphans when its parent is deleted", %{conn: conn} do
+    view = home_with_rooms(conn)
+
+    # Room 2 was drawn on its own: no warning, its panel offers to anchor it.
+    refute has_element?(view, "#plan-warnings [data-warning=unanchored_zone]")
+    render_hook(view, "select-zone", %{"zone_id" => "room-2", "index" => 0})
+    assert has_element?(view, "#plan-zone-anchoring")
+
+    view
+    |> form("#anchor-to-form", anchor: %{own: "0:west", target: "room-1/0:east"})
+    |> render_submit()
+
+    assert has_element?(view, "#plan-zone-anchor", "east wall of Room 1")
+
+    # Resizing Room 1 moves Room 2 with it.
+    render_hook(view, "set-rectangle", %{
+      "zone_id" => "room-1",
+      "index" => 0,
+      "x" => 0,
+      "y" => 0,
+      "width" => 600,
+      "depth" => 400
+    })
+
+    assert has_element?(view, ~s(#plan-editor-canvas rect[data-zone="room-2"][x="600"]))
+
+    # A third room on Room 1's south side, then Room 1 goes: both stay where they
+    # were, as roots (no warning), and Room 3 can be anchored again.
+    index =
+      view
+      |> element(~s([data-extend="room-1"][data-side=south]))
+      |> render()
+      |> then(&Regex.run(~r/data-side-index="(\d+)"/, &1, capture: :all_but_first))
+      |> hd()
+      |> String.to_integer()
+
+    render_hook(view, "extend-room", %{"zone_id" => "room-1", "index" => index})
+    render_hook(view, "select-zone", %{"zone_id" => "room-1", "index" => 0})
+    render_click(element(view, "#plan-selected-zone button[phx-click=delete-zone]"))
+
+    assert has_element?(view, ~s(#plan-editor-canvas rect[data-zone="room-2"][x="600"]))
+    assert has_element?(view, ~s(#plan-editor-canvas rect[data-zone="room-3"][y="400"]))
+    refute has_element?(view, "#plan-warnings [data-warning=unanchored_zone]")
+    render_hook(view, "select-zone", %{"zone_id" => "room-3", "index" => 0})
+    assert has_element?(view, "#plan-zone-anchoring")
+  end
+
+  test "a door is aligned on its wall in its panel", %{conn: conn} do
+    view = home_with_rooms(conn)
+    render_hook(view, "tool", %{"tool" => "door"})
+    render_hook(view, "add-opening", %{"x" => 400, "y" => 5})
+    assert has_element?(view, "#plan-opening-wall", "north wall of Room 1")
+
+    view
+    |> form("#plan-selected-opening form",
+      opening: %{previous_align: "start", align: "center", offset: "355"}
+    )
+    |> render_change()
+
+    send(view.pid, :autosave)
+    assert has_element?(view, "#plan-save-status[data-status=saved]")
+
+    assert [%{zone_id: "room-1", side: :north, align: :center, offset: nil, width: 90}] =
+             saved_plan("742-evergreen-terrace").openings
   end
 
   test "the drawn grid follows the snapping step", %{conn: conn} do
@@ -222,5 +321,18 @@ defmodule BelgoWeb.PlanEditorTest do
     render_change(form(view, "#plan-editor-toolbar-grid", grid: "100"))
     assert has_element?(view, "#plan-grid-step[width='100']")
     assert has_element?(view, "#plan-editor[data-grid='100']")
+  end
+
+  test "the home panel explains where the ground is", %{conn: conn} do
+    view = create_home(conn)
+    render_submit(form(view, "#add-level", level: %{name: "Basement"}))
+    assert has_element?(view, "#plan-ground-summary", "Not set")
+
+    view
+    |> form("#plan-settings form", settings: %{ground_level_id: "basement", ground_percent: "80"})
+    |> render_change()
+
+    assert has_element?(view, "#plan-ground-summary", "Ground at 2.16 m, 80 % up Basement.")
+    assert has_element?(view, "#plan-ground-summary", "Draw the terrain on the Exterior tab")
   end
 end

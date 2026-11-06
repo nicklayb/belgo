@@ -2,7 +2,9 @@ defmodule BelgoWeb.Components.PlanDrawing do
   @moduledoc """
   Draws one level of a plan (or its exterior, with the home's footprint) as SVG, in
   plan centimetres: rooms with their measures, walls, doors and openings, devices.
-  Orphan rooms are drawn dashed. Read only: the editor builds on the same drawing.
+  Orphan rooms are drawn dashed. Positions come from the analysis' layout
+  (`Belgo.Plans.Layout`): the stored plan holds anchors and relative positions. Read
+  only: the editor builds on the same drawing.
   """
 
   use Phoenix.Component
@@ -21,12 +23,15 @@ defmodule BelgoWeb.Components.PlanDrawing do
   @grid_reach_frames 5
   @major_grid_steps 10
   @minimum_size_centimetres 400
-  @font_ratio 45
-  @wall_ratio 120
+  # Walls, symbols and texts keep their screen size at any zoom; before the browser
+  # measures the drawing, it is assumed this many pixels wide.
+  @assumed_drawing_pixels 900
+  @wall_pixels 4
+  @grid_line_pixels 0.5
   @centimetres_per_metre 100
   @square_centimetres_per_square_metre 10_000
 
-  attr(:plan, Plan, required: true)
+  attr(:plan, Plan, required: true, doc: "the stored plan; drawn from `analysis.layout`")
   attr(:analysis, Analysis, required: true)
   attr(:level_id, :string, default: nil, doc: "`nil` draws the exterior")
   attr(:device_by_id, :map, required: true)
@@ -56,6 +61,9 @@ defmodule BelgoWeb.Components.PlanDrawing do
   `data-opening-index`); previews go to `#plan-editor-overlay`, ignored by patches.
   """
   def level_drawing(assigns) do
+    # Everything is drawn at its absolute position.
+    assigns = assign(assigns, :plan, assigns.analysis.layout)
+
     zones =
       Enum.filter(
         assigns.plan.zones,
@@ -75,14 +83,15 @@ defmodule BelgoWeb.Components.PlanDrawing do
       assign(assigns,
         zones: zones,
         view: view,
-        font_size: size / @font_ratio,
-        wall_width: size / @wall_ratio,
+        screen_scale: size / @assumed_drawing_pixels,
+        wall_pixels: @wall_pixels,
+        grid_line_pixels: @grid_line_pixels,
         walls: walls(assigns, zones),
         ghosts: ghost_rectangles(assigns),
         openings:
           for(
             {opening, index} <- Enum.with_index(assigns.plan.openings),
-            opening.level_id == assigns.level_id,
+            opening.level_id == assigns.level_id and Opening.segment(opening) != nil,
             do: {opening, index}
           ),
         placements: Enum.filter(assigns.plan.placements, &MapSet.member?(zone_ids, &1.zone_id)),
@@ -114,7 +123,8 @@ defmodule BelgoWeb.Components.PlanDrawing do
           <path
             d={"M#{@grid} 0H0V#{@grid}"}
             class="fill-none stroke-border"
-            stroke-width={@wall_width / 16}
+            stroke-width={@screen_scale * @grid_line_pixels}
+            data-screen-stroke={@grid_line_pixels}
             data-grid-step={@grid}
           />
         </pattern>
@@ -132,7 +142,8 @@ defmodule BelgoWeb.Components.PlanDrawing do
           <path
             d={"M#{@grid * @major_grid_steps} 0H0V#{@grid * @major_grid_steps}"}
             class="fill-none stroke-muted/40"
-            stroke-width={@wall_width / 8}
+            stroke-width={@screen_scale * @grid_line_pixels * 2}
+            data-screen-stroke={@grid_line_pixels * 2}
           />
         </pattern>
       </defs>
@@ -153,8 +164,9 @@ defmodule BelgoWeb.Components.PlanDrawing do
           width={rectangle.width}
           height={rectangle.depth}
           class="fill-muted/10 stroke-muted"
-          stroke-width={@wall_width / 4}
-          stroke-dasharray={@wall_width}
+          vector-effect="non-scaling-stroke"
+          stroke-width="1"
+          stroke-dasharray="4 3"
         />
       </g>
       <g :if={@footprint != []} data-footprint class="pointer-events-none">
@@ -176,14 +188,17 @@ defmodule BelgoWeb.Components.PlanDrawing do
           height={rectangle.depth}
           class={[
             zone_class(zone, @analysis),
-            @editable && "cursor-move",
+            @editable && !Zone.anchored?(zone) && "cursor-move",
+            @editable && Zone.anchored?(zone) && "cursor-pointer",
             zone.id == @selected_zone_id && "fill-accent/20",
             zone.id == @selected_zone_id && index == @selected_rectangle &&
               "fill-accent/35 stroke-accent"
           ]}
-          stroke-width={@wall_width / 3}
+          vector-effect="non-scaling-stroke"
+          stroke-width="2"
           data-zone={zone.id}
           data-index={index}
+          data-anchored={Zone.anchored?(zone)}
         />
         <g
           :for={
@@ -197,39 +212,37 @@ defmodule BelgoWeb.Components.PlanDrawing do
           class="cursor-pointer"
         >
           <title>{gettext("Add a room on this side")}</title>
-          <circle
-            cx={side.x + outward(side.side, :x) * @font_size * 0.7}
-            cy={side.y + outward(side.side, :y) * @font_size * 0.7}
-            r={@font_size * 0.7}
-            class="fill-accent stroke-surface"
-            stroke-width={@font_size * 0.1}
-          />
-          <path
-            d={
-              plus_path(
-                side.x + outward(side.side, :x) * @font_size * 0.7,
-                side.y + outward(side.side, :y) * @font_size * 0.7,
-                @font_size * 0.35
-              )
-            }
-            class="stroke-accent-foreground"
-            stroke-width={@font_size * 0.12}
-            stroke-linecap="round"
-          />
+          <.screen_group x={side.x} y={side.y} scale={@screen_scale}>
+            <circle
+              cx={outward(side.side, :x) * 12}
+              cy={outward(side.side, :y) * 12}
+              r="10"
+              class="fill-accent stroke-surface"
+              stroke-width="1.5"
+            />
+            <path
+              d={plus_path(outward(side.side, :x) * 12, outward(side.side, :y) * 12, 5)}
+              class="stroke-accent-foreground"
+              stroke-width="2"
+              stroke-linecap="round"
+            />
+          </.screen_group>
         </g>
         <path
           :if={zone.id in @analysis.orphan_zone_ids}
           d={outline_path(@analysis.measures[zone.id].outline)}
           class="pointer-events-none fill-none stroke-warning"
-          stroke-width={@wall_width / 2}
-          stroke-dasharray={@wall_width * 2}
+          vector-effect="non-scaling-stroke"
+          stroke-width="2"
+          stroke-dasharray="6 4"
         />
       </g>
       <path
         :if={@level_id}
         d={outline_path(@walls)}
         class="pointer-events-none fill-none stroke-foreground"
-        stroke-width={@wall_width}
+        vector-effect="non-scaling-stroke"
+        stroke-width={@wall_pixels}
         stroke-linecap="square"
       />
       <g
@@ -241,7 +254,8 @@ defmodule BelgoWeb.Components.PlanDrawing do
         <path
           d={outline_path([Opening.segment(opening)])}
           class="stroke-surface"
-          stroke-width={@wall_width * 1.2}
+          vector-effect="non-scaling-stroke"
+          stroke-width={@wall_pixels + 2}
           data-opening-index={index}
         />
         <path
@@ -252,8 +266,9 @@ defmodule BelgoWeb.Components.PlanDrawing do
             opening.kind == :opening && "stroke-muted",
             index == @selected_opening && "stroke-warning"
           ]}
-          stroke-width={if(index == @selected_opening, do: @wall_width / 1.5, else: @wall_width / 3)}
-          stroke-dasharray={opening.kind == :opening && @wall_width}
+          vector-effect="non-scaling-stroke"
+          stroke-width={if(index == @selected_opening, do: 4, else: 2)}
+          stroke-dasharray={opening.kind == :opening && "4 3"}
           data-opening-index={index}
         />
       </g>
@@ -262,7 +277,7 @@ defmodule BelgoWeb.Components.PlanDrawing do
           zone={zone}
           measure={@analysis.measures[zone.id]}
           location={zone.location_id && @location_by_id[zone.location_id]}
-          font_size={@font_size}
+          scale={@screen_scale}
         />
       </g>
       <g
@@ -271,110 +286,110 @@ defmodule BelgoWeb.Components.PlanDrawing do
         data-placement={placement.device_id}
         class={@editable && "cursor-grab"}
       >
-        <circle
-          :if={placement.device_id == @selected_device_id}
-          cx={placement.x}
-          cy={placement.y}
-          r={@font_size * 0.9}
-          class="fill-none stroke-accent"
-          stroke-width={@font_size * 0.15}
-        />
         <.device_marker
           placement={placement}
           device={@device_by_id[placement.device_id]}
-          font_size={@font_size}
+          scale={@screen_scale}
+          selected={placement.device_id == @selected_device_id}
           linked={!@editable}
         />
       </g>
       <g :if={@selected_zone && @editable} data-handles>
-        <rect
+        <.screen_group
           :for={handle <- handles(@selected_zone)}
-          x={handle.x - @wall_width}
-          y={handle.y - @wall_width}
-          width={@wall_width * 2}
-          height={@wall_width * 2}
-          class="fill-surface stroke-accent"
-          stroke-width={@wall_width / 3}
-          style={"cursor: #{handle.corner}-resize"}
-          data-handle={handle.corner}
-          data-zone={@selected_zone.id}
-          data-index={handle.index}
-        />
+          x={handle.x}
+          y={handle.y}
+          scale={@screen_scale}
+        >
+          <rect
+            x="-5"
+            y="-5"
+            width="10"
+            height="10"
+            class="fill-surface stroke-accent"
+            stroke-width="1.5"
+            style={"cursor: #{handle.corner}-resize"}
+            data-handle={handle.corner}
+            data-zone={@selected_zone.id}
+            data-index={handle.index}
+          />
+        </.screen_group>
       </g>
       <g :if={@editable} id="plan-editor-overlay" phx-update="ignore"></g>
     </svg>
     """
   end
 
+  attr(:x, :any, required: true)
+  attr(:y, :any, required: true)
+  attr(:scale, :any, required: true)
+  slot(:inner_block, required: true)
+
+  # Children are drawn in screen pixels around (x, y): the `PlanEditor` hook keeps
+  # the scale equal to the plan units per pixel, so they keep their size at any zoom.
+  defp screen_group(assigns) do
+    ~H"""
+    <g data-screen data-x={@x} data-y={@y} transform={"translate(#{@x} #{@y}) scale(#{@scale})"}>
+      {render_slot(@inner_block)}
+    </g>
+    """
+  end
+
   attr(:zone, Zone, required: true)
   attr(:measure, :any, required: true)
   attr(:location, :any, default: nil)
-  attr(:font_size, :float, required: true)
+  attr(:scale, :any, required: true)
 
   defp zone_label(assigns) do
     center = label_center(assigns.zone)
     assigns = assign(assigns, x: center.x, y: center.y)
 
     ~H"""
-    <text
-      x={@x}
-      y={@y}
-      text-anchor="middle"
-      font-size={@font_size}
-      class="fill-foreground font-medium"
-    >
-      <%= if @location do %>
-        <a href={~p"/locations/#{@location.id}"} class="hover:fill-accent">{@zone.name}</a>
-      <% else %>
-        {@zone.name}
-      <% end %>
-    </text>
-    <text
-      x={@x}
-      y={@y + @font_size * 1.3}
-      text-anchor="middle"
-      font-size={@font_size * 0.8}
-      class="fill-muted"
-      data-measure={@zone.id}
-    >
-      {measure_label(@measure)}
-    </text>
+    <.screen_group x={@x} y={@y} scale={@scale}>
+      <text text-anchor="middle" font-size="13" class="fill-foreground font-medium">
+        <%= if @location do %>
+          <a href={~p"/locations/#{@location.id}"} class="hover:fill-accent">{@zone.name}</a>
+        <% else %>
+          {@zone.name}
+        <% end %>
+      </text>
+      <text y="16" text-anchor="middle" font-size="11" class="fill-muted" data-measure={@zone.id}>
+        {measure_label(@measure)}
+      </text>
+    </.screen_group>
     """
   end
 
   attr(:placement, :any, required: true)
   attr(:device, :any, default: nil)
-  attr(:font_size, :float, required: true)
+  attr(:scale, :any, required: true)
+  attr(:selected, :boolean, default: false)
   attr(:linked, :boolean, default: true, doc: "the label links to the device (not in the editor)")
 
   defp device_marker(assigns) do
     ~H"""
-    <circle
-      cx={@placement.x}
-      cy={@placement.y}
-      r={@font_size * 0.45}
-      class={[
-        "stroke-surface",
-        @device && "fill-accent",
-        !@device && "fill-warning"
-      ]}
-      stroke-width={@font_size * 0.12}
-    />
-    <text
-      x={@placement.x + @font_size * 0.7}
-      y={@placement.y + @font_size * 0.35}
-      font-size={@font_size * 0.8}
-      class="fill-foreground"
-    >
-      <%= cond do %>
-        <% @device && @linked -> %>
-          <a href={~p"/devices/#{@device.id}"} class="hover:fill-accent">{@device.name}</a>
-        <% @device -> %>
-          {@device.name}
-        <% true -> %>
-          {@placement.device_id}
-      <% end %>
-    </text>
+    <.screen_group x={@placement.x} y={@placement.y} scale={@scale}>
+      <circle :if={@selected} r="11" class="fill-none stroke-accent" stroke-width="2" />
+      <circle
+        r="6"
+        class={[
+          "stroke-surface",
+          @device && "fill-accent",
+          !@device && "fill-warning"
+        ]}
+        stroke-width="1.5"
+      />
+      <text x="10" y="4" font-size="12" class="fill-foreground">
+        <%= cond do %>
+          <% @device && @linked -> %>
+            <a href={~p"/devices/#{@device.id}"} class="hover:fill-accent">{@device.name}</a>
+          <% @device -> %>
+            {@device.name}
+          <% true -> %>
+            {@placement.device_id}
+        <% end %>
+      </text>
+    </.screen_group>
     """
   end
 

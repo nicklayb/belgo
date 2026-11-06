@@ -5,6 +5,9 @@ defmodule Belgo.Plans.EditingTest do
   alias Belgo.Plans.Analysis
   alias Belgo.Plans.Editing
   alias Belgo.Plans.Geometry
+  alias Belgo.Plans.Layout
+  alias Belgo.Plans.Opening
+  alias Belgo.Plans.Placement
 
   @snapshot %Belgo.Inventory.Snapshot{}
 
@@ -34,14 +37,15 @@ defmodule Belgo.Plans.EditingTest do
     refute Enum.any?(plan.zones, &(&1.level_id == garage))
   end
 
-  test "splitting a room makes two touching rooms", %{plan: plan} do
+  test "splitting a room makes two touching rooms, the new one anchored", %{plan: plan} do
     {:ok, plan, kitchen} = Editing.split_zone(plan, "rumpus-room", :vertical, 500, "Kitchen")
 
-    rumpus = Enum.find(plan.zones, &(&1.id == "rumpus-room"))
-    kitchen = Enum.find(plan.zones, &(&1.id == kitchen))
-    assert [%{width: 500}] = rumpus.rectangles
-    assert [%{x: 500, width: 300}] = kitchen.rectangles
-    assert Geometry.touch?(hd(rumpus.rectangles), hd(kitchen.rectangles))
+    assert [%{width: 500} = rumpus_rectangle] = placed(plan, "rumpus-room")
+    assert [%{x: 500, y: 0, width: 300} = kitchen_rectangle] = placed(plan, kitchen)
+    assert Geometry.touch?(rumpus_rectangle, kitchen_rectangle)
+
+    assert %{anchor: %{zone_id: "rumpus-room", side: :east, offset: 0}} =
+             Enum.find(plan.zones, &(&1.id == kitchen))
 
     assert {:error, "the line does not cross the room"} =
              Editing.split_zone(plan, "kitchen", :vertical, 2000, "Nowhere")
@@ -52,7 +56,8 @@ defmodule Belgo.Plans.EditingTest do
     analysis = Analysis.build(plan, @snapshot)
 
     {:ok, plan} = Editing.add_opening(plan, analysis, basement, 510, 30, :door)
-    assert [%{axis: :vertical, x: 500, y: 0, width: 90}] = plan.openings
+    assert [%Opening{zone_id: _room, align: :start, offset: 0, width: 90, x: nil}] = plan.openings
+    assert [%{axis: :vertical, x: 500, y: 0}] = Layout.resolve(plan).openings
     assert [] == Analysis.build(plan, @snapshot).warnings
 
     assert {:error, _message} = Editing.add_opening(plan, analysis, basement, 250, 200, :door)
@@ -66,6 +71,7 @@ defmodule Belgo.Plans.EditingTest do
 
     {:ok, plan} = Editing.anchor_zone(plan, shed)
     assert [] == Analysis.build(plan, @snapshot).orphan_zone_ids
+    assert %{anchor: %{zone_id: "rumpus-room"}} = Enum.find(plan.zones, &(&1.id == shed))
   end
 
   test "moving a room moves its devices", %{plan: plan} do
@@ -90,6 +96,18 @@ defmodule Belgo.Plans.EditingTest do
     assert {:error, _message} = Editing.delete_rectangle(plan, "rumpus-room", 0)
     assert 120 == Editing.snap(123, 10)
   end
+
+  defp placed(plan, zone_id) do
+    plan
+    |> Layout.resolve()
+    |> Map.fetch!(:zones)
+    |> Enum.find(&(&1.id == zone_id))
+    |> Map.fetch!(:rectangles)
+  end
+
+  defp analysis(plan), do: Analysis.build(plan, @snapshot)
+
+  defp warning_kinds(plan), do: Enum.map(analysis(plan).warnings, & &1.kind)
 
   describe "placing devices" do
     test "on the floor inside a room, on a wall near one", %{plan: plan, basement: basement} do
@@ -137,6 +155,135 @@ defmodule Belgo.Plans.EditingTest do
     end
   end
 
+  describe "anchored rooms" do
+    setup %{plan: plan} do
+      index = Enum.find_index(Editing.free_sides(plan, "rumpus-room"), &(&1.side == :east))
+      {:ok, plan, kitchen} = Editing.add_adjacent_zone(plan, "rumpus-room", index, "Kitchen")
+      %{plan: plan, kitchen: kitchen}
+    end
+
+    test "follow their parent when it is resized or moved", %{plan: plan, kitchen: kitchen} do
+      assert [%{x: 800, y: 0, width: 300, depth: 400}] = placed(plan, kitchen)
+
+      {:ok, plan} =
+        Editing.set_rectangle(plan, "rumpus-room", 0, %{x: 0, y: 0, width: 650, depth: 400})
+
+      assert [%{x: 650, y: 0}] = placed(plan, kitchen)
+
+      {:ok, plan} = Editing.move_zone(plan, "rumpus-room", 100, 50)
+      assert [%{x: 750, y: 50}] = placed(plan, kitchen)
+    end
+
+    test "cannot be moved; resized, they keep their anchored wall", %{
+      plan: plan,
+      kitchen: kitchen
+    } do
+      assert {:error, _message} = Editing.move_zone(plan, kitchen, 100, 0)
+
+      # Dragging its west edge into the rumpus room: it grows east instead.
+      {:ok, plan} =
+        Editing.set_rectangle(plan, kitchen, 0, %{x: 700, y: 0, width: 400, depth: 400})
+
+      assert [%{x: 800, y: 0, width: 400}] = placed(plan, kitchen)
+
+      # Along the wall, the offset follows the edit.
+      {:ok, plan} =
+        Editing.set_rectangle(plan, kitchen, 0, %{x: 800, y: 100, width: 400, depth: 200})
+
+      assert %{anchor: %{offset: 100}} = Enum.find(plan.zones, &(&1.id == kitchen))
+      assert [%{x: 800, y: 100, depth: 200}] = placed(plan, kitchen)
+    end
+
+    test "their devices and openings follow them", %{plan: plan, kitchen: kitchen} do
+      {:ok, plan} = Editing.place_device(plan, "burns-node", "basement", 900, 200)
+      assert [%Placement{zone_id: ^kitchen, x: 100, y: 200}] = plan.placements
+
+      {:ok, plan} = Editing.add_opening(plan, analysis(plan), "basement", 1100, 205, :door)
+
+      {:ok, plan} =
+        Editing.set_rectangle(plan, "rumpus-room", 0, %{x: 0, y: 0, width: 500, depth: 400})
+
+      resolved = Layout.resolve(plan)
+      assert [%{x: 600, y: 200}] = resolved.placements
+      assert [%{axis: :vertical, x: 800}] = resolved.openings
+      # Burns Node is not in the (empty) inventory: nothing else to report.
+      assert [:unknown_device] == warning_kinds(plan)
+    end
+
+    test "deleting a parent leaves its children where they were, as roots", %{
+      plan: plan,
+      kitchen: kitchen
+    } do
+      {:ok, plan} = Editing.place_device(plan, "burns-node", "basement", 900, 200)
+      {:ok, plan} = Editing.delete_zone(plan, "rumpus-room")
+
+      assert %{anchor: nil, rectangles: [%{x: 800, y: 0, width: 300}]} =
+               Enum.find(plan.zones, &(&1.id == kitchen))
+
+      assert [%{x: 900, y: 200}] = plan.placements
+
+      # The kitchen is the main room of the level now: re-add a room and anchor it.
+      {:ok, plan, shed} =
+        Editing.add_zone(plan, "basement", [%{x: 0, y: 30, width: 200, depth: 200}], "Shed")
+
+      # Anchoring is optional: a root room is not a problem.
+      refute :unanchored_zone in warning_kinds(plan)
+      assert shed in Analysis.unanchored_zone_ids(plan)
+
+      # Its north wall cannot face the kitchen's west wall…
+      assert {:error, _message} = Editing.anchor_to(plan, shed, {0, :north}, kitchen, {0, :west})
+
+      # …its east wall can: it moves across to touch, keeping its height along the wall.
+      {:ok, plan} = Editing.anchor_to(plan, shed, {0, :east}, kitchen, {0, :west})
+      assert [%{x: 600, y: 30}] = placed(plan, shed)
+      assert [:unknown_device] == warning_kinds(plan)
+
+      # A parent cannot be anchored to its child.
+      assert {:error, _message} = Editing.anchor_to(plan, kitchen, {0, :west}, shed, {0, :east})
+    end
+
+    test "detach, align and offset", %{plan: plan, kitchen: kitchen} do
+      {:ok, plan} = Editing.update_anchor(plan, kitchen, %{offset: 50})
+      assert [%{y: 50}] = placed(plan, kitchen)
+
+      # A new alignment alone keeps the room where it is.
+      {:ok, plan} = Editing.update_anchor(plan, kitchen, %{align: :end})
+      assert %{anchor: %{align: :end, offset: -50}} = Enum.find(plan.zones, &(&1.id == kitchen))
+      assert [%{y: 50}] = placed(plan, kitchen)
+
+      {:ok, plan} = Editing.update_anchor(plan, kitchen, %{align: :center})
+
+      assert %{anchor: %{align: :center, offset: nil}} =
+               Enum.find(plan.zones, &(&1.id == kitchen))
+
+      assert [%{y: 0}] = placed(plan, kitchen)
+
+      {:ok, plan} = Editing.detach_zone(plan, kitchen)
+
+      assert %{anchor: nil, rectangles: [%{x: 800, y: 0}]} =
+               Enum.find(plan.zones, &(&1.id == kitchen))
+    end
+  end
+
+  test "an opening is aligned on its wall by its start, its end or its centre", %{
+    plan: plan,
+    basement: basement
+  } do
+    {:ok, plan} = Editing.add_opening(plan, analysis(plan), basement, 300, 395, :opening)
+    # South wall: its start is the east end (x = 800).
+    assert [%{side: :south, align: :start, offset: 440, width: 120}] = plan.openings
+
+    {:ok, plan} = Editing.update_opening(plan, 0, %{offset: 50, width: 150})
+    assert [%{x: 600, width: 150}] = Layout.resolve(plan).openings
+
+    {:ok, plan} = Editing.update_opening(plan, 0, %{align: :end})
+    assert [%{align: :end, offset: 600}] = plan.openings
+
+    {:ok, plan} = Editing.update_opening(plan, 0, %{align: :center})
+    assert [%{offset: nil}] = plan.openings
+    assert [%{x: 325}] = Layout.resolve(plan).openings
+  end
+
   describe "adding a room next to another" do
     test "offers the free sides only", %{plan: plan, basement: basement} do
       {:ok, plan, _kitchen} =
@@ -154,8 +301,13 @@ defmodule Belgo.Plans.EditingTest do
       index = Enum.find_index(Editing.free_sides(plan, "rumpus-room"), &(&1.side == :south))
       {:ok, plan, porch} = Editing.add_adjacent_zone(plan, "rumpus-room", index, "Porch")
 
-      assert %{rectangles: [%{x: 0, y: 400, width: 800, depth: 300}]} =
-               Enum.find(plan.zones, &(&1.id == porch))
+      assert %{
+               anchor: %{zone_id: "rumpus-room", side: :south, align: :start, offset: 0},
+               rectangles: [%{x: nil, y: nil, width: 800, depth: 300}]
+             } = Enum.find(plan.zones, &(&1.id == porch))
+
+      assert [%{x: 0, y: 400, width: 800, depth: 300}] = placed(plan, porch)
+      assert {:ok, _decoded} = Codec.decode(:plans, Codec.encode(plan))
 
       refute Enum.any?(Editing.free_sides(plan, "rumpus-room"), &(&1.side == :south))
     end

@@ -1,8 +1,13 @@
 defmodule Belgo.Plans.Analysis do
   @moduledoc """
-  Everything computed from a plan, kept in memory (never stored): absolute level
-  heights, the ground height, walls of each level, measures of each zone, zones
-  disconnected from the rest of the home and warnings. Pure functions.
+  Everything computed from a plan, kept in memory (never stored): absolute positions
+  (`layout`, see `Belgo.Plans.Layout`), absolute level heights, the ground height,
+  walls of each level, measures of each zone, zones disconnected from the rest of
+  the home and warnings. Pure functions.
+
+  Anchoring is optional (owner): a root zone keeps its own position and is fine as
+  it is; the editor offers to anchor any root other than its level's main room (the
+  first root in the plan's order), without warning about it.
 
   Zones are connected when they share a wall on a level, or when their levels are at
   most one level apart and their footprints touch or overlap (a garage half a level
@@ -13,6 +18,7 @@ defmodule Belgo.Plans.Analysis do
 
   alias Belgo.Inventory.Snapshot
   alias Belgo.Plans.Geometry
+  alias Belgo.Plans.Layout
   alias Belgo.Plans.Levels
   alias Belgo.Plans.Opening
   alias Belgo.Plans.Plan
@@ -31,6 +37,7 @@ defmodule Belgo.Plans.Analysis do
             | :off_wall
             | :opening_off_wall
             | :orphan_zone
+            | :anchor_error
             | :location_mismatch
 
     @type t :: %__MODULE__{
@@ -52,7 +59,8 @@ defmodule Belgo.Plans.Analysis do
           }
   end
 
-  defstruct elevations: %{},
+  defstruct layout: nil,
+            elevations: %{},
             ground_elevation: 0.0,
             walls_by_level: %{},
             measures: %{},
@@ -60,6 +68,7 @@ defmodule Belgo.Plans.Analysis do
             warnings: []
 
   @type t :: %__MODULE__{
+          layout: Plan.t() | nil,
           elevations: %{String.t() => float()},
           ground_elevation: float(),
           walls_by_level: %{String.t() => [Geometry.segment()]},
@@ -68,9 +77,14 @@ defmodule Belgo.Plans.Analysis do
           warnings: [Warning.t()]
         }
 
-  @doc "Analyses a plan against the inventory (for its links to devices and locations)."
+  @doc """
+  Analyses a plan against the inventory (for its links to devices and locations).
+  `layout` is the plan resolved to absolute positions, what views draw.
+  """
   @spec build(Plan.t(), Snapshot.t()) :: t()
-  def build(%Plan{} = plan, %Snapshot{} = snapshot) do
+  def build(%Plan{} = stored_plan, %Snapshot{} = snapshot) do
+    plan = Layout.resolve(stored_plan)
+
     elevations =
       case Levels.elevations(plan.levels, plan.level_height) do
         {:ok, elevations} -> elevations
@@ -81,6 +95,7 @@ defmodule Belgo.Plans.Analysis do
     orphan_zone_ids = orphan_zone_ids(plan, elevations)
 
     analysis = %__MODULE__{
+      layout: plan,
       elevations: elevations,
       ground_elevation: ground_elevation(plan, elevations),
       walls_by_level: walls_by_level,
@@ -88,7 +103,19 @@ defmodule Belgo.Plans.Analysis do
       orphan_zone_ids: orphan_zone_ids
     }
 
-    %{analysis | warnings: warnings(plan, snapshot, analysis)}
+    %{analysis | warnings: warnings(plan, stored_plan, snapshot, analysis)}
+  end
+
+  @doc """
+  The root zones of a level other than its main room (the first root in the plan's
+  order): the rooms the editor offers to anchor. Exterior zones are left out.
+  """
+  @spec unanchored_zone_ids(Plan.t()) :: [String.t()]
+  def unanchored_zone_ids(%Plan{} = plan) do
+    plan.zones
+    |> Enum.reject(&(Zone.exterior?(&1) or Zone.anchored?(&1)))
+    |> Enum.group_by(& &1.level_id)
+    |> Enum.flat_map(fn {_level_id, [_main | others]} -> Enum.map(others, & &1.id) end)
   end
 
   @doc "The warnings of one device's placement."
@@ -182,7 +209,7 @@ defmodule Belgo.Plans.Analysis do
     reach(queue ++ neighbours, items, linked?, reached ++ neighbours)
   end
 
-  defp warnings(plan, snapshot, analysis) do
+  defp warnings(plan, stored_plan, snapshot, analysis) do
     zone_by_id = Map.new(plan.zones, &{&1.id, &1})
     device_by_id = Snapshot.index(snapshot, :devices)
     location_ids = MapSet.new(snapshot.locations, & &1.id)
@@ -200,7 +227,13 @@ defmodule Belgo.Plans.Analysis do
           message:
             "#{zone_by_id[zone_id].name} touches no other room: hidden from the 3D view until anchored"
         }
-      end)
+      end) ++ anchor_error_warnings(stored_plan)
+  end
+
+  defp anchor_error_warnings(stored_plan) do
+    Enum.map(Layout.errors(stored_plan), fn {zone_id, message} ->
+      %Warning{kind: :anchor_error, zone_id: zone_id, message: message}
+    end)
   end
 
   defp location_warnings(plan, location_ids) do
@@ -292,14 +325,20 @@ defmodule Belgo.Plans.Analysis do
 
   defp opening_warnings(plan, analysis) do
     for %Opening{} = opening <- plan.openings,
-        not Geometry.on_walls?(
-          Map.get(analysis.walls_by_level, opening.level_id, []),
-          Opening.segment(opening)
-        ) do
+        segment = Opening.segment(opening),
+        segment == nil or
+          not Geometry.on_walls?(Map.get(analysis.walls_by_level, opening.level_id, []), segment) do
       %Warning{
         kind: :opening_off_wall,
-        message: "a #{opening.kind} at #{opening.x}, #{opening.y} is no longer on a wall"
+        zone_id: opening.zone_id,
+        message: off_wall_message(opening)
       }
     end
   end
+
+  defp off_wall_message(%Opening{axis: nil} = opening),
+    do: "a #{opening.kind} of #{opening.zone_id} has no wall (unknown room or rectangle)"
+
+  defp off_wall_message(opening),
+    do: "a #{opening.kind} at #{opening.x}, #{opening.y} is no longer on a wall"
 end

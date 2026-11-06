@@ -468,6 +468,48 @@ first addressed interface only, other interfaces are named through their
   "update device location" button). 3D: floors, walls with door / opening holes
   and a lintel, stacked levels, ground plane at its height with exterior zones,
   labelled device markers, level visibility, orbit controls.
+- Plan rooms anchored to each other (alternative design, branch `plan-anchored`):
+  positions are computed, never stored. `Plans.Layout.resolve/1` (pure, tree from
+  the roots, no solver; `resolved: true` virtual flag makes it idempotent) returns
+  the plan with absolute rectangles, placements and opening positions; `Analysis`
+  keeps it as `analysis.layout`, used by `Scene`, `PlanDrawing` and the editor.
+  Zone frames: a root zone (no `anchor`) is absolute (old files load unchanged); an
+  anchored zone (`Plans.Anchor`: `zone_id`, `rectangle` index of the parent, `nil` =
+  first, `side`, `align` start / end / center, `offset`) stores only the size of its
+  first rectangle, lying outside the parent's `side` wall; its other rectangles and
+  its placements are relative to that first rectangle's corner (placements of roots
+  stay absolute = their frame). Start / end = left / right end of the wall seen from
+  inside the parent facing it (`Plans.WallPosition`, shared with openings). Openings
+  (`zone_id`, `rectangle`, `side`, `align`, `offset`, `width`, `kind`) follow their
+  wall; the former absolute openings (`level_id`, `x`, `y`, `axis`) are moved onto
+  the rectangle side holding them by `Plan.changeset` on load, else kept absolute
+  (e.g. one spanning two rooms' walls). Anchors: same level only (no cross-level
+  anchoring: each level has its own roots; stacked levels copy the footprint as a
+  root), unknown parent / rectangle / cycle = changeset error (`Layout.errors/1`).
+  Editing (`Plans.Editing`, absolute positions in, stored form out): only roots are
+  dragged (subtree follows; hook skips `data-anchored` rects), anchored rooms are
+  resized keeping their anchored wall (offset follows the edit along the wall),
+  `update_anchor` / `update_opening` (a new alignment alone keeps the position);
+  "+" on a free side (`free_sides/3` carries `parent_rectangle`, `first`, `last`)
+  and split create anchored rooms; deleting a room detaches its children where they
+  were (roots); split / delete rectangle re-home children and openings by world
+  position. Anchoring is optional (owner: "if you anchor it, good, else never
+  mind"): roots are not warned about; the room panel of any root other than its
+  level's first root (`Analysis.unanchored_zone_ids/1`) offers to anchor it (one of
+  its walls and a facing wall of another room → `Editing.anchor_to/5`, or "Nearest
+  wall" = `anchor_zone/2`). Warnings: `:anchor_error` (unknown parent, cycle…) and
+  the geometric orphans as before. Room panel: anchor (side of parent, align, offset, Detach); door
+  panel: align / offset. Limitation: wall devices keep x / y in the zone frame (an
+  anchored room resized away from its parent can leave them off the wall, warned).
+- Plan drawing sizes (owner: edges, labels and dimensions keep their size at any
+  zoom): walls / outlines / openings use `vector-effect="non-scaling-stroke"` with
+  pixel widths; labels, measures, device markers, handles and "+" are drawn in
+  pixels inside `screen_group` (`[data-screen]`, `data-x` / `data-y`) whose
+  `scale(k)` the `PlanEditor` hook sets to the plan units per pixel after every view
+  change and resize (grid lines via `data-screen-stroke`); the server renders a
+  first guess (`@assumed_drawing_pixels`), used as is by the read-only 2D view.
+  Measured: a label stays 15 px high from "Fit" to an 8× zoom. The editor's Home
+  panel explains the ground (`#plan-ground-summary`: height, missing exterior zones).
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

@@ -7,8 +7,10 @@ defmodule Belgo.Plans.Plan do
   referenced (`location_id`, `device_id`), never the other way around.
 
   The changeset checks the plan on its own: unique identifiers, known levels and
-  zones, levels without cycle, zones of a level not overlapping, one placement per
-  device. Links to the inventory are checked by the analysis (a deleted device stays
+  zones, levels without cycle, anchors resolvable (`Belgo.Plans.Layout`), zones of a
+  level not overlapping once laid out, one placement per device. Openings in the
+  former absolute format (`level_id`, `x`, `y`, `axis`) are put on the room wall
+  holding them, when one does. Links to the inventory are checked by the analysis (a deleted device stays
   on the plan with a warning).
   """
 
@@ -17,6 +19,7 @@ defmodule Belgo.Plans.Plan do
   alias Belgo.Inventory.Identifier
   alias Belgo.Plans.Geometry
   alias Belgo.Plans.Ground
+  alias Belgo.Plans.Layout
   alias Belgo.Plans.Level
   alias Belgo.Plans.Levels
   alias Belgo.Plans.Opening
@@ -32,6 +35,8 @@ defmodule Belgo.Plans.Plan do
     field(:location_id, :string)
     field(:wall_height, :integer, default: @default_wall_height_centimetres)
     field(:level_height, :integer, default: @default_level_height_centimetres)
+    # Set on the computed copy of `Belgo.Plans.Layout.resolve/1`, never stored.
+    field(:resolved, :boolean, virtual: true, default: false)
     embeds_one(:ground, Ground, on_replace: :update)
     embeds_many(:levels, Level, on_replace: :delete)
     embeds_many(:zones, Zone, on_replace: :delete)
@@ -60,8 +65,50 @@ defmodule Belgo.Plans.Plan do
     |> validate_unique(:placements, & &1.device_id, "placement of device")
     |> validate_levels()
     |> validate_references()
+    |> validate_anchors()
     |> validate_zones_apart()
+    |> attach_absolute_openings()
   end
+
+  defp current_plan(changeset) do
+    %__MODULE__{
+      zones: get_field(changeset, :zones),
+      openings: get_field(changeset, :openings),
+      placements: get_field(changeset, :placements)
+    }
+  end
+
+  defp validate_anchors(changeset) do
+    changeset
+    |> current_plan()
+    |> Layout.errors()
+    |> Enum.reduce(changeset, fn {_zone_id, message}, accumulator ->
+      add_error(accumulator, :zones, message)
+    end)
+  end
+
+  # Openings of the former absolute format move onto the room wall holding them.
+  defp attach_absolute_openings(changeset) do
+    openings = get_field(changeset, :openings)
+
+    if changeset.valid? and Enum.any?(openings, &(not Opening.on_wall?(&1))) do
+      resolved = Layout.resolve(current_plan(changeset))
+      put_embed(changeset, :openings, Enum.map(openings, &attach_opening(&1, resolved)))
+    else
+      changeset
+    end
+  end
+
+  defp attach_opening(%Opening{zone_id: nil} = opening, resolved) do
+    {_axis, _position, first, _last} = segment = Opening.segment(opening)
+
+    case Layout.walls_containing(resolved, opening.level_id, segment) do
+      [{zone, index, side} | _others] -> Layout.put_on_wall(opening, zone, index, side, first)
+      [] -> opening
+    end
+  end
+
+  defp attach_opening(opening, _resolved), do: opening
 
   defp validate_unique(changeset, field, key, label) do
     duplicates =
@@ -100,9 +147,14 @@ defmodule Belgo.Plans.Plan do
         do: {:zones, "#{zone.name}: unknown level #{level_id}"}
       ) ++
         for(
-          %Opening{level_id: level_id} <- get_field(changeset, :openings),
+          %Opening{zone_id: nil, level_id: level_id} <- get_field(changeset, :openings),
           not MapSet.member?(level_ids, level_id),
           do: {:openings, "unknown level #{level_id}"}
+        ) ++
+        for(
+          %Opening{zone_id: zone_id} when zone_id != nil <- get_field(changeset, :openings),
+          not MapSet.member?(zone_ids, zone_id),
+          do: {:openings, "unknown zone #{zone_id}"}
         ) ++
         for(
           %Placement{zone_id: zone_id} = placement <- get_field(changeset, :placements),
@@ -119,18 +171,26 @@ defmodule Belgo.Plans.Plan do
     end)
   end
 
-  # Zones never overlap within a level (rooms) nor at ground level (exterior).
+  # Zones never overlap within a level (rooms) nor at ground level (exterior), once
+  # laid out. Zones without position (reported by their own changeset) are left out.
   defp validate_zones_apart(changeset) do
+    plan = current_plan(changeset)
+
+    zones_by_level =
+      if Enum.all?(plan.zones, &positioned?/1),
+        do: Enum.group_by(Layout.resolve(plan).zones, & &1.level_id),
+        else: %{}
+
     overlaps =
-      changeset
-      |> get_field(:zones)
-      |> Enum.group_by(& &1.level_id)
-      |> Enum.flat_map(fn {_level_id, zones} -> overlapping_pairs(zones) end)
+      Enum.flat_map(zones_by_level, fn {_level_id, zones} -> overlapping_pairs(zones) end)
 
     Enum.reduce(overlaps, changeset, fn {left_zone, right_zone}, accumulator ->
       add_error(accumulator, :zones, "#{left_zone.name} and #{right_zone.name} overlap")
     end)
   end
+
+  defp positioned?(zone),
+    do: Enum.all?(Zone.frame_rectangles(zone), &(&1.x != nil and &1.y != nil))
 
   defp overlapping_pairs(zones) do
     for {left_zone, position} <- Enum.with_index(zones),

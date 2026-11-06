@@ -6,6 +6,11 @@ defmodule BelgoWeb.Plans.Editor do
   and before leaving. Gestures come from the `PlanEditor` hook; edits are
   `Belgo.Plans.Editing` functions.
 
+  Rooms are anchored to each other (`Belgo.Plans.Layout`): only root rooms are
+  dragged (their anchored rooms follow), anchored rooms are resized and aligned in
+  the room panel, which also anchors a room that is not (one of its walls against a
+  wall of another room) or detaches one.
+
   Edits are kept in an in-memory history (Ctrl+Z / Ctrl+Shift+Z, lost on reload).
   The element tree focuses levels, rooms and rectangles; its eyes hide rooms and
   rectangles, and show other levels faintly under the edited one (references).
@@ -24,6 +29,8 @@ defmodule BelgoWeb.Plans.Editor do
   alias Belgo.Plans.Ground
   alias Belgo.Plans.Opening
   alias Belgo.Plans.Plan
+  alias Belgo.Plans.WallPosition
+  alias Belgo.Plans.Zone
   alias BelgoWeb.Components.PlanDrawing
   alias BelgoWeb.Live.Mutation
 
@@ -295,8 +302,13 @@ defmodule BelgoWeb.Plans.Editor do
   def handle_event("set-rectangle-values", %{"index" => index, "rectangle" => values}, socket) do
     with {:zone, zone_id} <- socket.assigns.selected,
          {position, ""} <- Integer.parse(index),
-         [x, y, width, depth] <- Enum.map(~w(x y width depth), &parse_integer(values[&1])),
-         true <- Enum.all?([x, y, width, depth], &is_integer/1) and width > 0 and depth > 0 do
+         %{} = current <- Enum.at(layout_zone(socket.assigns, zone_id).rectangles, position),
+         [x, y, width, depth] <-
+           Enum.map(
+             ~w(x y width depth)a,
+             &(parse_integer(values[Atom.to_string(&1)]) || Map.fetch!(current, &1))
+           ),
+         true <- width > 0 and depth > 0 do
       rectangle = %{x: x, y: y, width: width, depth: depth}
 
       {:noreply,
@@ -340,7 +352,8 @@ defmodule BelgoWeb.Plans.Editor do
   end
 
   def handle_event("move", %{"zone_id" => zone_id, "index" => index} = params, socket) do
-    with %{rectangles: rectangles} <- Enum.find(socket.assigns.draft.zones, &(&1.id == zone_id)),
+    with %Zone{anchor: nil} <- Enum.find(socket.assigns.draft.zones, &(&1.id == zone_id)),
+         %{rectangles: rectangles} <- layout_zone(socket.assigns, zone_id),
          %{} = rectangle <- Enum.at(rectangles, index) do
       moved = %{
         rectangle
@@ -353,7 +366,16 @@ defmodule BelgoWeb.Plans.Editor do
        |> change(Editing.set_rectangle(socket.assigns.draft, zone_id, index, moved))
        |> assign(:selected, {:zone, zone_id})}
     else
-      _missing -> {:noreply, socket}
+      %Zone{} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Anchored rooms follow their parent: edit their offset.")
+         )}
+
+      _missing ->
+        {:noreply, socket}
     end
   end
 
@@ -446,12 +468,46 @@ defmodule BelgoWeb.Plans.Editor do
     do: {:noreply, change(socket, Editing.anchor_zone(socket.assigns.draft, zone_id))}
 
   def handle_event(
+        "anchor-to",
+        %{"anchor" => params},
+        %{assigns: %{selected: {:zone, zone_id}}} = socket
+      ) do
+    with {:ok, own_wall} <- parse_wall(params["own"]),
+         [parent_id, parent_wall] <- String.split(params["target"] || "", "/", parts: 2),
+         {:ok, parent_wall} <- parse_wall(parent_wall) do
+      {:noreply,
+       change(
+         socket,
+         Editing.anchor_to(socket.assigns.draft, zone_id, own_wall, parent_id, parent_wall)
+       )}
+    else
+      _invalid -> {:noreply, put_flash(socket, :error, gettext("Pick a wall of each room."))}
+    end
+  end
+
+  def handle_event("detach-zone", _params, %{assigns: %{selected: {:zone, zone_id}}} = socket),
+    do: {:noreply, change(socket, Editing.detach_zone(socket.assigns.draft, zone_id))}
+
+  def handle_event(
+        "update-anchor",
+        %{"anchor" => params},
+        %{assigns: %{selected: {:zone, zone_id}}} = socket
+      ) do
+    {:noreply,
+     change(
+       socket,
+       Editing.update_anchor(socket.assigns.draft, zone_id, alignment_attributes(params))
+     )}
+  end
+
+  def handle_event(
         "update-opening",
         %{"opening" => params},
         %{assigns: %{selected: {:opening, index}}} = socket
       ) do
     attributes =
-      %{}
+      params
+      |> alignment_attributes()
       |> put_present(:kind, parse_kind(params["kind"]))
       |> put_present(:width, parse_positive(params["width"]))
 
@@ -763,6 +819,96 @@ defmodule BelgoWeb.Plans.Editor do
 
   defp parse_kind(value), do: Enum.find(Opening.kinds(), &(Atom.to_string(&1) == value))
 
+  # `align` and `offset` of an anchor or an opening form: a changed alignment comes
+  # alone (the position is kept), else the offset typed.
+  defp alignment_attributes(params) do
+    align = Enum.find(WallPosition.aligns(), &(Atom.to_string(&1) == params["align"]))
+
+    if align != nil and params["align"] != params["previous_align"],
+      do: %{align: align},
+      else: put_present(%{}, :offset, parse_integer(params["offset"]))
+  end
+
+  # A wall `<rectangle index>:<side>`.
+  defp parse_wall(value) do
+    with [index, side] <- String.split(value || "", ":", parts: 2),
+         {index, ""} <- Integer.parse(index),
+         side when side != nil <- Enum.find(WallPosition.sides(), &(Atom.to_string(&1) == side)) do
+      {:ok, {index, side}}
+    else
+      _invalid -> :error
+    end
+  end
+
+  # Where the ground is, and what is missing to see it in 3D.
+  defp ground_summary(%Plan{ground: nil}, _analysis) do
+    gettext(
+      "Not set: pick the level the outside ground is on and how high on it (0 % = its floor, 100 % = one level higher). The 3D view then shows the exterior zones at that height."
+    )
+  end
+
+  defp ground_summary(%Plan{} = draft, analysis) do
+    level = Enum.find(draft.levels, &(&1.id == draft.ground.level_id))
+
+    height =
+      gettext("Ground at %{height} m, %{percent} % up %{level}.",
+        height: :erlang.float_to_binary(analysis.ground_elevation / 100, decimals: 2),
+        percent: draft.ground.percent,
+        level: (level && level.name) || draft.ground.level_id
+      )
+
+    if Enum.any?(draft.zones, &Belgo.Plans.Zone.exterior?/1),
+      do: height,
+      else:
+        height <>
+          " " <>
+          gettext("Draw the terrain on the Exterior tab (Room tool) to see it in 3D.")
+  end
+
+  defp layout_zone(%{analysis: analysis}, zone_id),
+    do: Enum.find(analysis.layout.zones, &(&1.id == zone_id))
+
+  # Walls a room can be anchored by: every side of each of its rectangles.
+  defp own_wall_options(zone) do
+    for {_rectangle, index} <- Enum.with_index(zone.rectangles), side <- WallPosition.sides() do
+      {wall_label(zone, index, side), "#{index}:#{side}"}
+    end
+  end
+
+  # Walls of the other rooms of the level (those anchored to the room excluded).
+  defp target_wall_options(draft, zone) do
+    descendants = Belgo.Plans.Layout.descendant_ids(draft, zone.id)
+
+    for other <- draft.zones,
+        other.level_id == zone.level_id,
+        other.id != zone.id,
+        not MapSet.member?(descendants, other.id),
+        {_rectangle, index} <- Enum.with_index(other.rectangles),
+        side <- WallPosition.sides() do
+      {"#{other.name} · #{wall_label(other, index, side)}", "#{other.id}/#{index}:#{side}"}
+    end
+  end
+
+  defp wall_label(zone, index, side) do
+    side_name = side_name(side)
+
+    if length(zone.rectangles) > 1,
+      do: gettext("%{side} wall (rectangle %{number})", side: side_name, number: index + 1),
+      else: gettext("%{side} wall", side: side_name)
+  end
+
+  defp side_name(:north), do: gettext("North")
+  defp side_name(:south), do: gettext("South")
+  defp side_name(:east), do: gettext("East")
+  defp side_name(:west), do: gettext("West")
+
+  defp align_options,
+    do: [
+      {gettext("From the start (left)"), "start"},
+      {gettext("From the end (right)"), "end"},
+      {gettext("Centred"), "center"}
+    ]
+
   defp level_tabs(plan, analysis) do
     levels = Enum.sort_by(plan.levels, &Map.get(analysis.elevations, &1.id, 0.0))
     Enum.map(levels, &{&1.id, &1.name}) ++ [{@exterior, gettext("Exterior")}]
@@ -808,7 +954,7 @@ defmodule BelgoWeb.Plans.Editor do
   defp tool_hint("select"),
     do:
       gettext(
-        "Click a room to select it, drag to move it (Shift: the whole room), drag a corner to resize, + on a free side adds a room."
+        "Click a room to select it, drag a root room to move it with the rooms anchored to it (Shift: the whole room), drag a corner to resize, + on a free side adds an anchored room."
       )
 
   defp tool_hint("draw"),
@@ -979,8 +1125,8 @@ defmodule BelgoWeb.Plans.Editor do
       %{
         depth: depth,
         label: zone.name,
-        detail: nil,
-        icon: "hero-square-2-stack-mini",
+        detail: zone_detail(zone, assigns.draft),
+        icon: if(Zone.anchored?(zone), do: "hero-link-mini", else: "hero-square-2-stack-mini"),
         level: level_key,
         zone: zone.id,
         rectangle: nil,
@@ -1012,6 +1158,11 @@ defmodule BelgoWeb.Plans.Editor do
         }
       end ++ device_rows
   end
+
+  defp zone_detail(%Zone{anchor: nil}, _draft), do: nil
+
+  defp zone_detail(%Zone{anchor: anchor}, draft),
+    do: gettext("on %{parent}", parent: zone_name(draft, anchor.zone_id))
 
   defp device_label(device_by_id, device_id) do
     case Map.fetch(device_by_id, device_id) do
@@ -1069,6 +1220,8 @@ defmodule BelgoWeb.Plans.Editor do
     assigns =
       assign(assigns,
         zone: selected_zone(assigns),
+        zone_layout: selected_zone(assigns) && layout_zone(assigns, selected_zone(assigns).id),
+        unanchored_ids: Analysis.unanchored_zone_ids(assigns.draft),
         opening: selected_opening(assigns),
         placement: selected_placement(assigns),
         tabs: level_tabs(assigns.draft, assigns.analysis)
@@ -1414,7 +1567,7 @@ defmodule BelgoWeb.Plans.Editor do
                 {gettext("Dimensions (cm)")}
               </p>
               <.form
-                :for={{rectangle, index} <- Enum.with_index(@zone.rectangles)}
+                :for={{rectangle, index} <- Enum.with_index(@zone_layout.rectangles)}
                 for={%{}}
                 as={:rectangle}
                 id={"rectangle-#{index}"}
@@ -1444,8 +1597,9 @@ defmodule BelgoWeb.Plans.Editor do
                       name={"rectangle[#{field}]"}
                       value={Map.fetch!(rectangle, field)}
                       step={@grid}
+                      disabled={field in [:x, :y] and index == 0 and Zone.anchored?(@zone)}
                       phx-debounce="500"
-                      class="mt-0.5 block w-full rounded border-0 bg-surface px-1.5 py-1 text-foreground ring-1 ring-border ring-inset"
+                      class="mt-0.5 block w-full rounded border-0 bg-surface px-1.5 py-1 text-foreground ring-1 ring-border ring-inset disabled:opacity-50"
                     />
                   </label>
                 </div>
@@ -1458,6 +1612,59 @@ defmodule BelgoWeb.Plans.Editor do
                 >
                   {gettext("Remove this rectangle")}
                 </button>
+              </.form>
+            </div>
+            <.zone_anchor
+              :if={@zone.anchor}
+              zone={@zone}
+              parent={Enum.find(@draft.zones, &(&1.id == @zone.anchor.zone_id))}
+            />
+            <div
+              :if={@zone.id in @unanchored_ids}
+              id="plan-zone-anchoring"
+              class="mt-3 space-y-2 rounded-md p-2 ring-1 ring-warning/40 ring-inset"
+            >
+              <p class="text-sm text-warning">
+                {gettext("Not anchored: this room does not follow the others.")}
+              </p>
+              <.form
+                for={%{}}
+                as={:anchor}
+                id="anchor-to-form"
+                phx-submit="anchor-to"
+                class="space-y-2 text-sm"
+              >
+                <label class="block">
+                  {gettext("This room's wall")}
+                  <select
+                    name="anchor[own]"
+                    class="mt-1 block w-full rounded-md border-0 bg-surface py-1 pr-7 pl-2 ring-1 ring-border ring-inset"
+                  >
+                    {Phoenix.HTML.Form.options_for_select(own_wall_options(@zone_layout), nil)}
+                  </select>
+                </label>
+                <label class="block">
+                  {gettext("Against")}
+                  <select
+                    name="anchor[target]"
+                    class="mt-1 block w-full rounded-md border-0 bg-surface py-1 pr-7 pl-2 ring-1 ring-border ring-inset"
+                  >
+                    {Phoenix.HTML.Form.options_for_select(target_wall_options(@draft, @zone), nil)}
+                  </select>
+                </label>
+                <div class="flex flex-wrap justify-end gap-2">
+                  <Form.button
+                    type="button"
+                    size={:small}
+                    phx-click="anchor"
+                    phx-value-zone_id={@zone.id}
+                  >
+                    {gettext("Nearest wall")}
+                  </Form.button>
+                  <Form.button type="submit" size={:small} variant={:primary}>
+                    {gettext("Anchor")}
+                  </Form.button>
+                </div>
               </.form>
             </div>
             <div class="mt-4 flex justify-end">
@@ -1494,6 +1701,19 @@ defmodule BelgoWeb.Plans.Editor do
                   class="mt-1 block w-full rounded-md border-0 bg-surface px-3 py-2 text-sm ring-1 ring-border ring-inset"
                 />
               </label>
+              <%= if @opening.zone_id do %>
+                <p class="text-sm text-muted" id="plan-opening-wall">
+                  {gettext("On the %{side} wall of %{room}",
+                    side: String.downcase(side_name(@opening.side)),
+                    room: zone_name(@draft, @opening.zone_id)
+                  )}
+                </p>
+                <.alignment_fields
+                  form="opening"
+                  align={@opening.align}
+                  offset={@opening.offset}
+                />
+              <% end %>
             </.form>
             <div class="mt-4 flex justify-end">
               <Form.button variant={:danger} size={:small} phx-click="delete-opening">
@@ -1661,11 +1881,78 @@ defmodule BelgoWeb.Plans.Editor do
                   />
                 </label>
               </div>
+              <p id="plan-ground-summary" class="text-xs text-muted">
+                {ground_summary(@draft, @analysis)}
+              </p>
             </.form>
           </.card>
         </div>
       </div>
     </Layouts.app>
+    """
+  end
+
+  attr(:zone, Zone, required: true)
+  attr(:parent, Zone, default: nil)
+
+  # Where an anchored room sits on its parent, its alignment and a way to detach it.
+  defp zone_anchor(assigns) do
+    ~H"""
+    <div id="plan-zone-anchor" class="mt-3 space-y-2">
+      <p class="text-xs font-medium tracking-wide text-muted uppercase">{gettext("Anchor")}</p>
+      <p class="text-sm">
+        {gettext("Against the %{side} wall of %{parent}",
+          side: String.downcase(side_name(@zone.anchor.side)),
+          parent: (@parent && @parent.name) || @zone.anchor.zone_id
+        )}
+      </p>
+      <.form for={%{}} as={:anchor} id="anchor-form" phx-change="update-anchor">
+        <.alignment_fields form="anchor" align={@zone.anchor.align} offset={@zone.anchor.offset} />
+      </.form>
+      <div class="flex justify-end">
+        <Form.button
+          size={:small}
+          phx-click="detach-zone"
+          title={gettext("Keep the room where it is, no longer following its parent")}
+        >
+          {gettext("Detach")}
+        </Form.button>
+      </div>
+    </div>
+    """
+  end
+
+  attr(:form, :string, required: true, doc: "the form name (`anchor`, `opening`)")
+  attr(:align, :atom, required: true)
+  attr(:offset, :integer, default: nil)
+
+  # Alignment along a wall: from its start (left, seen from inside the room), from
+  # its end, or centred (no offset).
+  defp alignment_fields(assigns) do
+    ~H"""
+    <div class="grid grid-cols-2 gap-2 text-sm" data-alignment={@form}>
+      <input type="hidden" name={"#{@form}[previous_align]"} value={@align} />
+      <label>
+        {gettext("Aligned")}
+        <select
+          name={"#{@form}[align]"}
+          class="mt-1 block w-full rounded-md border-0 bg-surface py-1 pr-7 pl-2 ring-1 ring-border ring-inset"
+        >
+          {Phoenix.HTML.Form.options_for_select(align_options(), Atom.to_string(@align))}
+        </select>
+      </label>
+      <label>
+        {gettext("Offset (cm)")}
+        <input
+          type="number"
+          name={"#{@form}[offset]"}
+          value={@offset}
+          disabled={@align == :center}
+          phx-debounce="500"
+          class="mt-1 block w-full rounded-md border-0 bg-surface px-2 py-1 ring-1 ring-border ring-inset disabled:opacity-50"
+        />
+      </label>
+    </div>
     """
   end
 

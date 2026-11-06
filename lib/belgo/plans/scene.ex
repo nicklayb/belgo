@@ -2,7 +2,9 @@ defmodule Belgo.Plans.Scene do
   @moduledoc """
   What the 3D view draws, computed from a plan and its analysis (never stored), in
   centimetres with the plan axes: `x` and `y` on the floor, `elevation` upwards.
-  The browser only turns it into meshes. Pure functions.
+  The browser only turns it into meshes. Positions come from the analysis' layout
+  (`Belgo.Plans.Layout`), so anchored rooms, their openings and devices follow
+  their parents. Pure functions.
 
     * floors: one per zone rectangle at its level height; exterior zones at the
       ground height, cut around the home's footprint (the ground is never seen inside
@@ -35,7 +37,7 @@ defmodule Belgo.Plans.Scene do
 
   @doc "The scene of a plan, as plain maps ready to be sent to the browser."
   @spec build(Plan.t(), Analysis.t(), Snapshot.t()) :: map()
-  def build(%Plan{} = plan, %Analysis{} = analysis, %Snapshot{} = snapshot) do
+  def build(%Plan{}, %Analysis{layout: %Plan{} = plan} = analysis, %Snapshot{} = snapshot) do
     zone_by_id = Map.new(plan.zones, &{&1.id, &1})
     device_by_id = Snapshot.index(snapshot, :devices)
     visible_zones = Enum.reject(plan.zones, &(&1.id in analysis.orphan_zone_ids))
@@ -76,6 +78,7 @@ defmodule Belgo.Plans.Scene do
     spans =
       openings
       |> Enum.map(&{Opening.segment(&1), &1.kind})
+      |> Enum.reject(fn {segment, _kind} -> is_nil(segment) end)
       |> Enum.filter(fn {{opening_axis, opening_position, opening_first, opening_last}, _kind} ->
         opening_axis == axis and opening_position == position and opening_first >= first and
           opening_last <= last
@@ -149,10 +152,7 @@ defmodule Belgo.Plans.Scene do
       |> Enum.reject(&(Zone.exterior?(&1) or MapSet.member?(hidden, &1.id)))
       |> Enum.group_by(& &1.level_id)
       |> Map.new(fn {level_id, zones} ->
-        {level_id,
-         Belgo.Plans.Geometry.merge(
-           Enum.flat_map(zones, &Belgo.Plans.Geometry.outline(&1.rectangles))
-         )}
+        {level_id, Geometry.merge(Enum.flat_map(zones, &Geometry.outline(&1.rectangles)))}
       end)
 
     Enum.flat_map(visible_walls, fn {level_id, segments} ->
