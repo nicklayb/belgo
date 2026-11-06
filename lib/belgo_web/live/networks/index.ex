@@ -1,0 +1,144 @@
+defmodule BelgoWeb.Networks.Live.Index do
+  @moduledoc "List of networks with their usage."
+
+  @behaviour BelgoWeb.Hooks.Inventory
+
+  use BelgoWeb, :live_view
+
+  alias Belgo.Inventory
+  alias Belgo.Network.Cidr
+  alias BelgoWeb.Format
+  alias BelgoWeb.Live.Mutation
+
+  @impl Phoenix.LiveView
+  def mount(_params, _session, socket) do
+    {:ok,
+     socket
+     |> assign(:page_title, gettext("Networks"))
+     |> assign_inventory()}
+  end
+
+  @impl BelgoWeb.Hooks.Inventory
+  def assign_inventory(socket) do
+    snapshot = socket.assigns.snapshot
+
+    address_count_by_network =
+      snapshot.devices
+      |> Enum.flat_map(& &1.interfaces)
+      |> Enum.filter(& &1.ip)
+      |> Enum.frequencies_by(& &1.network_id)
+
+    networks =
+      Enum.map(snapshot.networks, fn network ->
+        {network, Map.get(address_count_by_network, network.id, 0), capacity(network)}
+      end)
+
+    assign(socket, :networks, networks)
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("delete", %{"id" => id}, socket) do
+    case Inventory.delete(:networks, id, Mutation.options(socket)) do
+      {:ok, network} ->
+        {:noreply, put_flash(socket, :info, gettext("%{name} deleted.", name: network.name))}
+
+      error ->
+        {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
+    end
+  end
+
+  defp capacity(network) do
+    case Cidr.parse(network.cidr) do
+      {:ok, cidr} -> Cidr.size(cidr)
+      :error -> nil
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <Layouts.app
+      flash={@flash}
+      current_user={@current_user}
+      current_path={@current_path}
+      navigation_badges={@navigation_badges}
+    >
+      <.page_header title={gettext("Networks")}>
+        <:subtitle>{gettext("Subnets and VLANs addresses are assigned from.")}</:subtitle>
+        <:actions>
+          <Form.button variant={:primary} navigate={~p"/networks/new"}>
+            <.icon name="hero-plus-mini" class="size-4" /> {gettext("New network")}
+          </Form.button>
+        </:actions>
+      </.page_header>
+
+      <.card padded={false}>
+        <.empty_state :if={@networks == []} icon="hero-globe-alt" title={gettext("No network yet")} />
+        <.table
+          :if={@networks != []}
+          id="networks"
+          rows={@networks}
+          row_id={fn {network, _count, _capacity} -> "network-#{network.id}" end}
+        >
+          <:col :let={{network, _count, _capacity}} label={gettext("Name")}>
+            <p class="font-medium">{network.name}</p>
+            <p :if={network.domain} class="font-mono text-xs text-muted">{network.domain}</p>
+          </:col>
+          <:col :let={{network, _count, _capacity}} label={gettext("Range")}>
+            <span class="font-mono">{network.cidr}</span>
+          </:col>
+          <:col
+            :let={{network, _count, _capacity}}
+            label={gettext("VLAN")}
+            class="hidden sm:table-cell"
+          >
+            {network.vlan || "—"}
+          </:col>
+          <:col
+            :let={{network, _count, _capacity}}
+            label={gettext("Gateway")}
+            class="hidden md:table-cell"
+          >
+            <span class="font-mono">{network.gateway || "—"}</span>
+          </:col>
+          <:col
+            :let={{network, _count, _capacity}}
+            label={gettext("DHCP range")}
+            class="hidden lg:table-cell"
+          >
+            <%= case Map.fetch(@discovery.correlation.dhcp_ranges, network.id) do %>
+              <% {:ok, range} -> %>
+                <span class="font-mono text-xs">{range.start} – {range.end}</span>
+                <.badge :if={range.source != :inventory} class="ml-1">
+                  {Format.label(range.source)}
+                </.badge>
+              <% :error -> %>
+                <span class="text-muted">—</span>
+            <% end %>
+          </:col>
+          <:col :let={{_network, count, capacity}} label={gettext("Assigned")}>
+            <span class="tabular-nums">{count}</span>
+            <span :if={capacity} class="text-muted">{"/ #{capacity}"}</span>
+          </:col>
+          <:action :let={{network, _count, _capacity}}>
+            <Form.button variant={:ghost} size={:small} navigate={~p"/networks/#{network.id}/edit"}>
+              <.icon name="hero-pencil-square-micro" class="size-4" />
+              <span class="sr-only">{gettext("Edit")}</span>
+            </Form.button>
+            <Form.button
+              variant={:danger}
+              size={:small}
+              phx-click="delete"
+              phx-value-id={network.id}
+              data-confirm={gettext("Delete %{name}?", name: network.name)}
+            >
+              <.icon name="hero-trash-micro" class="size-4" />
+              <span class="sr-only">{gettext("Delete")}</span>
+            </Form.button>
+          </:action>
+        </.table>
+      </.card>
+    </Layouts.app>
+    """
+  end
+end

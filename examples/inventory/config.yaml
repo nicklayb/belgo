@@ -1,0 +1,8 @@
+# Global settings of Belgo. Every key is optional.
+version: 1
+ping:
+  # A device page pings the device; the result is reused for this long
+  # (clicking the indicator pings again right away).
+  cache_duration: 15m
+  # How long to wait for an answer.
+  timeout: 2s

@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <.live_title default="Belgo" suffix=" · Belgo">
+      {assigns[:page_title]}
+    </.live_title>
+    <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
+    <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
+    <link rel="apple-touch-icon" href={~p"/apple-touch-icon.png"} />
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+    </script>
+  </head>
+  <body class="h-full">
+    {@inner_content}
+  </body>
+</html>

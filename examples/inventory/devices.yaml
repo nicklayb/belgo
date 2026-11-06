@@ -1,0 +1,83 @@
+---
+# Managed by Belgo. Hand edits are welcome, reload Belgo to apply them.
+devices:
+  opnsense:
+    interfaces:
+      - assignment: static
+        ip: 192.168.1.1
+        network_id: lan
+    kind: network
+    location_id: bureau-nicolas
+    name: OPNsense
+    network_role: gateway
+  apple-tv-salon:
+    interfaces:
+      - assignment: reserved
+        ip: 192.168.1.30
+        mac: 02:00:00:00:00:30
+        network_id: lan
+    kind: media
+    location_id: salon
+    name: Apple TV Salon
+  hades:
+    interfaces:
+      - assignment: reserved
+        ip: 192.168.1.10
+        mac: 02:00:00:00:00:10
+        name: eth0
+        network_id: lan
+        switch_id: switch-bureau
+        switch_port: '3'
+    kind: workstation
+    location_id: bureau-nicolas
+    name: Hades
+    platforms:
+      - docker
+  hal:
+    interfaces:
+      - assignment: reserved
+        ip: 192.168.1.20
+        mac: 02:00:00:00:00:20
+        name: eth0
+        network_id: lan
+        switch_id: switch-bureau
+        switch_port: '1'
+    kind: server
+    location_id: bureau-nicolas
+    name: HAL
+    platforms:
+      - proxmox
+  home-assistant:
+    host_id: hal
+    interfaces:
+      - assignment: reserved
+        dns_names:
+          - ha
+        ip: 192.168.1.21
+        mac: 02:00:00:00:00:21
+        network_id: lan
+    kind: appliance
+    name: Home Assistant
+    virtualization: virtual_machine
+  switch-bureau:
+    interfaces:
+      - assignment: reserved
+        ip: 192.168.1.2
+        mac: 02:00:00:00:00:01
+        name: mgmt
+        network_id: lan
+        switch_id: opnsense
+        switch_port: '2'
+    kind: network
+    location_id: bureau-nicolas
+    name: Switch Bureau
+    network_role: switch
+  t480s:
+    interfaces:
+      - assignment: dynamic
+        mac: 02:00:00:00:00:40
+        name: wlan0
+    kind: laptop
+    name: T480S
+    portable: true
+version: 1

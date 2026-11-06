@@ -1,0 +1,33 @@
+# Providers Belgo discovers records from and pushes devices to.
+# mode: disabled (not used) | read (discovery only, the default) | write (discovery
+# and push of saved devices; needs a token with write privileges).
+# interval: pull periodically (30s, 5m, 1h…); without it, at boot and on demand.
+# Secrets come from the environment (or *_FILE pointing to a file holding the value):
+#   OPNsense: BELGO_OPNSENSE_API_KEY / BELGO_OPNSENSE_API_SECRET
+#   AdGuard Home: BELGO_ADGUARD_USERNAME / BELGO_ADGUARD_PASSWORD
+#   Omada: BELGO_OMADA_CLIENT_ID / BELGO_OMADA_CLIENT_SECRET (an Open API application
+#   in client mode: Settings > Platform Integration > Open API)
+#   Home Assistant: BELGO_HOME_ASSISTANT_TOKEN (long-lived access token, read only)
+version: 1
+providers:
+  opnsense:
+    mode: read
+    interval: 5m
+    url: https://opnsense.home.lan
+    verify_tls: true
+  adguard:
+    mode: read
+    url: https://adguard.home.lan
+    verify_tls: true
+  omada:
+    mode: read
+    interval: 1m
+    url: https://omada.home.lan:8043
+    omada_id: your-omada-id
+    site: Default
+    verify_tls: true
+  home_assistant:
+    mode: read
+    interval: 1h
+    url: https://homeassistant.home.lan:8123
+    verify_tls: true
