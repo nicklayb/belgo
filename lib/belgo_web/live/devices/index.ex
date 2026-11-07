@@ -9,7 +9,6 @@ defmodule BelgoWeb.Devices.Live.Index do
   alias Belgo.Inventory.DeviceFilter
   alias Belgo.Inventory.DeviceSorting
   alias Belgo.Topology.Physical
-  alias BelgoWeb.Format
   alias BelgoWeb.Live.Reachability
 
   @impl Phoenix.LiveView
@@ -119,13 +118,6 @@ defmodule BelgoWeb.Devices.Live.Index do
 
   defp devices_path(filter), do: ~p"/devices?#{DeviceFilter.to_query_params(filter)}"
 
-  defp kind_facets(kind_counts, selected_kinds) do
-    for kind <- Device.kinds(),
-        count = Map.get(kind_counts, kind, 0),
-        count > 0 or kind in selected_kinds,
-        do: %{kind: kind, count: count, selected?: kind in selected_kinds}
-  end
-
   defp all_shown_selected?(devices, selected_ids) do
     devices != [] and Enum.all?(devices, fn {device, _placement} -> device.id in selected_ids end)
   end
@@ -192,37 +184,13 @@ defmodule BelgoWeb.Devices.Live.Index do
           </div>
         </.form>
 
-        <div
-          :if={@kind_facets != []}
+        <.kind_filter
           id="kind-filter"
-          class="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3"
-        >
-          <button
-            :for={facet <- @kind_facets}
-            type="button"
-            phx-click="toggle-kind"
-            phx-value-kind={facet.kind}
-            aria-pressed={to_string(facet.selected?)}
-            class={[
-              "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ring-1 ring-inset",
-              facet.selected? && "bg-accent-soft text-accent ring-accent",
-              !facet.selected? &&
-                "text-muted ring-border hover:bg-surface-muted hover:text-foreground"
-            ]}
-          >
-            <.icon name={Format.kind_icon(facet.kind)} class="size-4" />
-            <span class="font-medium">{Format.label(facet.kind)}</span>
-            <span class="tabular-nums text-xs">{facet.count}</span>
-          </button>
-          <Form.button
-            :if={@filter.kinds != []}
-            size={:small}
-            variant={:ghost}
-            phx-click="clear-kinds"
-          >
-            {gettext("All kinds")}
-          </Form.button>
-        </div>
+          facets={@kind_facets}
+          toggle="toggle-kind"
+          clear="clear-kinds"
+          class="border-b border-border px-4 py-3"
+        />
 
         <div
           :if={@devices != []}

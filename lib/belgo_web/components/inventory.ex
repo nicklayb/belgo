@@ -14,6 +14,7 @@ defmodule BelgoWeb.Components.Inventory do
   alias Belgo.PortScan.Ports
   alias Belgo.Reachability.Status
   alias Belgo.Topology.DeviceNode
+  alias BelgoWeb.Components.Form
   alias BelgoWeb.Format
 
   @shown_reachability_states [:pending, :up, :down]
@@ -321,6 +322,56 @@ defmodule BelgoWeb.Components.Inventory do
           date: Calendar.strftime(@scanned_at, "%Y-%m-%d %H:%M UTC")
         )}
       </p>
+    </div>
+    """
+  end
+
+  @doc """
+  Kind facets of a list of devices: the kinds having devices (and the selected ones),
+  with their counts, from `kind_counts` (`Belgo.Inventory.DeviceFilter.kind_counts/2`).
+  """
+  @spec kind_facets(%{atom() => pos_integer()}, [atom()]) :: [map()]
+  def kind_facets(kind_counts, selected_kinds) do
+    for kind <- Device.kinds(),
+        count = Map.get(kind_counts, kind, 0),
+        count > 0 or kind in selected_kinds,
+        do: %{kind: kind, count: count, selected?: kind in selected_kinds}
+  end
+
+  attr(:id, :string, required: true)
+  attr(:facets, :list, required: true, doc: "from `kind_facets/2`")
+  attr(:toggle, :string, required: true, doc: "event toggling a kind (`kind` value)")
+  attr(:clear, :string, required: true, doc: "event selecting every kind")
+  attr(:class, :any, default: nil)
+
+  @doc "Kind boxes (icon, label, count) selecting several kinds, plus \"All kinds\"."
+  def kind_filter(assigns) do
+    ~H"""
+    <div :if={@facets != []} id={@id} class={["flex flex-wrap items-center gap-2", @class]}>
+      <button
+        :for={facet <- @facets}
+        type="button"
+        phx-click={@toggle}
+        phx-value-kind={facet.kind}
+        aria-pressed={to_string(facet.selected?)}
+        class={[
+          "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm ring-1 ring-inset",
+          facet.selected? && "bg-accent-soft text-accent ring-accent",
+          !facet.selected? && "text-muted ring-border hover:bg-surface-muted hover:text-foreground"
+        ]}
+      >
+        <.icon name={Format.kind_icon(facet.kind)} class="size-4" />
+        <span class="font-medium">{Format.label(facet.kind)}</span>
+        <span class="tabular-nums text-xs">{facet.count}</span>
+      </button>
+      <Form.button
+        :if={Enum.any?(@facets, & &1.selected?)}
+        size={:small}
+        variant={:ghost}
+        phx-click={@clear}
+      >
+        {gettext("All kinds")}
+      </Form.button>
     </div>
     """
   end

@@ -125,8 +125,11 @@ defmodule Belgo.Plans.Analysis do
 
   defp ground_elevation(%Plan{ground: nil}, _elevations), do: 0.0
 
-  defp ground_elevation(%Plan{ground: ground} = plan, elevations),
-    do: Map.get(elevations, ground.level_id, 0.0) + plan.level_height * ground.percent / 100
+  # The ground is a percentage of its level's own height.
+  defp ground_elevation(%Plan{ground: ground} = plan, elevations) do
+    height = Map.get(Levels.heights(plan), ground.level_id, plan.level_height)
+    Map.get(elevations, ground.level_id, 0.0) + height * ground.percent / 100
+  end
 
   defp walls_by_level(zones) do
     zones
@@ -150,7 +153,7 @@ defmodule Belgo.Plans.Analysis do
 
     groups =
       rooms
-      |> groups(&connected?(&1, &2, elevations, plan.level_height))
+      |> groups(&connected?(&1, &2, elevations, Levels.heights(plan)))
       |> Enum.sort_by(fn group -> -Enum.sum(Enum.map(group, &Geometry.area(&1.rectangles))) end)
 
     case groups do
@@ -162,7 +165,7 @@ defmodule Belgo.Plans.Analysis do
     end
   end
 
-  defp connected?(left_zone, right_zone, elevations, level_height) do
+  defp connected?(left_zone, right_zone, elevations, heights) do
     pairs =
       for left_rectangle <- left_zone.rectangles,
           right_rectangle <- right_zone.rectangles,
@@ -171,17 +174,20 @@ defmodule Belgo.Plans.Analysis do
     if left_zone.level_id == right_zone.level_id do
       Enum.any?(pairs, fn {left, right} -> Geometry.touch?(left, right) end)
     else
-      close_levels?(left_zone, right_zone, elevations, level_height) and
+      close_levels?(left_zone, right_zone, elevations, heights) and
         Enum.any?(pairs, fn {left, right} ->
           Geometry.touch?(left, right) or Geometry.overlap?(left, right)
         end)
     end
   end
 
-  defp close_levels?(left_zone, right_zone, elevations, level_height) do
+  # At most one level apart, measured with the taller of the two levels.
+  defp close_levels?(left_zone, right_zone, elevations, heights) do
     with {:ok, left_elevation} <- Map.fetch(elevations, left_zone.level_id),
-         {:ok, right_elevation} <- Map.fetch(elevations, right_zone.level_id) do
-      abs(left_elevation - right_elevation) <= level_height
+         {:ok, right_elevation} <- Map.fetch(elevations, right_zone.level_id),
+         {:ok, left_height} <- Map.fetch(heights, left_zone.level_id),
+         {:ok, right_height} <- Map.fetch(heights, right_zone.level_id) do
+      abs(left_elevation - right_elevation) <= max(left_height, right_height)
     else
       :error -> false
     end

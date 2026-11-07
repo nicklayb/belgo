@@ -28,9 +28,12 @@ defmodule BelgoWeb.Plans.Editor do
   alias Belgo.Plans.Editing
   alias Belgo.Plans.Ground
   alias Belgo.Plans.Opening
+  alias Belgo.Plans.Placement
   alias Belgo.Plans.Plan
+  alias Belgo.Plans.Shape
   alias Belgo.Plans.WallPosition
   alias Belgo.Plans.Zone
+  alias Belgo.Topology.Physical
   alias BelgoWeb.Components.PlanDrawing
   alias BelgoWeb.Live.Mutation
 
@@ -64,6 +67,7 @@ defmodule BelgoWeb.Plans.Editor do
         references: MapSet.new(),
         selected_rectangle: nil,
         placing_device_id: nil,
+        shape_input: nil,
         save_timer: nil,
         autosave_delay: Config.current().plan.autosave_delay
       )
@@ -103,7 +107,22 @@ defmodule BelgoWeb.Plans.Editor do
     |> assign(:location_options, Enum.map(snapshot.locations, &{&1.name, &1.id}))
     |> assign(:device_by_id, Snapshot.index(snapshot, :devices))
     |> assign(:location_by_id, Snapshot.index(snapshot, :locations))
+    |> assign(:device_location_labels, device_location_labels(snapshot))
     |> refresh_analysis()
+  end
+
+  # Where each device is (its location path, a guest's being its host's), labelling
+  # the groups of the device chooser.
+  defp device_location_labels(snapshot) do
+    Map.new(snapshot.devices, fn device ->
+      label =
+        case Physical.device_path(snapshot, device) do
+          %{locations: []} -> nil
+          %{locations: locations} -> Enum.map_join(locations, " › ", & &1.name)
+        end
+
+      {device.id, label}
+    end)
   end
 
   @impl Phoenix.LiveView
@@ -167,6 +186,22 @@ defmodule BelgoWeb.Plans.Editor do
   def handle_event("select-placement", %{"device_id" => device_id}, socket),
     do: {:noreply, assign(socket, selected: {:placement, device_id}, selected_rectangle: nil)}
 
+  # From the placed devices list: shows the device's level and selects it.
+  def handle_event("focus-placement", %{"device_id" => device_id}, socket) do
+    case Enum.find(socket.assigns.draft.placements, &(&1.device_id == device_id)) do
+      nil ->
+        {:noreply, socket}
+
+      placement ->
+        {:noreply,
+         assign(socket,
+           level_key: placement_level_key(socket.assigns.draft, placement),
+           selected: {:placement, device_id},
+           selected_rectangle: nil
+         )}
+    end
+  end
+
   def handle_event("choose-device", %{"device_id" => device_id}, socket),
     do: {:noreply, assign(socket, placing_device_id: blank_to_nil(device_id), tool: "place")}
 
@@ -176,7 +211,10 @@ defmodule BelgoWeb.Plans.Editor do
         {:noreply, put_flash(socket, :error, gettext("Choose the device to place first."))}
 
       device_id ->
-        {:noreply, place(socket, device_id, x, y, "select")}
+        {:noreply,
+         socket
+         |> place(device_id, x, y, "select")
+         |> assign(:placing_device_id, nil)}
     end
   end
 
@@ -209,12 +247,13 @@ defmodule BelgoWeb.Plans.Editor do
       %{}
       |> put_present(
         :anchor,
-        Enum.find(Belgo.Plans.Placement.anchors(), &(Atom.to_string(&1) == params["anchor"]))
+        Enum.find(Placement.anchors(), &(Atom.to_string(&1) == params["anchor"]))
       )
       |> put_present(:height, parse_integer(params["height"]))
+      |> put_shape(params["shape"])
 
-    {:noreply,
-     change(socket, Editing.update_placement(socket.assigns.draft, device_id, attributes))}
+    socket = change(socket, Editing.update_placement(socket.assigns.draft, device_id, attributes))
+    {:noreply, remember_shape_input(socket, device_id, params["shape"])}
   end
 
   def handle_event(
@@ -537,7 +576,9 @@ defmodule BelgoWeb.Plans.Editor do
     attributes = %{
       name: blank_to_default(params["name"], level_id),
       base_id: base_id,
-      offset: if(base_id, do: parse_offset(params["offset"]), else: 0.0)
+      offset: if(base_id, do: parse_offset(params["offset"]), else: 0.0),
+      height: parse_positive(params["height"]),
+      wall_height: parse_positive(params["wall_height"])
     }
 
     {:noreply, change(socket, Editing.update_level(socket.assigns.draft, level_id, attributes))}
@@ -793,6 +834,46 @@ defmodule BelgoWeb.Plans.Editor do
 
   defp blank_to_default(value, default), do: blank_to_nil(value) || default
 
+  # A box once its three dimensions are typed, a point once they are all cleared,
+  # unchanged while it is being typed.
+  defp put_shape(attributes, %{} = params) do
+    dimensions = Map.new(~w(width depth height)a, &{&1, parse_positive(params[to_string(&1)])})
+
+    cond do
+      Enum.all?(Map.values(dimensions), &is_nil/1) -> Map.put(attributes, :shape, nil)
+      Enum.any?(Map.values(dimensions), &is_nil/1) -> attributes
+      true -> Map.put(attributes, :shape, struct(Shape, dimensions))
+    end
+  end
+
+  defp put_shape(attributes, _params), do: attributes
+
+  # The box fields as typed: a box being typed (not all three dimensions yet) is not
+  # applied, so re-rendering from the placement would empty the fields already
+  # filled. The input is shown while the placement's shape is still the one it led
+  # to (an undo or another device brings back the stored values).
+  defp remember_shape_input(socket, device_id, %{} = params) do
+    shape =
+      Enum.find_value(socket.assigns.draft.placements, fn placement ->
+        placement.device_id == device_id && {:ok, placement.shape}
+      end)
+
+    assign(socket, :shape_input, %{device_id: device_id, params: params, shape: shape})
+  end
+
+  defp remember_shape_input(socket, _device_id, _params), do: socket
+
+  defp shape_value(
+         %{device_id: device_id, params: params, shape: {:ok, shape}},
+         placement,
+         dimension
+       )
+       when device_id == placement.device_id and shape == placement.shape,
+       do: params[Atom.to_string(dimension)]
+
+  defp shape_value(_shape_input, %{shape: nil}, _dimension), do: nil
+  defp shape_value(_shape_input, %{shape: shape}, dimension), do: Map.fetch!(shape, dimension)
+
   defp put_present(map, _key, nil), do: map
   defp put_present(map, key, value), do: Map.put(map, key, value)
 
@@ -931,19 +1012,54 @@ defmodule BelgoWeb.Plans.Editor do
     end
   end
 
-  # Devices by name; those already on the plan say where.
-  defp device_options(device_by_id, draft) do
-    zone_by_device = Map.new(draft.placements, &{&1.device_id, zone_name(draft, &1.zone_id)})
+  # Devices not on the plan yet, grouped by location (by path, devices without
+  # location last), by name within a group.
+  defp device_options(device_by_id, draft, location_labels) do
+    placed_ids = MapSet.new(draft.placements, & &1.device_id)
 
     device_by_id
     |> Map.values()
-    |> Enum.sort_by(&String.downcase(&1.name))
-    |> Enum.map(fn device ->
-      case Map.fetch(zone_by_device, device.id) do
-        {:ok, zone} -> {"#{device.name} (#{zone})", device.id}
-        :error -> {device.name, device.id}
-      end
+    |> Enum.reject(&MapSet.member?(placed_ids, &1.id))
+    |> Enum.group_by(&Map.get(location_labels, &1.id))
+    |> Enum.sort_by(fn {label, _devices} -> {is_nil(label), label && String.downcase(label)} end)
+    |> Enum.map(fn {label, devices} ->
+      {label || gettext("No location"),
+       devices
+       |> Enum.sort_by(&String.downcase(&1.name))
+       |> Enum.map(&{&1.name, &1.id})}
     end)
+  end
+
+  # Placed devices by name, with their room and level, for the list under Elements.
+  defp placed_devices(draft, device_by_id) do
+    level_name_by_id = Map.new(draft.levels, &{&1.id, &1.name})
+    zone_by_id = Map.new(draft.zones, &{&1.id, &1})
+
+    draft.placements
+    |> Enum.map(fn placement ->
+      device = device_by_id[placement.device_id]
+      zone = zone_by_id[placement.zone_id]
+
+      %{
+        device_id: placement.device_id,
+        name: (device && device.name) || placement.device_id,
+        known?: device != nil,
+        zone: zone_name(draft, placement.zone_id),
+        level: zone && level_label(zone.level_id, level_name_by_id)
+      }
+    end)
+    |> Enum.sort_by(&String.downcase(&1.name))
+  end
+
+  defp level_label(nil, _level_name_by_id), do: gettext("Exterior")
+  defp level_label(level_id, level_name_by_id), do: Map.get(level_name_by_id, level_id, level_id)
+
+  defp placement_level_key(draft, placement) do
+    case Enum.find(draft.zones, &(&1.id == placement.zone_id)) do
+      %Zone{level_id: nil} -> @exterior
+      %Zone{level_id: level_id} -> level_id
+      nil -> first_level_key(draft)
+    end
   end
 
   defp selected_opening(%{selected: {:opening, index}, draft: draft}),
@@ -1006,7 +1122,10 @@ defmodule BelgoWeb.Plans.Editor do
     assigns = assign(assigns, :rows, tree_rows(assigns))
 
     ~H"""
-    <ul id="plan-tree" class="max-h-[calc(100vh-12rem)] overflow-y-auto py-1 text-sm">
+    <ul
+      id="plan-tree"
+      class="max-h-[max(12rem,calc(100vh-29rem))] overflow-y-auto py-1 text-sm"
+    >
       <li
         :for={row <- @rows}
         class={[
@@ -1253,18 +1372,43 @@ defmodule BelgoWeb.Plans.Editor do
       </div>
 
       <div class="grid grid-cols-1 gap-4 xl:grid-cols-[15rem_minmax(0,1fr)_19rem]">
-        <.card title={gettext("Elements")} padded={false} class="self-start xl:sticky xl:top-0">
-          <.element_tree
-            device_by_id={@device_by_id}
-            draft={@draft}
-            analysis={@analysis}
-            level_key={@level_key}
-            selected={@selected}
-            selected_rectangle={@selected_rectangle}
-            hidden={@hidden}
-            references={@references}
-          />
-        </.card>
+        <div class="space-y-4 self-start xl:sticky xl:top-0">
+          <.card title={gettext("Elements")} padded={false}>
+            <.element_tree
+              device_by_id={@device_by_id}
+              draft={@draft}
+              analysis={@analysis}
+              level_key={@level_key}
+              selected={@selected}
+              selected_rectangle={@selected_rectangle}
+              hidden={@hidden}
+              references={@references}
+            />
+          </.card>
+
+          <.card title={gettext("Placed devices")} padded={false} id="plan-placed-devices">
+            <p :if={@draft.placements == []} class="px-4 py-3 text-sm text-muted">
+              {gettext("No device on the plan yet: use Place device (P).")}
+            </p>
+            <ul class="max-h-60 divide-y divide-border overflow-y-auto text-sm">
+              <li :for={placed <- placed_devices(@draft, @device_by_id)}>
+                <button
+                  type="button"
+                  phx-click="focus-placement"
+                  phx-value-device_id={placed.device_id}
+                  data-placed-device={placed.device_id}
+                  class={[
+                    "flex w-full flex-col items-start px-4 py-2 text-left hover:bg-surface-muted",
+                    @selected == {:placement, placed.device_id} && "bg-accent-soft"
+                  ]}
+                >
+                  <span class={["font-medium", !placed.known? && "text-warning"]}>{placed.name}</span>
+                  <span class="text-xs text-muted">{placed.zone} · {placed.level}</span>
+                </button>
+              </li>
+            </ul>
+          </.card>
+        </div>
 
         <div class="min-w-0 space-y-3">
           <div class="flex flex-wrap items-center gap-2">
@@ -1394,6 +1538,7 @@ defmodule BelgoWeb.Plans.Editor do
             <div
               id="plan-editor"
               phx-hook="PlanEditor"
+              data-plan-id={@draft.id}
               data-tool={@tool}
               data-grid={@grid}
               class="h-[calc(100vh-13rem)] min-h-96 overflow-hidden"
@@ -1465,13 +1610,15 @@ defmodule BelgoWeb.Plans.Editor do
               >
                 <option value="">{gettext("Choose a device")}</option>
                 {Phoenix.HTML.Form.options_for_select(
-                  device_options(@device_by_id, @draft),
+                  device_options(@device_by_id, @draft, @device_location_labels),
                   @placing_device_id
                 )}
               </select>
             </.form>
             <p class="mt-2 text-xs text-muted">
-              {gettext("Then click in a room. A device already on the plan moves there.")}
+              {gettext(
+                "Then click in a room. Devices already on the plan are listed under Elements: drag them to move them."
+              )}
             </p>
           </.card>
 
@@ -1512,7 +1659,7 @@ defmodule BelgoWeb.Plans.Editor do
                 </select>
               </label>
               <label>
-                {gettext("Height (cm)")}
+                {gettext("From the floor (cm)")}
                 <input
                   type="number"
                   name="placement[height]"
@@ -1523,6 +1670,28 @@ defmodule BelgoWeb.Plans.Editor do
                   class="mt-1 block w-full rounded-md border-0 bg-surface px-2 py-1 ring-1 ring-border ring-inset disabled:opacity-50"
                 />
               </label>
+              <fieldset class="col-span-2" id="placement-shape">
+                <legend class="mb-1">{gettext("Box (cm, empty = a point)")}</legend>
+                <div class="grid grid-cols-3 gap-2">
+                  <input
+                    :for={
+                      {dimension, label} <- [
+                        {:width, gettext("Width")},
+                        {:depth, gettext("Depth")},
+                        {:height, gettext("Height")}
+                      ]
+                    }
+                    type="number"
+                    name={"placement[shape][#{dimension}]"}
+                    value={shape_value(@shape_input, @placement, dimension)}
+                    placeholder={label}
+                    aria-label={label}
+                    min="1"
+                    phx-debounce="400"
+                    class="block w-full rounded-md border-0 bg-surface px-2 py-1 ring-1 ring-border ring-inset"
+                  />
+                </div>
+              </fieldset>
             </.form>
             <div class="mt-4 flex justify-end">
               <Form.button variant={:danger} size={:small} phx-click="remove-placement">
@@ -1728,6 +1897,7 @@ defmodule BelgoWeb.Plans.Editor do
                 <.form
                   for={%{}}
                   as={:level}
+                  id={"level-form-#{level.id}"}
                   phx-change="update-level"
                   class="grid grid-cols-2 gap-2 text-sm"
                 >
@@ -1755,6 +1925,32 @@ defmodule BelgoWeb.Plans.Editor do
                   >
                     {Phoenix.HTML.Form.options_for_select(offsets(), level.offset)}
                   </select>
+                  <div class="col-span-2 grid grid-cols-2 gap-2">
+                    <label class="text-xs text-muted">
+                      {gettext("Height (cm)")}
+                      <input
+                        type="number"
+                        name="level[height]"
+                        value={level.height}
+                        placeholder={@draft.level_height}
+                        min="1"
+                        phx-debounce="400"
+                        class="mt-0.5 block w-full rounded-md border-0 bg-surface px-2 py-1 text-sm text-foreground ring-1 ring-border ring-inset"
+                      />
+                    </label>
+                    <label class="text-xs text-muted">
+                      {gettext("Walls (cm)")}
+                      <input
+                        type="number"
+                        name="level[wall_height]"
+                        value={level.wall_height}
+                        placeholder={@draft.wall_height}
+                        min="1"
+                        phx-debounce="400"
+                        class="mt-0.5 block w-full rounded-md border-0 bg-surface px-2 py-1 text-sm text-foreground ring-1 ring-border ring-inset"
+                      />
+                    </label>
+                  </div>
                 </.form>
                 <div class="mt-1 flex justify-between text-xs text-muted">
                   <span>{elevation(@analysis, level.id)}</span>
@@ -1832,7 +2028,7 @@ defmodule BelgoWeb.Plans.Editor do
               </select>
               <div class="grid grid-cols-2 gap-2">
                 <label>
-                  {gettext("Level height (cm)")}
+                  {gettext("Default level height (cm)")}
                   <input
                     type="number"
                     name="settings[level_height]"
@@ -1843,7 +2039,7 @@ defmodule BelgoWeb.Plans.Editor do
                   />
                 </label>
                 <label>
-                  {gettext("Wall height (cm)")}
+                  {gettext("Default wall height (cm)")}
                   <input
                     type="number"
                     name="settings[wall_height]"

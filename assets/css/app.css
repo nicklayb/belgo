@@ -71,8 +71,26 @@
   white-space: nowrap;
 }
 
-a.plan3d-label:hover {
+.plan3d-labels-hidden .plan3d-label:not([data-on-path], [data-selected]) {
+  visibility: hidden;
+}
+
+.plan3d-label[data-device-id] {
+  cursor: pointer;
+}
+
+.plan3d-label[data-device-id]:hover {
   color: var(--color-accent);
+}
+
+.plan3d-label[data-on-path] {
+  outline: 2px solid var(--color-accent);
+}
+
+.plan3d-label[data-selected],
+.plan3d-label[data-selected]:hover {
+  background: var(--color-accent);
+  color: var(--color-accent-foreground);
 }
 
 /* Plan editor: the "+" on a room's free sides shows while the room is hovered (any

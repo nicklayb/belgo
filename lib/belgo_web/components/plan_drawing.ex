@@ -16,6 +16,7 @@ defmodule BelgoWeb.Components.PlanDrawing do
   alias Belgo.Plans.Geometry
   alias Belgo.Plans.Opening
   alias Belgo.Plans.Plan
+  alias Belgo.Plans.Shape
   alias Belgo.Plans.Zone
 
   @margin_centimetres 100
@@ -95,6 +96,7 @@ defmodule BelgoWeb.Components.PlanDrawing do
             do: {opening, index}
           ),
         placements: Enum.filter(assigns.plan.placements, &MapSet.member?(zone_ids, &1.zone_id)),
+        box_by_device_id: boxes(assigns.plan, zones),
         footprint: footprint(assigns.plan, assigns.level_id),
         selected_zone: Enum.find(zones, &(&1.id == assigns.selected_zone_id)),
         grid_reach: @grid_reach_frames,
@@ -286,6 +288,20 @@ defmodule BelgoWeb.Components.PlanDrawing do
         data-placement={placement.device_id}
         class={@editable && "cursor-grab"}
       >
+        <rect
+          :if={box = @box_by_device_id[placement.device_id]}
+          x={box.x}
+          y={box.y}
+          width={box.width}
+          height={box.depth}
+          data-device-box
+          vector-effect="non-scaling-stroke"
+          stroke-width="1.5"
+          class={[
+            "fill-accent/15 stroke-accent",
+            placement.device_id == @selected_device_id && "fill-accent/30"
+          ]}
+        />
         <.device_marker
           placement={placement}
           device={@device_by_id[placement.device_id]}
@@ -404,6 +420,17 @@ defmodule BelgoWeb.Components.PlanDrawing do
 
   defp metres(centimetres),
     do: :erlang.float_to_binary(centimetres / @centimetres_per_metre, decimals: 1)
+
+  # Footprints of the boxed devices of the drawn zones.
+  defp boxes(plan, zones) do
+    zone_by_id = Map.new(zones, &{&1.id, &1})
+
+    for placement <- plan.placements,
+        zone = zone_by_id[placement.zone_id],
+        box = Shape.footprint(placement, zone),
+        into: %{},
+        do: {placement.device_id, box}
+  end
 
   # The exterior shows where the home stands: every room, greyed out.
   defp footprint(plan, nil),

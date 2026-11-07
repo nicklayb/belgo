@@ -133,13 +133,25 @@ defmodule Belgo.Plans.EditingTest do
       assert {:error, _message} = Editing.place_device(plan, "smithers", basement, 3000, 3000)
     end
 
-    test "placing again moves the device, keeping one placement", %{
+    test "placing again moves the device with its box, keeping one placement", %{
       plan: plan,
       basement: basement
     } do
       {:ok, plan} = Editing.place_device(plan, "burns-node", basement, 300, 200)
+      shape = %Belgo.Plans.Shape{width: 60, depth: 40, height: 180}
+      {:ok, plan} = Editing.update_placement(plan, "burns-node", %{shape: shape})
       {:ok, plan} = Editing.place_device(plan, "burns-node", basement, 100, 100)
-      assert [%{x: 100, y: 100}] = plan.placements
+      assert [%{x: 100, y: 100, shape: ^shape}] = plan.placements
+    end
+
+    test "a floor device moved near a wall stays on the floor, against it", %{
+      plan: plan,
+      basement: basement
+    } do
+      {:ok, plan} = Editing.place_device(plan, "burns-node", basement, 400, 200)
+      assert [%{anchor: :floor}] = plan.placements
+      {:ok, plan} = Editing.place_device(plan, "burns-node", basement, 790, 200)
+      assert [%{anchor: :floor, x: 800, y: 200, height: 0}] = plan.placements
     end
 
     test "anchoring to a wall snaps to the nearest wall", %{plan: plan, basement: basement} do

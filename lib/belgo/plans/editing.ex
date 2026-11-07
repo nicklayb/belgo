@@ -72,7 +72,7 @@ defmodule Belgo.Plans.Editing do
     end
   end
 
-  @doc "Changes the name, base or offset of a level."
+  @doc "Changes the name, base, offset or heights of a level (`nil` heights use the home's)."
   @spec update_level(Plan.t(), String.t(), map()) :: result()
   def update_level(%Plan{} = plan, level_id, attributes) do
     case Enum.find_index(plan.levels, &(&1.id == level_id)) do
@@ -425,9 +425,11 @@ defmodule Belgo.Plans.Editing do
 
   @doc """
   Places a device (or moves it) where the editor was clicked on a level (`nil`: the
-  exterior): in the room containing the point, on its wall when the point is within
-  30 cm of one (snapped onto it, at 150 cm by default), else on its floor. A device
-  is placed once: placing it again moves it. It is stored in its room's frame.
+  exterior): in the room containing the point, snapped onto its wall when the point
+  is within 30 cm of one (a new device then hangs on it at 150 cm, a floor or
+  floating one keeps its anchor, against the wall), else on its floor. A device
+  is placed once: placing it again moves it (its box kept). It is stored in its
+  room's frame.
   """
   @spec place_device(Plan.t(), String.t(), String.t() | nil, number(), number()) :: result()
   def place_device(%Plan{} = plan, device_id, level_id, x, y) do
@@ -439,7 +441,12 @@ defmodule Belgo.Plans.Editing do
         {:error, "click inside a room to place a device"}
 
       zone ->
-        placement = to_frame(anchored_placement(zone, device_id, {x, y}, previous), plan)
+        placement =
+          zone
+          |> anchored_placement(device_id, {x, y}, previous)
+          |> keep_shape(previous)
+          |> to_frame(plan)
+
         others = Enum.reject(plan.placements, &(&1.device_id == device_id))
         {:ok, %{plan | placements: others ++ [placement]}}
     end
@@ -1025,6 +1032,17 @@ defmodule Belgo.Plans.Editing do
     floating? = previous != nil and previous.anchor == :float
 
     case nearest_point_on_walls(walls, {x, y}, @device_wall_snap_centimetres) do
+      # A device already on the floor or floating stays so, against the wall.
+      {wall_x, wall_y} when previous != nil and previous.anchor in [:floor, :float] ->
+        %Placement{
+          device_id: device_id,
+          zone_id: zone.id,
+          anchor: previous.anchor,
+          x: wall_x,
+          y: wall_y,
+          height: previous.height
+        }
+
       {wall_x, wall_y} ->
         %Placement{
           device_id: device_id,
@@ -1046,6 +1064,10 @@ defmodule Belgo.Plans.Editing do
         }
     end
   end
+
+  # A moved device keeps its box.
+  defp keep_shape(placement, %Placement{shape: shape}), do: %{placement | shape: shape}
+  defp keep_shape(placement, nil), do: placement
 
   defp wall_height_of(%Placement{anchor: :wall, height: height}), do: height
   defp wall_height_of(_previous), do: Placement.default_wall_height()

@@ -31,6 +31,7 @@ defmodule BelgoWeb.Components.Routing do
   end
 
   attr(:hops, :list, required: true)
+  attr(:dimmed_ids, MapSet, default: MapSet.new(), doc: "devices shown greyed out")
 
   @doc "A network path: the device, then every node up to the gateway."
   def network_path(assigns) do
@@ -44,7 +45,11 @@ defmodule BelgoWeb.Components.Routing do
         <.link
           :if={hop.device}
           navigate={~p"/devices/#{hop.device.id}"}
-          class={["hover:text-accent", position == 0 && "font-medium"]}
+          class={[
+            "hover:text-accent",
+            position == 0 && "font-medium",
+            MapSet.member?(@dimmed_ids, hop.device.id) && "text-muted"
+          ]}
         >
           {hop.name}
         </.link>

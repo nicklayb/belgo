@@ -176,8 +176,28 @@ defmodule BelgoWeb.PlanEditorTest do
 
     render_hook(view, "tool", %{"tool" => "place"})
     assert has_element?(view, "#plan-place-device")
+
+    # Grouped by the devices' locations.
+    assert has_element?(
+             view,
+             ~s(#plan-place-device-select optgroup[label="742 Evergreen Terrace › Basement"] option[value="burns-node"])
+           )
+
     render_change(form(view, "#plan-place-device form", %{"device_id" => "burns-node"}))
     render_hook(view, "place", %{"x" => 900, "y" => 200})
+
+    # Placed: no longer offered, listed under Elements.
+    render_hook(view, "tool", %{"tool" => "place"})
+    refute has_element?(view, ~s(#plan-place-device-select option[value="burns-node"]))
+
+    assert has_element?(
+             view,
+             ~s(#plan-placed-devices [data-placed-device="burns-node"]),
+             "Burns Node"
+           )
+
+    render_hook(view, "tool", %{"tool" => "select"})
+    render_click(element(view, ~s(#plan-placed-devices [data-placed-device="burns-node"])))
 
     assert has_element?(view, "#plan-selected-placement", "Burns Node")
     assert has_element?(view, ~s(#plan-editor-canvas [data-placement="burns-node"]))
@@ -191,12 +211,47 @@ defmodule BelgoWeb.PlanEditorTest do
 
     render_change(form(view, "#plan-selected-placement form", placement: %{anchor: "wall"}))
     render_change(form(view, "#plan-selected-placement form", placement: %{height: "180"}))
+    refute has_element?(view, "#plan-editor-canvas [data-device-box]")
+
+    # Typed one field at a time: the fields already filled keep their value.
+    view
+    |> form("#plan-selected-placement form", placement: %{shape: %{width: "60"}})
+    |> render_change()
+
+    assert has_element?(
+             view,
+             ~s(#placement-shape input[name="placement[shape][width]"][value="60"])
+           )
+
+    refute has_element?(view, "#plan-editor-canvas [data-device-box]")
+
+    view
+    |> form("#plan-selected-placement form",
+      placement: %{shape: %{width: "60", depth: "40", height: "200"}}
+    )
+    |> render_change()
+
+    assert has_element?(view, "#plan-editor-canvas [data-device-box]")
 
     send(view.pid, :autosave)
     assert has_element?(view, "#plan-save-status[data-status=saved]")
 
-    assert [%{device_id: "burns-node", anchor: :wall, height: 180}] =
-             saved_plan("742-evergreen-terrace").placements
+    assert [
+             %{
+               device_id: "burns-node",
+               anchor: :wall,
+               height: 180,
+               shape: %{width: 60, depth: 40, height: 200}
+             }
+           ] = saved_plan("742-evergreen-terrace").placements
+
+    view
+    |> form("#plan-selected-placement form",
+      placement: %{shape: %{width: "", depth: "", height: ""}}
+    )
+    |> render_change()
+
+    refute has_element?(view, "#plan-editor-canvas [data-device-box]")
 
     render_hook(view, "key", %{"action" => "delete"})
     refute has_element?(view, ~s(#plan-editor-canvas [data-placement="burns-node"]))
@@ -334,5 +389,23 @@ defmodule BelgoWeb.PlanEditorTest do
 
     assert has_element?(view, "#plan-ground-summary", "Ground at 2.16 m, 80 % up Basement.")
     assert has_element?(view, "#plan-ground-summary", "Draw the terrain on the Exterior tab")
+  end
+
+  test "each level has its own height and wall height", %{conn: conn} do
+    view = create_home(conn)
+    render_submit(form(view, "#add-level", level: %{name: "Basement"}))
+    render_submit(form(view, "#add-level", level: %{name: "Ground floor", base_id: "basement"}))
+
+    view
+    |> form("#level-form-basement", level: %{height: "220", wall_height: "200"})
+    |> render_change()
+
+    assert has_element?(view, "#plan-levels-panel", "2.20 m")
+
+    send(view.pid, :autosave)
+    assert has_element?(view, "#plan-save-status[data-status=saved]")
+
+    assert [%{id: "basement", height: 220, wall_height: 200}, %{id: "ground-floor", height: nil}] =
+             saved_plan("742-evergreen-terrace").levels
   end
 end

@@ -162,6 +162,29 @@ defmodule Belgo.Plans.Geometry do
     end)
   end
 
+  @doc """
+  Splits segments by the walls lying on the same lines: `{covered, uncovered}`, the
+  parts lying on one of the walls and the others.
+  """
+  @spec partition([segment()], [segment()]) :: {[segment()], [segment()]}
+  def partition(segments, walls) do
+    segments
+    |> Enum.map(fn {axis, position, first, last} ->
+      covering =
+        for {^axis, ^position, wall_first, wall_last} <- walls,
+            wall_first < last and wall_last > first,
+            do: {max(first, wall_first), min(last, wall_last)}
+
+      to_segment = fn {part_first, part_last} -> {axis, position, part_first, part_last} end
+
+      {Enum.map(union(covering), to_segment),
+       Enum.map(subtract({first, last}, covering), to_segment)}
+    end)
+    |> Enum.reduce({[], []}, fn {covered, uncovered}, {all_covered, all_uncovered} ->
+      {all_covered ++ covered, all_uncovered ++ uncovered}
+    end)
+  end
+
   # Edges carry their outward side so that two rectangles' shared edge cancels out.
   defp edges(%{x: x, y: y, width: width, depth: depth}) do
     [

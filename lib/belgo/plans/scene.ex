@@ -10,15 +10,21 @@ defmodule Belgo.Plans.Scene do
       ground height, cut around the home's footprint (the ground is never seen inside
       rooms); orphan rooms are left out
     * walls: the walls of each level split around doors and openings, with a lintel
-      above each (doors and openings stop below the wall top)
-    * devices: a point per placement (floor, wall at its height, floating)
+      above each (doors and openings stop below the wall top); `exterior` marks the
+      pieces on the outline of the whole level (the facade, which can be hidden)
+    * room_labels: the name of each visible room, on its floor, in its largest
+      rectangle (the browser fits the text in it)
+    * devices: a point per placement (floor, wall at its height, floating), with
+      its box when it has a shape (`Belgo.Plans.Shape.footprint/2`)
   """
 
   alias Belgo.Inventory.Snapshot
   alias Belgo.Plans.Analysis
   alias Belgo.Plans.Geometry
+  alias Belgo.Plans.Levels
   alias Belgo.Plans.Opening
   alias Belgo.Plans.Plan
+  alias Belgo.Plans.Shape
   alias Belgo.Plans.Zone
 
   @opening_height_centimetres 210
@@ -54,6 +60,13 @@ defmodule Belgo.Plans.Scene do
         |> Enum.sort_by(& &1.elevation),
       floors: Enum.flat_map(visible_zones, &floors(&1, plan, analysis, footprint(visible_zones))),
       walls: walls(plan, analysis),
+      room_labels:
+        for(
+          zone <- visible_zones,
+          not Zone.exterior?(zone),
+          zone.rectangles != [],
+          do: room_label(zone, analysis)
+        ),
       devices:
         plan.placements
         |> Enum.filter(
@@ -120,6 +133,21 @@ defmodule Belgo.Plans.Scene do
   defp footprint(zones),
     do: for(zone <- zones, not Zone.exterior?(zone), rectangle <- zone.rectangles, do: rectangle)
 
+  defp room_label(zone, analysis) do
+    largest = Enum.max_by(zone.rectangles, &(&1.width * &1.depth))
+
+    %{
+      zone_id: zone.id,
+      name: zone.name,
+      level_id: zone.level_id,
+      x: largest.x,
+      y: largest.y,
+      width: largest.width,
+      depth: largest.depth,
+      elevation: zone_elevation(zone, analysis)
+    }
+  end
+
   defp floors(zone, plan, analysis, footprint) do
     elevation = zone_elevation(zone, analysis)
 
@@ -139,7 +167,8 @@ defmodule Belgo.Plans.Scene do
         width: rectangle.width,
         depth: rectangle.depth,
         elevation: elevation,
-        top: if(Zone.exterior?(zone), do: elevation, else: elevation + plan.wall_height)
+        top:
+          if(Zone.exterior?(zone), do: elevation, else: elevation + zone_wall_height(zone, plan))
       }
     end)
   end
@@ -152,16 +181,22 @@ defmodule Belgo.Plans.Scene do
       |> Enum.reject(&(Zone.exterior?(&1) or MapSet.member?(hidden, &1.id)))
       |> Enum.group_by(& &1.level_id)
       |> Map.new(fn {level_id, zones} ->
-        {level_id, Geometry.merge(Enum.flat_map(zones, &Geometry.outline(&1.rectangles)))}
+        walls = Geometry.merge(Enum.flat_map(zones, &Geometry.outline(&1.rectangles)))
+        facade = Geometry.outline(Enum.flat_map(zones, & &1.rectangles))
+        {level_id, Geometry.partition(walls, facade)}
       end)
 
-    Enum.flat_map(visible_walls, fn {level_id, segments} ->
+    wall_heights = Levels.wall_heights(plan)
+
+    Enum.flat_map(visible_walls, fn {level_id, {exterior_segments, interior_segments}} ->
       bottom = Map.get(analysis.elevations, level_id, 0.0)
+      wall_height = Map.get(wall_heights, level_id, plan.wall_height)
       openings = Enum.filter(plan.openings, &(&1.level_id == level_id))
 
-      segments
-      |> Enum.flat_map(&split_wall(&1, openings, bottom, plan.wall_height))
-      |> Enum.map(&Map.put(&1, :level_id, level_id))
+      for {exterior?, segments} <- [{true, exterior_segments}, {false, interior_segments}],
+          segment <- segments,
+          piece <- split_wall(segment, openings, bottom, wall_height),
+          do: Map.merge(piece, %{level_id: level_id, exterior: exterior?})
     end)
   end
 
@@ -176,9 +211,21 @@ defmodule Belgo.Plans.Scene do
       anchor: placement.anchor,
       x: placement.x,
       y: placement.y,
-      elevation: zone_elevation(zone, analysis) + placement.height
+      elevation: zone_elevation(zone, analysis) + placement.height,
+      box: box(placement, zone)
     }
   end
+
+  defp box(%{shape: nil}, _zone), do: nil
+
+  defp box(placement, zone),
+    do:
+      placement
+      |> Shape.footprint(zone, div(@wall_thickness_centimetres, 2))
+      |> Map.put(:height, placement.shape.height)
+
+  defp zone_wall_height(%Zone{level_id: level_id}, plan),
+    do: Map.get(Levels.wall_heights(plan), level_id, plan.wall_height)
 
   defp zone_elevation(%Zone{level_id: nil}, analysis), do: analysis.ground_elevation
 

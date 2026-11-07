@@ -111,6 +111,10 @@ defmodule BelgoWeb.PlansTest do
     {:ok, view, _html} = live(conn, ~p"/plan")
 
     assert has_element?(view, ~s(#plan-3d[phx-hook="Plan3D"][data-visible-up-to=""]))
+
+    for key <- ~w(labels names facade),
+        do: assert(has_element?(view, ~s(#plan-3d button[data-toggle="#{key}"])))
+
     scene = scene_of(render(element(view, "#plan-3d")))
     assert Enum.any?(scene["devices"], &(&1["name"] == "TV Living Room"))
     assert Enum.any?(scene["walls"], &(&1["kind"] == "door"))
@@ -126,5 +130,58 @@ defmodule BelgoWeb.PlansTest do
     |> String.replace("&quot;", "\"")
     |> String.replace("&amp;", "&")
     |> Jason.decode!()
+  end
+
+  test "a click on a device shows its network path", %{conn: conn} do
+    plow_king = %{
+      "device_id" => "plow-king",
+      "zone_id" => "basement-room",
+      "anchor" => "floor",
+      "x" => 600,
+      "y" => 200
+    }
+
+    plan = Map.update!(@evergreen_terrace, "placements", &[plow_king | &1])
+    {:ok, _plan} = Inventory.create(:plans, plan, user: :system)
+    {:ok, view, _html} = live(conn, ~p"/plan")
+    refute has_element?(view, "#plan-network-path")
+
+    render_hook(element(view, "#plan-3d"), "select-device", %{"device_id" => "burns-node"})
+
+    assert has_element?(view, "#plan-network-path", "Burns Node")
+    assert has_element?(view, "#plan-network-path", "Plow King")
+
+    [_match, json] = Regex.run(~r/data-network-path="([^"]*)"/, render(element(view, "#plan-3d")))
+
+    assert %{
+             "device_id" => "burns-node",
+             "segments" => [%{"from" => "burns-node", "to" => "plow-king", "kind" => "wired"}]
+           } = Jason.decode!(String.replace(json, "&quot;", "\""))
+
+    render_hook(element(view, "#plan-3d"), "select-device", %{"device_id" => ""})
+    refute has_element?(view, "#plan-network-path")
+    refute render(element(view, "#plan-3d")) =~ "data-network-path"
+  end
+
+  test "the 3D view filters devices by kind, keeping the shown path", %{conn: conn} do
+    {:ok, _plan} = Inventory.create(:plans, @evergreen_terrace, user: :system)
+    {:ok, view, _html} = live(conn, ~p"/plan")
+
+    assert has_element?(view, ~s(#plan-kind-filter button[phx-value-kind="media"]))
+    render_click(element(view, ~s(#plan-kind-filter button[phx-value-kind="media"])))
+    assert_patch(view, ~p"/plan/evergreen-terrace?kinds=media")
+
+    hidden =
+      for device <- scene_of(render(element(view, "#plan-3d")))["devices"],
+          into: %{},
+          do: {device["device_id"], device["hidden"]}
+
+    assert %{"tv-living-room" => false, "burns-node" => true} = hidden
+
+    # Levels keep the filter.
+    assert has_element?(view, ~s(#plan-levels a[href*="kinds=media"]))
+
+    render_click(element(view, "#plan-kind-filter button", "All kinds"))
+    assert_patch(view, ~p"/plan/evergreen-terrace")
   end
 end

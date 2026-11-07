@@ -510,6 +510,59 @@ first addressed interface only, other interfaces are named through their
   first guess (`@assumed_drawing_pixels`), used as is by the read-only 2D view.
   Measured: a label stays 15 px high from "Fit" to an 8× zoom. The editor's Home
   panel explains the ground (`#plan-ground-summary`: height, missing exterior zones).
+- Plan polish (owner): levels have optional `height` / `wall_height` (blank = the
+  home's `level_height` / `wall_height`, now "defaults"); `Levels.height/2`,
+  `wall_height/2`; an offset is measured in the **base** level's height (reference
+  level: its own), the ground percent in its level's height, the orphan check uses
+  the taller of two levels. Placements have an optional `shape` (`Plans.Shape`:
+  width, depth, height; three empty fields = a point, partial input ignored):
+  `Shape.footprint/3` centres boxes on their point, except a point on a wall of its
+  zone (wall devices, and floor / float ones against a wall, e.g. a rack): the box
+  lies along that wall with its back on it (owner) and stand into the room (axis aligned,
+  inside side found with `contains_point?`; the 3D scene passes half the wall
+  thickness as `wall_gap` so the back touches the inner face); moving a device
+  keeps its box (`place_device` keeps the previous `shape`); a floor / float device
+  dragged within 30 cm of a wall snaps onto it but keeps its anchor and height
+  (only new placements become wall devices at 150 cm); drawn in 2D (`[data-device-box]`, plan units) and 3D
+  (translucent box). 3D doors are ghosts (transparent, no depth write). Scene walls
+  carry `exterior` (on `Geometry.outline` of all the level's rectangles,
+  `Geometry.partition/2`); the `facade` toggle hides them. Views are remembered
+  in localStorage per plan: 3D `belgo:plan3d:<id>` (camera + target saved 300 ms
+  after OrbitControls `change`, damping included, and on destroy; facade flag),
+  editor `belgo:plan-editor:view:<id>` (viewBox). Measured: back from /devices the
+  3D view differs by 0.18 % of pixels (labels), the editor viewBox is identical.
+- Network path on the 3D plan (owner): a click on a device (label, marker or box;
+  a drag is not a click) sends `select-device`; `Plans.Live` (also a Discovery hook
+  view, live uplinks) computes `Routing.path/3`, shows it in `#plan-network-path`
+  (`Components.Routing.network_path` with `dimmed_ids` = hops not on the plan) and
+  puts `Plans.NetworkPath.segments/2` in `data-network-path`: lines between
+  consecutive placed hops, `wired` / `wireless` (dashed) / `indirect` (grey dashed,
+  hops missing from the plan in between). Tubes drawn without depth test (seen
+  through floors and walls); a click elsewhere clears it. Device labels are no
+  longer links (the panel links the devices). Gotcha: OrbitControls captures the
+  pointer, so the pointerup target is the overlay; the label is taken from
+  pointerdown, listened in the capture phase on the container (pointerup on the
+  window). Editor box fields: a partial box is not applied, so the typed values are
+  kept in `shape_input` (shown while the placement's shape is unchanged), else the
+  re-render emptied the fields already filled (owner report).
+- Plan kind filter (owner): the 3D view has the device list's kind boxes
+  (`Components.Inventory.kind_filter/1` + `kind_facets/2`, shared with Devices;
+  `DeviceFilter` with `kinds` only, `?kinds=a,b`, kept by level / view links).
+  Counts are over placed devices; devices of other kinds are sent with `hidden: true`
+  (kept positioned, invisible and not pickable) except the hops of the shown
+  network path.
+- Editor device chooser (owner): "Place a device" lists only devices not on the
+  plan, in `<optgroup>`s by location path (`Physical.device_path`, guests under
+  their host's location; "No location" last). A "Placed devices" card under
+  Elements lists placed ones (room · level); a click (`focus-placement`) switches to
+  their level and selects them. Placing resets the chosen device.
+- 3D room names and toggles (owner): `Scene.room_labels` (each visible room's
+  largest rectangle); the viewer prints the name into a `CanvasTexture` laid flat on
+  the floor, along the longer side, at most 40 cm high / 80 % of the room. Buttons
+  `[data-toggle]` (`view_toggle` in `Plans.Live`): `labels` (device labels, CSS
+  class `plan3d-labels-hidden`; path hops and the selected device stay), `names`
+  (floor names), `facade` (exterior walls); stored per plan as `hidden` in
+  `belgo:plan3d:<id>` (the former `facadeHidden` is migrated on read).
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

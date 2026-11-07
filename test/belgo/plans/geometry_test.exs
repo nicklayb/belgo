@@ -53,4 +53,12 @@ defmodule Belgo.Plans.GeometryTest do
     refute Enum.any?(parts, &Geometry.overlap?(&1, house))
     assert [yard] == Geometry.subtract_rectangles(yard, [%{x: 2000, y: 0, width: 10, depth: 10}])
   end
+
+  test "partition splits segments into the parts on the walls and the others" do
+    walls = [{:horizontal, 0, 0, 300}, {:horizontal, 0, 500, 700}, {:vertical, 0, 0, 100}]
+
+    assert {[{:horizontal, 0, 100, 300}, {:horizontal, 0, 500, 600}],
+            [{:horizontal, 0, 300, 500}]} =
+             Geometry.partition([{:horizontal, 0, 100, 600}], walls)
+  end
 end

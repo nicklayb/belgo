@@ -2,7 +2,9 @@ defmodule Belgo.Plans.Placement do
   @moduledoc """
   Where an inventory device is on the plan: in a zone, anchored to the `:floor`, to a
   `:wall` (the point lies on a wall, at `height`) or `:float`ing at `height`, in
-  centimetres from the zone floor. The device never refers to the plan.
+  centimetres from the zone floor. An optional `shape` gives the device a box whose
+  footprint is centred on the point (out of the wall when the point is on one) and whose
+  bottom is at `height`. The device never refers to the plan.
   """
 
   use Ecto.Schema
@@ -10,6 +12,7 @@ defmodule Belgo.Plans.Placement do
   import Ecto.Changeset
 
   alias Belgo.Inventory.Identifier
+  alias Belgo.Plans.Shape
 
   @type t :: %__MODULE__{}
 
@@ -25,6 +28,7 @@ defmodule Belgo.Plans.Placement do
     field(:x, :integer)
     field(:y, :integer)
     field(:height, :integer, default: 0)
+    embeds_one(:shape, Shape, on_replace: :update)
   end
 
   @doc "Lists the anchors."
@@ -40,6 +44,7 @@ defmodule Belgo.Plans.Placement do
   def changeset(placement, params) do
     placement
     |> cast(params, @fields)
+    |> cast_embed(:shape)
     |> validate_required(~w(device_id zone_id anchor x y height)a)
     |> Identifier.validate(:device_id)
     |> Identifier.validate(:zone_id)

@@ -12,12 +12,16 @@
 // (JS.ignore_attributes). Wheel zooms around the cursor; Space + drag or the middle
 // button pans. Keyboard shortcuts (outside form fields) are sent as `key` events.
 // Walls use non-scaling strokes; symbols and labels ([data-screen] groups) are
-// rescaled after every view change so they keep their screen size.
+// rescaled after every view change so they keep their screen size. The view is kept
+// per plan (`data-plan-id`) in localStorage, so the editor reopens where it was left.
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg"
 const MINIMUM_SIZE_STEPS = 1
 const ZOOM_STEP = 1.2
 const WHEEL_ZOOM_STEP = 1.1
 const MIDDLE_BUTTON = 1
+const STORAGE_PREFIX = "belgo:plan-editor:view:"
+const SAVE_DELAY_MILLISECONDS = 300
+const VIEW_LENGTH = 4
 const TOOL_KEYS = {v: "select", r: "draw", e: "rectangle", s: "split", d: "door", o: "opening", p: "place"}
 
 const snap = (value, grid) => Math.round(value / grid) * grid
@@ -27,7 +31,8 @@ const editingText = target =>
 export default {
   mounted() {
     this.gesture = null
-    this.view = null
+    this.storageKey = STORAGE_PREFIX + this.el.dataset.planId
+    this.view = this.readStoredView()
     this.spaceHeld = false
     this.el.addEventListener("pointerdown", event => this.start(event))
     this.el.addEventListener("pointermove", event => this.move(event))
@@ -53,6 +58,8 @@ export default {
   },
 
   destroyed() {
+    clearTimeout(this.saveTimer)
+    this.saveView()
     window.removeEventListener("keydown", this.onKeydown)
     window.removeEventListener("keyup", this.onKeyup)
     this.resizeObserver?.disconnect()
@@ -64,6 +71,29 @@ export default {
     if (!this.view) this.view = svg.getAttribute("viewBox").split(" ").map(Number)
     svg.setAttribute("viewBox", this.view.join(" "))
     this.applyScreenSizes()
+    clearTimeout(this.saveTimer)
+    this.saveTimer = setTimeout(() => this.saveView(), SAVE_DELAY_MILLISECONDS)
+  },
+
+  saveView() {
+    if (!this.view) return
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.view))
+    } catch (_error) {
+      // Storage full or disabled: the view is simply not remembered.
+    }
+  },
+
+  // A stored view, else null (the server's first frame is used).
+  readStoredView() {
+    try {
+      const view = JSON.parse(localStorage.getItem(this.storageKey))
+      const valid = Array.isArray(view) && view.length === VIEW_LENGTH &&
+        view.every(Number.isFinite) && view[2] > 0 && view[3] > 0
+      return valid ? view : null
+    } catch (_error) {
+      return null
+    }
   },
 
   // Symbols, labels and grid lines are sized in screen pixels: their groups are
