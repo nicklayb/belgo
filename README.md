@@ -2,6 +2,9 @@
 
 ![This a picture of the application running](/home.png "How the app looks")
 
+**Note**: Proper auth is not finished yet. Take precautions into hiding behind a 
+reverse proxy authentication and. **Don't. Expose. This. To. Internet. Please.**
+
 Homelab manager: the single source of truth for the machines of the network, where
 they physically are, what runs on what, and the DNS / DHCP / client names AdGuard
 Home, OPNsense and Omada must agree on. The inventory is a set of YAML files you
