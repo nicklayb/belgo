@@ -87,6 +87,12 @@ config forbids several pipes on one line), `mix compile --warnings-as-errors`,
 - Running `mix compile` (dev env) while the owner's `just dev` runs compiles into the
   same `_build/dev`: the running server keeps the old code. Tell the owner to restart.
 - `mix test` removes `tmp/test_inventory` first (alias): the app loads it at boot.
+- The test environment must not depend on the shell: `config/runtime.exs` forces
+  test values with `Box.Config` `test:` (static authentication, Phoenix secrets,
+  data path). `.envrc` sets `BELGO_AUTHENTICATION=static`, which hid that CI (no
+  variable) fell back to `trusted_headers` and failed 89 LiveView tests
+  (`connect_from_static_token/3`). Reproduce CI with
+  `nix develop path:. --ignore-environment --keep HOME -c just check`.
 - Logger level in tests is `:warning`; tests capturing debug/info logs must raise it
   and run `async: false`.
 - Elixir 1.19 everywhere (owner decision). Move to 1.20 once officially released

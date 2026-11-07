@@ -28,8 +28,9 @@ config :belgo, Belgo.Discovery,
   refresh_on_start: config_env() != :test
 
 config :belgo, BelgoWeb.Authentication,
+  # Tests always use the static user, whatever the developer's environment says.
   mode:
-    (case Box.Config.get("BELGO_AUTHENTICATION", default: "trusted_headers") do
+    (case Box.Config.get("BELGO_AUTHENTICATION", default: "trusted_headers", test: "static") do
        "trusted_headers" -> :trusted_headers
        "static" -> :static
      end),
@@ -44,5 +45,11 @@ port = Box.Config.int("PORT", default: "4000")
 config :belgo, BelgoWeb.Endpoint,
   http: [ip: {0, 0, 0, 0}, port: port],
   url: [host: app_host.host, scheme: app_host.scheme, port: app_host.port],
-  secret_key_base: Box.Config.get!("SECRET_KEY_BASE"),
-  live_view: [signing_salt: Box.Config.get!("LIVE_VIEW_SALT")]
+  # Test values: the test environment needs no variable (CI, fresh shells).
+  secret_key_base:
+    Box.Config.get!("SECRET_KEY_BASE",
+      test: "test-only-secret-key-base-of-at-least-sixty-four-bytes-0123456789abcdef"
+    ),
+  live_view: [
+    signing_salt: Box.Config.get!("LIVE_VIEW_SALT", test: "test-only-signing-salt")
+  ]
