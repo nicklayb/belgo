@@ -29,7 +29,18 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
 - **Auth = Authelia forward auth** (trusted `Remote-*` headers), kept as simple as
   possible and swappable (`BelgoWeb.Authentication` modes). `static` mode for dev.
   Belgo is never exposed outside the homelab network.
-- Stateless container for Kubernetes, image built by Nix (`nix build .#dockerImage`).
+- Stateless container for Kubernetes, image built by Nix (`nix build .#dockerImage`),
+  published on Docker Hub as `nboisvert/belgo` (`<version>` and `latest`).
+- Versioning (owner): `VERSION` is the single source (read by `mix.exs`, `flake.nix`
+  through `lib.strings.trim (builtins.readFile ./VERSION)`, the Justfile with
+  `read("VERSION")`, and CI). CI (`.github/workflows`, same principle as the owner's
+  `~/dev/ivhs_broker`, with the `gh` CLI instead of a custom action): `test.yml`
+  (`nix develop --command just check`) on pull requests to main and called by
+  `release.yml`; every push to main tests, then only when no GitHub release named
+  after `VERSION` exists: `just release-docker` (Nix build, `docker load`, tags,
+  push to Docker Hub) then `gh release create <version> --title v<version>`. Image
+  pushed before the release, so a failed push retries on the next push. Secrets
+  `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`. Docker usage is in `docs/guide.md`.
 - UI: modern, responsive, unified, no gratuitous animation. Built to grow: new pages
   register in `BelgoWeb.Navigation`.
 

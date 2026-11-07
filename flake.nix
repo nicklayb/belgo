@@ -20,11 +20,13 @@
         beamPackages = pkgs.beam28Packages;
         # Move to 1.20 once it is officially released everywhere.
         elixir = beamPackages.elixir_1_19;
-        version = "0.1.0";
+        # Single source of the version, shared with mix.exs, the Justfile and CI.
+        version = lib.strings.trim (builtins.readFile ./VERSION);
 
         src = lib.fileset.toSource {
           root = ./.;
           fileset = lib.fileset.unions [
+            ./VERSION
             ./mix.exs
             ./mix.lock
             ./config

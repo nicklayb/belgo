@@ -1,7 +1,8 @@
-docker_registry := "nboisvert"
-version := "0.1.0"
+# The version comes from VERSION; the image goes to Docker Hub (log in first with
+# `docker login`; BELGO_DOCKER_REPOSITORY overrides the repository).
+version := trim(read("VERSION"))
 docker_image := "belgo:" + version
-docker_remote_image := docker_registry / docker_image
+docker_repository := env("BELGO_DOCKER_REPOSITORY", "nboisvert/belgo")
 
 # Starts the dev environment by default
 default: dev
@@ -50,12 +51,17 @@ docker-build:
 	nix build .#dockerImage -o result-image
 	docker load < result-image
 
+# Tags the built image for Docker Hub, with its version and as latest
 docker-tag:
-	docker tag {{docker_image}} {{docker_remote_image}}
+	docker tag {{docker_image}} {{docker_repository}}:{{version}}
+	docker tag {{docker_image}} {{docker_repository}}:latest
 
+# Pushes both tags to Docker Hub
 docker-push:
-	docker push {{docker_remote_image}}
+	docker push {{docker_repository}}:{{version}}
+	docker push {{docker_repository}}:latest
 
+# Builds, tags and pushes the image of the current VERSION (what CI does on release)
 release-docker: docker-build docker-tag docker-push
 
 # Runs the image against ./data, trusting a fake Authelia user header is up to you

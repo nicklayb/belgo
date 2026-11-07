@@ -1,10 +1,14 @@
 defmodule Belgo.MixProject do
   use Mix.Project
 
+  # The project version lives in VERSION (also read by flake.nix, the Justfile and
+  # the release workflow).
+  @version "VERSION" |> File.read!() |> String.trim()
+
   def project do
     [
       app: :belgo,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

@@ -1,0 +1,41 @@
+# Format, warnings, Credo and tests (`just check`) in the Nix dev shell, so CI uses
+# the same toolchain as development. Runs for pull requests to main, and is called
+# by the release workflow before anything is released.
+name: Tests
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Format, warnings, Credo and tests
+    runs-on: ubuntu-latest
+    env:
+      # Development values (see .envrc), only used to boot the application in tests.
+      SECRET_KEY_BASE: FH0XS5rdftWJzFtrO0vZthEP+BF/m/9lZYC6MAZa5nHjOLDdlP2g5U3hSJCBnD3B
+      LIVE_VIEW_SALT: oh8aX0/4A6KqRcPHKAD8nisib4JkLQ+b
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Mix dependencies and builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            .nix-mix
+            .nix-hex
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', 'flake.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - name: Check
+        run: nix develop --command just check

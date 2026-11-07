@@ -1,5 +1,7 @@
 # Belgo
 
+![This a picture of the application running](/home.png "How the app looks")
+
 Homelab manager: the single source of truth for the machines of the network, where
 they physically are, what runs on what, and the DNS / DHCP / client names AdGuard
 Home, OPNsense and Omada must agree on. The inventory is a set of YAML files you
@@ -23,15 +25,19 @@ Details: [docs/guide.md](docs/guide.md).
 ## Deployment
 
 ```sh
-just docker-build   # nix build .#dockerImage + docker load
+docker pull nboisvert/belgo:latest
 ```
 
-Run the image with a writable volume on `/data` (the inventory files) and at least
-`SECRET_KEY_BASE`, `LIVE_VIEW_SALT` and `APP_HOST`. Put it behind Authelia's forward
-auth (trusted `Remote-*` headers); Belgo is meant for the internal network only.
-Providers are optional (`providers.yaml`, secrets in environment variables). See the
-[configuration](docs/guide.md#configuration) and
-[deployment details](docs/guide.md#deployment-details).
+Run it with a writable volume on `/data` (the inventory files) and at least
+`SECRET_KEY_BASE`, `LIVE_VIEW_SALT` and `APP_HOST`, behind Authelia's forward auth
+(trusted `Remote-*` headers); Belgo is meant for the internal network only.
+Providers are optional (`providers.yaml`, secrets in environment variables). See
+[Docker](docs/guide.md#docker) for a `docker run` / Compose example and the
+[configuration](docs/guide.md#configuration).
+
+Releases follow `VERSION`: a push to `main` with a new version runs the tests,
+pushes the image to Docker Hub and creates the GitHub release
+([details](docs/guide.md#releasing)).
 
 ## Development
 

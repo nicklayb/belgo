@@ -188,3 +188,80 @@ Belgo pings devices (iputils `ping`, `BELGO_PING_PATH`). As `nobody`, this
 needs unprivileged ICMP: on Kubernetes, allow it with the safe sysctl
 `net.ipv4.ping_group_range: "0 2147483647"` in the pod `securityContext.sysctls`
 (or grant `CAP_NET_RAW`). Most systemd hosts already allow it.
+
+## Docker
+
+Released images are on Docker Hub as `nboisvert/belgo`, tagged with their version
+(`0.1.0`) and `latest`. Generate the Phoenix secrets once and keep them (changing
+them signs everyone out):
+
+```sh
+openssl rand -base64 64   # SECRET_KEY_BASE
+openssl rand -base64 24   # LIVE_VIEW_SALT
+```
+
+The image runs as `nobody` (65534): the data directory must be writable by it.
+
+```sh
+mkdir -p /srv/belgo && sudo chown 65534:65534 /srv/belgo
+
+docker run -d --name belgo --restart unless-stopped \
+  -p 4000:4000 \
+  -v /srv/belgo:/data \
+  -e SECRET_KEY_BASE=… \
+  -e LIVE_VIEW_SALT=… \
+  -e APP_HOST=https://belgo.home.lan \
+  --sysctl net.ipv4.ping_group_range="0 2147483647" \
+  nboisvert/belgo:latest
+```
+
+* The `sysctl` lets `nobody` ping devices (unprivileged ICMP); without it, every
+  device shows as not answering. Recent Docker versions (20.10+) already set it,
+  stating it keeps older engines and other runtimes working.
+* Wake-on-LAN broadcasts do not leave a bridged container: use `--network host`
+  (then `-p` is ignored and Belgo listens on `PORT`) if you need it.
+* Provider secrets are environment variables (`-e BELGO_OPNSENSE_API_KEY=…`), or
+  files with the `_FILE` suffix (Docker secrets).
+* `-e BELGO_AUTHENTICATION=static` skips Authelia to try Belgo out: anyone reaching
+  the port is then the static user.
+* An empty `/data` starts an empty inventory; `examples/inventory` shows the format.
+
+The same with Docker Compose:
+
+```yaml
+services:
+  belgo:
+    image: nboisvert/belgo:latest
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - /srv/belgo:/data
+    environment:
+      SECRET_KEY_BASE: …
+      LIVE_VIEW_SALT: …
+      APP_HOST: https://belgo.home.lan
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+```
+
+To build the image locally instead: `just docker-build` (`nix build .#dockerImage`,
+then `docker load`; the image is `belgo:<version>`).
+
+## Releasing
+
+The version lives in `VERSION` (read by `mix.exs`, `flake.nix`, the Justfile and CI).
+To release, bump it and merge into `main`:
+
+* Pull requests to `main` run `just check` (format, warnings, Credo, tests) in the
+  Nix dev shell (`.github/workflows/test.yml`).
+* Every push to `main` runs the same checks, then, only when no GitHub release exists
+  for `VERSION`, builds the image with Nix, pushes it to Docker Hub
+  (`<version>` and `latest`) and creates the release `<version>` with generated
+  notes (`.github/workflows/release.yml`). A push without version bump releases
+  nothing.
+* The repository needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets (a
+  Docker Hub access token with write access to `nboisvert/belgo`).
+
+By hand: `docker login`, then `just release-docker` builds, tags and pushes the
+current version (`BELGO_DOCKER_REPOSITORY` overrides `nboisvert/belgo`).
