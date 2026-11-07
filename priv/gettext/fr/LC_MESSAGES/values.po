@@ -1,0 +1,110 @@
+## Labels of enumerated values (`BelgoWeb.Format.label/1`), maintained by hand.
+msgid ""
+msgstr ""
+"Language: fr\n"
+"Plural-Forms: nplurals=2; plural=(n>1);\n"
+
+msgid "Server"
+msgstr "Serveur"
+
+msgid "Workstation"
+msgstr "Poste de travail"
+
+msgid "Laptop"
+msgstr "Portable"
+
+msgid "Phone"
+msgstr "Téléphone"
+
+msgid "Tablet"
+msgstr "Tablette"
+
+msgid "Media"
+msgstr "Multimédia"
+
+msgid "Gaming"
+msgstr "Jeu"
+
+msgid "Network"
+msgstr "Réseau"
+
+msgid "Printer"
+msgstr "Imprimante"
+
+msgid "Appliance"
+msgstr "Électroménager"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Virtual machine"
+msgstr "Machine virtuelle"
+
+msgid "Container"
+msgstr "Conteneur"
+
+msgid "Location"
+msgstr "Emplacement"
+
+msgid "Host"
+msgstr "Hôte"
+
+msgid "Portable"
+msgstr "Mobile"
+
+msgid "Unplaced"
+msgstr "Non placé"
+
+msgid "Keep"
+msgstr "Conserver"
+
+msgid "Gateway"
+msgstr "Passerelle"
+
+msgid "Switch"
+msgstr "Commutateur"
+
+msgid "Access point"
+msgstr "Point d'accès"
+
+msgid "Site"
+msgstr "Site"
+
+msgid "Building"
+msgstr "Bâtiment"
+
+msgid "Floor"
+msgstr "Étage"
+
+msgid "Room"
+msgstr "Pièce"
+
+msgid "Rack"
+msgstr "Baie"
+
+msgid "Reserved"
+msgstr "Réservée"
+
+msgid "Static"
+msgstr "Statique"
+
+msgid "Dynamic"
+msgstr "Dynamique"
+
+msgid "Door"
+msgstr "Porte"
+
+msgid "Opening"
+msgstr "Ouverture"
+
+msgid "Inventory"
+msgstr "Inventaire"
+
+msgid "Disabled"
+msgstr "Désactivé"
+
+msgid "Read"
+msgstr "Lecture"
+
+msgid "Write"
+msgstr "Écriture"

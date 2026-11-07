@@ -47,6 +47,22 @@ defmodule BelgoWeb.Devices.Live.Form do
     end
   end
 
+  # Devices able to host guests (with a platform: Proxmox, Docker, Kubernetes), named
+  # with their platforms; the device's current host stays listed even without one.
+  defp host_options(other_devices, device) do
+    current_host_id = device && device.host_id
+
+    for host <- other_devices, Device.host?(host) or host.id == current_host_id do
+      case host.platforms do
+        [] ->
+          {host.name, host.id}
+
+        platforms ->
+          {"#{host.name} (#{Enum.map_join(platforms, ", ", &Format.label/1)})", host.id}
+      end
+    end
+  end
+
   @impl BelgoWeb.Hooks.Inventory
   def assign_inventory(socket) do
     snapshot = socket.assigns.snapshot
@@ -59,7 +75,7 @@ defmodule BelgoWeb.Devices.Live.Form do
 
     socket
     |> assign(:location_options, Physical.location_options(snapshot))
-    |> assign(:host_options, Enum.map(other_devices, &{&1.name, &1.id}))
+    |> assign(:host_options, host_options(other_devices, socket.assigns.device))
     |> assign(
       :switch_options,
       for(device <- other_devices, device.kind == :network, do: {device.name, device.id})

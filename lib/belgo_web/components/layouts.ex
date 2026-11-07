@@ -115,13 +115,22 @@ defmodule BelgoWeb.Components.Layouts do
         </span>
       </.link>
     </nav>
-    <div class="flex items-center gap-3 border-t border-border px-5 py-4 text-sm">
+    <.link
+      navigate={~p"/settings"}
+      data-user-settings
+      title={gettext("Settings")}
+      class={[
+        "flex items-center gap-3 border-t border-border px-5 py-4 text-sm hover:bg-surface-muted",
+        @current_path == "/settings" && "bg-accent-soft"
+      ]}
+    >
       <.icon name="hero-user-circle" class="size-6 text-muted" />
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <p class="truncate font-medium">{User.display_name(@current_user)}</p>
         <p :if={@current_user.email} class="truncate text-xs text-muted">{@current_user.email}</p>
       </div>
-    </div>
+      <.icon name="hero-cog-6-tooth-mini" class="size-4 text-muted" />
+    </.link>
     """
   end
 

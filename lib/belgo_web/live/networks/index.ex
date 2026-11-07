@@ -1,14 +1,12 @@
 defmodule BelgoWeb.Networks.Live.Index do
-  @moduledoc "List of networks with their usage."
+  @moduledoc "List of networks with their usage; a row opens the network's page."
 
   @behaviour BelgoWeb.Hooks.Inventory
 
   use BelgoWeb, :live_view
 
-  alias Belgo.Inventory
   alias Belgo.Network.Cidr
   alias BelgoWeb.Format
-  alias BelgoWeb.Live.Mutation
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
@@ -36,17 +34,6 @@ defmodule BelgoWeb.Networks.Live.Index do
       end)
 
     assign(socket, :networks, networks)
-  end
-
-  @impl Phoenix.LiveView
-  def handle_event("delete", %{"id" => id}, socket) do
-    case Inventory.delete(:networks, id, Mutation.options(socket)) do
-      {:ok, network} ->
-        {:noreply, put_flash(socket, :info, gettext("%{name} deleted.", name: network.name))}
-
-      error ->
-        {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
-    end
   end
 
   defp containing_network_id(networks, address),
@@ -84,9 +71,12 @@ defmodule BelgoWeb.Networks.Live.Index do
           id="networks"
           rows={@networks}
           row_id={fn {network, _count, _capacity} -> "network-#{network.id}" end}
+          row_click={fn {network, _count, _capacity} -> JS.navigate(~p"/networks/#{network.id}") end}
         >
           <:col :let={{network, _count, _capacity}} label={gettext("Name")}>
-            <p class="font-medium">{network.name}</p>
+            <.link navigate={~p"/networks/#{network.id}"} class="font-medium hover:text-accent">
+              {network.name}
+            </.link>
             <p :if={network.domain} class="font-mono text-xs text-muted">{network.domain}</p>
           </:col>
           <:col :let={{network, _count, _capacity}} label={gettext("Range")}>
@@ -135,22 +125,6 @@ defmodule BelgoWeb.Networks.Live.Index do
             <span class="tabular-nums">{count}</span>
             <span :if={capacity} class="text-muted">{"/ #{capacity}"}</span>
           </:col>
-          <:action :let={{network, _count, _capacity}}>
-            <Form.button variant={:ghost} size={:small} navigate={~p"/networks/#{network.id}/edit"}>
-              <.icon name="hero-pencil-square-micro" class="size-4" />
-              <span class="sr-only">{gettext("Edit")}</span>
-            </Form.button>
-            <Form.button
-              variant={:danger}
-              size={:small}
-              phx-click="delete"
-              phx-value-id={network.id}
-              data-confirm={gettext("Delete %{name}?", name: network.name)}
-            >
-              <.icon name="hero-trash-micro" class="size-4" />
-              <span class="sr-only">{gettext("Delete")}</span>
-            </Form.button>
-          </:action>
         </.table>
       </.card>
     </Layouts.app>

@@ -1,0 +1,109 @@
+## Labels of enumerated values (`BelgoWeb.Format.label/1`), built at runtime:
+## maintained by hand, not by `mix gettext.extract`.
+msgid ""
+msgstr ""
+
+msgid "Server"
+msgstr ""
+
+msgid "Workstation"
+msgstr ""
+
+msgid "Laptop"
+msgstr ""
+
+msgid "Phone"
+msgstr ""
+
+msgid "Tablet"
+msgstr ""
+
+msgid "Media"
+msgstr ""
+
+msgid "Gaming"
+msgstr ""
+
+msgid "Network"
+msgstr ""
+
+msgid "Printer"
+msgstr ""
+
+msgid "Appliance"
+msgstr ""
+
+msgid "Other"
+msgstr ""
+
+msgid "Virtual machine"
+msgstr ""
+
+msgid "Container"
+msgstr ""
+
+msgid "Location"
+msgstr ""
+
+msgid "Host"
+msgstr ""
+
+msgid "Portable"
+msgstr ""
+
+msgid "Unplaced"
+msgstr ""
+
+msgid "Keep"
+msgstr ""
+
+msgid "Gateway"
+msgstr ""
+
+msgid "Switch"
+msgstr ""
+
+msgid "Access point"
+msgstr ""
+
+msgid "Site"
+msgstr ""
+
+msgid "Building"
+msgstr ""
+
+msgid "Floor"
+msgstr ""
+
+msgid "Room"
+msgstr ""
+
+msgid "Rack"
+msgstr ""
+
+msgid "Reserved"
+msgstr ""
+
+msgid "Static"
+msgstr ""
+
+msgid "Dynamic"
+msgstr ""
+
+msgid "Door"
+msgstr ""
+
+msgid "Opening"
+msgstr ""
+
+msgid "Inventory"
+msgstr ""
+
+msgid "Disabled"
+msgstr ""
+
+msgid "Read"
+msgstr ""
+
+msgid "Write"
+msgstr ""

@@ -43,8 +43,16 @@ defmodule BelgoWeb.Live.RecordForm do
           Phoenix.LiveView.Socket.t()
   def validate(socket, collection, params), do: assign_form(socket, collection, params, :validate)
 
-  @doc "Saves the record and navigates to `index_path`, or shows the errors."
-  @spec save(Phoenix.LiveView.Socket.t(), Snapshot.collection(), map(), String.t()) ::
+  @doc """
+  Saves the record and navigates to `index_path` (or to the path a function of the
+  saved record returns), or shows the errors.
+  """
+  @spec save(
+          Phoenix.LiveView.Socket.t(),
+          Snapshot.collection(),
+          map(),
+          String.t() | (struct() -> String.t())
+        ) ::
           Phoenix.LiveView.Socket.t()
   def save(socket, collection, params, index_path) do
     result =
@@ -57,7 +65,7 @@ defmodule BelgoWeb.Live.RecordForm do
       {:ok, record} ->
         socket
         |> put_flash(:info, gettext("%{name} saved.", name: record.name))
-        |> push_navigate(to: index_path)
+        |> push_navigate(to: saved_path(index_path, record))
 
       {:error, :record, %Ecto.Changeset{} = changeset, _changes} ->
         assign(socket, :form, to_form(changeset, action: :validate))
@@ -66,6 +74,9 @@ defmodule BelgoWeb.Live.RecordForm do
         put_flash(socket, :error, Mutation.describe_error(error))
     end
   end
+
+  defp saved_path(path, record) when is_function(path, 1), do: path.(record)
+  defp saved_path(path, _record), do: path
 
   defp assign_form(socket, collection, params, action \\ nil) do
     changeset =

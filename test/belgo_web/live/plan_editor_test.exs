@@ -2,6 +2,7 @@ defmodule BelgoWeb.PlanEditorTest do
   use BelgoWeb.ConnCase
 
   alias Belgo.Inventory
+  alias Belgo.Inventory.Codec
   alias Belgo.Inventory.Snapshot
 
   defp saved_plan(id) do
@@ -182,6 +183,12 @@ defmodule BelgoWeb.PlanEditorTest do
              view,
              ~s(#plan-place-device-select optgroup[label="742 Evergreen Terrace › Basement"] option[value="burns-node"])
            )
+
+    # Guests are where their host is: not offered, refused.
+    refute has_element?(view, ~s(#plan-place-device-select option[value="itchy"]))
+    render_hook(view, "choose-device", %{"device_id" => "itchy"})
+    render_hook(view, "place", %{"x" => 900, "y" => 200})
+    refute has_element?(view, ~s(#plan-editor-canvas [data-placement="itchy"]))
 
     render_change(form(view, "#plan-place-device form", %{"device_id" => "burns-node"}))
     render_hook(view, "place", %{"x" => 900, "y" => 200})
@@ -407,5 +414,28 @@ defmodule BelgoWeb.PlanEditorTest do
 
     assert [%{id: "basement", height: 220, wall_height: 200}, %{id: "ground-floor", height: nil}] =
              saved_plan("742-evergreen-terrace").levels
+  end
+
+  test "a hosted device on the plan is warned about and can be removed", %{conn: conn} do
+    view = home_with_rooms(conn)
+    render_hook(view, "tool", %{"tool" => "place"})
+    render_change(form(view, "#plan-place-device form", %{"device_id" => "burns-node"}))
+    render_hook(view, "place", %{"x" => 300, "y" => 200})
+    send(view.pid, :autosave)
+    assert has_element?(view, "#plan-save-status[data-status=saved]")
+
+    # Placed before it became a guest (e.g. by hand in plans.yaml).
+    plan = saved_plan("742-evergreen-terrace")
+    itchy = %{hd(plan.placements) | device_id: "itchy"}
+
+    {:ok, _plan} =
+      Inventory.update(:plans, plan.id, Codec.encode(%{plan | placements: [itchy]}),
+        user: :system
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/plan/742-evergreen-terrace/edit")
+    assert has_element?(view, "#plan-warnings [data-warning=hosted_device]", "Smithers")
+    render_click(element(view, "#plan-warnings button", "Remove from plan"))
+    refute has_element?(view, "#plan-warnings [data-warning=hosted_device]")
   end
 end

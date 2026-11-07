@@ -172,6 +172,16 @@ defmodule BelgoWeb.PagesTest do
     end
   end
 
+  test "the host field lists the devices able to host guests", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices/itchy/edit")
+    host_option = &~s(select[name="device[host_id]"] option[value="#{&1}"])
+
+    assert has_element?(view, host_option.("smithers"), "Smithers (Docker)")
+    assert has_element?(view, host_option.("burns-node"), "Burns Node (Proxmox)")
+    refute has_element?(view, host_option.("tv-living-room"))
+    refute has_element?(view, host_option.("plow-king"))
+  end
+
   test "creating a device saves it and shows it", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/devices/new")
 
@@ -505,23 +515,49 @@ defmodule BelgoWeb.PagesTest do
     |> form("#network-form")
     |> render_change(%{"network" => %{"ranges_sort" => ["new"]}})
 
-    assert {:error, {:live_redirect, %{to: "/networks"}}} =
+    view
+    |> form("#network-form")
+    |> render_change(%{"network" => %{"ranges_sort" => ["0", "new"]}})
+
+    assert {:error, {:live_redirect, %{to: "/networks/springfield"}}} =
              view
              |> form("#network-form",
                network: %{
                  ranges: %{
-                   "0" => %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: "network"}
+                   "0" => %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: "network"},
+                   "1" => %{name: "Media", start: "10.0.0.8", end: "10.0.0.12", kind: "media"}
                  }
                }
              )
              |> render_submit()
 
     assert {:ok,
-            %{ranges: [%{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: :network}]}} =
+            %{
+              ranges: [
+                %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: :network},
+                %{name: "Media"}
+              ]
+            }} =
              Belgo.Inventory.Snapshot.fetch(Belgo.Inventory.snapshot(), :networks, "springfield")
 
     {:ok, _index, html} = live(conn, ~p"/networks")
     assert html =~ "Routing"
+
+    # The show page lists every address of each range, free ones included.
+    {:ok, view, _html} = live(conn, ~p"/networks/springfield")
+    refute has_element?(view, "#network-form")
+    assert has_element?(view, ~s(a[href="/networks/springfield/edit"]))
+    assert has_element?(view, "#range-0-rows tr[data-address]", "10.0.0.1")
+    assert has_element?(view, ~s(#range-0-rows tr[data-address="10.0.0.2"]), "Plow King")
+    assert has_element?(view, ~s(#range-0-rows tr[data-address="10.0.0.3"][data-free]))
+    refute has_element?(view, ~s(#range-0-rows tr[data-address="10.0.0.2"] [data-kind-mismatch]))
+
+    # Burns Node is a server in the Media range: flagged.
+    assert has_element?(
+             view,
+             ~s(#range-1-rows tr[data-address="10.0.0.10"] [data-kind-mismatch]),
+             ""
+           )
   end
 
   test "editing a device offers the next free address of its kind's range", %{conn: conn} do

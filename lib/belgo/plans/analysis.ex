@@ -39,6 +39,7 @@ defmodule Belgo.Plans.Analysis do
             | :orphan_zone
             | :anchor_error
             | :location_mismatch
+            | :hosted_device
 
     @type t :: %__MODULE__{
             kind: kind(),
@@ -268,6 +269,9 @@ defmodule Belgo.Plans.Analysis do
           }
         ]
 
+      {:ok, %{host_id: host_id} = device} when is_binary(host_id) ->
+        [hosted_warning(placement, device, Map.get(device_by_id, host_id))]
+
       {:ok, device} when zone != nil ->
         position_warnings(placement, device, zone) ++
           location_mismatch(placement, device, zone, snapshot)
@@ -275,6 +279,17 @@ defmodule Belgo.Plans.Analysis do
       {:ok, _device} ->
         []
     end
+  end
+
+  # A guest (VM, container) is where its host is: it is not placed on its own.
+  defp hosted_warning(placement, device, host) do
+    %Warning{
+      kind: :hosted_device,
+      device_id: device.id,
+      zone_id: placement.zone_id,
+      message:
+        "#{device.name} runs on #{(host && host.name) || device.host_id}: place its host instead"
+    }
   end
 
   defp position_warnings(%{anchor: :wall} = placement, device, zone) do

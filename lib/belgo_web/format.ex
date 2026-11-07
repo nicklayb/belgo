@@ -33,6 +33,7 @@ defmodule BelgoWeb.Format do
     rack: "hero-server-stack",
     other: "hero-map-pin"
   }
+  @values_domain "values"
   @acronyms %{
     iot: "IoT",
     lxc: "LXC",
@@ -46,21 +47,28 @@ defmodule BelgoWeb.Format do
     keepalived: "keepalived"
   }
 
-  @doc "Turns an atom such as `:virtual_machine` into `Virtual machine`."
+  @doc """
+  Turns an atom such as `:virtual_machine` into `Virtual machine`, translated through
+  the `values` gettext domain (`priv/gettext/*/LC_MESSAGES/values.po`, maintained by
+  hand since the labels are built at runtime).
+  """
   @spec label(atom() | nil) :: String.t()
   def label(nil), do: ""
 
   def label(value) when is_atom(value) do
-    case Map.fetch(@acronyms, value) do
-      {:ok, acronym} ->
-        acronym
+    english =
+      case Map.fetch(@acronyms, value) do
+        {:ok, acronym} ->
+          acronym
 
-      :error ->
-        value
-        |> Atom.to_string()
-        |> String.replace("_", " ")
-        |> String.capitalize()
-    end
+        :error ->
+          value
+          |> Atom.to_string()
+          |> String.replace("_", " ")
+          |> String.capitalize()
+      end
+
+    Gettext.dgettext(BelgoWeb.Gettext, @values_domain, english)
   end
 
   @doc "Builds `{label, value}` select options from atoms."

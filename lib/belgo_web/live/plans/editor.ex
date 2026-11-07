@@ -202,8 +202,20 @@ defmodule BelgoWeb.Plans.Editor do
     end
   end
 
-  def handle_event("choose-device", %{"device_id" => device_id}, socket),
-    do: {:noreply, assign(socket, placing_device_id: blank_to_nil(device_id), tool: "place")}
+  def handle_event("choose-device", %{"device_id" => device_id}, socket) do
+    device_id = blank_to_nil(device_id)
+
+    if hosted?(socket.assigns.device_by_id, device_id),
+      do: {:noreply, put_flash(socket, :error, gettext("A hosted device is where its host is."))},
+      else: {:noreply, assign(socket, placing_device_id: device_id, tool: "place")}
+  end
+
+  def handle_event("unplace-device", %{"device_id" => device_id}, socket) do
+    {:noreply,
+     socket
+     |> change(Editing.remove_placement(socket.assigns.draft, device_id))
+     |> assign(:selected, nil)}
+  end
 
   def handle_event("place", %{"x" => x, "y" => y}, socket) do
     case socket.assigns.placing_device_id do
@@ -1012,14 +1024,21 @@ defmodule BelgoWeb.Plans.Editor do
     end
   end
 
-  # Devices not on the plan yet, grouped by location (by path, devices without
+  defp hosted?(device_by_id, device_id) do
+    case Map.get(device_by_id, device_id || "") do
+      %{host_id: host_id} when is_binary(host_id) -> true
+      _not_hosted -> false
+    end
+  end
+
+  # Devices not on the plan yet and not hosted (a guest is where its host is), grouped by location (by path, devices without
   # location last), by name within a group.
   defp device_options(device_by_id, draft, location_labels) do
     placed_ids = MapSet.new(draft.placements, & &1.device_id)
 
     device_by_id
     |> Map.values()
-    |> Enum.reject(&MapSet.member?(placed_ids, &1.id))
+    |> Enum.reject(&(MapSet.member?(placed_ids, &1.id) or is_binary(&1.host_id)))
     |> Enum.group_by(&Map.get(location_labels, &1.id))
     |> Enum.sort_by(fn {label, _devices} -> {is_nil(label), label && String.downcase(label)} end)
     |> Enum.map(fn {label, devices} ->
@@ -1595,6 +1614,14 @@ defmodule BelgoWeb.Plans.Editor do
                 >
                   {gettext("Set location")}
                 </Form.button>
+                <Form.button
+                  :if={warning.kind == :hosted_device}
+                  size={:small}
+                  phx-click="unplace-device"
+                  phx-value-device_id={warning.device_id}
+                >
+                  {gettext("Remove from plan")}
+                </Form.button>
               </li>
             </ul>
           </.card>
@@ -1650,7 +1677,7 @@ defmodule BelgoWeb.Plans.Editor do
                 >
                   {Phoenix.HTML.Form.options_for_select(
                     [
-                      {gettext("Floor"), "floor"},
+                      {pgettext("plan anchor", "Floor"), "floor"},
                       {gettext("Wall"), "wall"},
                       {gettext("Floating"), "float"}
                     ],

@@ -300,7 +300,7 @@ defmodule BelgoWeb.DiscoveryTest do
     test "claiming a network prefills the form", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/networks/new?discovered=10-0-5-0-24")
 
-      assert {:error, {:live_redirect, %{to: "/networks"}}} =
+      assert {:error, {:live_redirect, %{to: "/networks/" <> _id}}} =
                view
                |> form("#network-form")
                |> render_submit()

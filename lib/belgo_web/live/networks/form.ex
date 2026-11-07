@@ -27,7 +27,7 @@ defmodule BelgoWeb.Networks.Live.Form do
     do: {:noreply, RecordForm.validate(socket, :networks, params)}
 
   def handle_event("save", %{"network" => params}, socket),
-    do: {:noreply, RecordForm.save(socket, :networks, params, ~p"/networks")}
+    do: {:noreply, RecordForm.save(socket, :networks, params, &~p"/networks/#{&1.id}")}
 
   defp fetch_discovered(correlation, %{"discovered" => id}) do
     case Correlation.fetch_network(correlation, id) do
@@ -37,6 +37,9 @@ defmodule BelgoWeb.Networks.Live.Form do
   end
 
   defp fetch_discovered(_correlation, _params), do: nil
+
+  defp back_path(nil), do: ~p"/networks"
+  defp back_path(%Network{id: id}), do: ~p"/networks/#{id}"
 
   defp page_title(nil, nil), do: gettext("New network")
   defp page_title(nil, _discovered), do: gettext("Claim a discovered network")
@@ -51,7 +54,7 @@ defmodule BelgoWeb.Networks.Live.Form do
       current_path={@current_path}
       navigation_badges={@navigation_badges}
     >
-      <.page_header title={@page_title} back={~p"/networks"} />
+      <.page_header title={@page_title} back={back_path(@record)} />
       <.card :if={@discovered} title={gettext("Reported by providers")} class="mb-6" padded={false}>
         <.observation_list observations={@discovered.observations} />
       </.card>

@@ -10,6 +10,7 @@ defmodule BelgoWeb.Router do
     plug(:put_secure_browser_headers)
     plug(BelgoWeb.Plugs.Authenticate)
     plug(BelgoWeb.Plugs.Theme)
+    plug(BelgoWeb.Plugs.Locale)
   end
 
   scope "/", BelgoWeb do
@@ -21,6 +22,7 @@ defmodule BelgoWeb.Router do
 
     live_session :authenticated,
       on_mount: [
+        BelgoWeb.Hooks.Locale,
         BelgoWeb.Hooks.Authenticated,
         BelgoWeb.Hooks.CurrentPath,
         BelgoWeb.Hooks.Inventory,
@@ -30,6 +32,7 @@ defmodule BelgoWeb.Router do
       live("/", Dashboard.Live, :show)
 
       live("/discovery", Discovery.Live, :show)
+      live("/settings", Settings.Live, :show)
       live("/discovery/dns-names/:id", Discovery.Live.ClaimDnsName, :new)
 
       live("/devices", Devices.Live.Index, :index)
@@ -58,6 +61,7 @@ defmodule BelgoWeb.Router do
 
       live("/networks", Networks.Live.Index, :index)
       live("/networks/new", Networks.Live.Form, :new)
+      live("/networks/:id", Networks.Live.Show, :show)
       live("/networks/:id/edit", Networks.Live.Form, :edit)
 
       live("/sync", Sync.Live, :show)

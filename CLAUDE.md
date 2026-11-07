@@ -563,6 +563,33 @@ first addressed interface only, other interfaces are named through their
   class `plan3d-labels-hidden`; path hops and the selected device stay), `names`
   (floor names), `facade` (exterior walls); stored per plan as `hidden` in
   `belgo:plan3d:<id>` (the former `facadeHidden` is migrated on read).
+- Device form "Host" select (owner): only devices with `platforms` (`Device.host?/1`),
+  labelled with them (`Skynet (Proxmox, Docker)`); the edited device's current host
+  stays listed even without platform.
+- Hosted devices are never placed on the plan (owner: a guest is where its host is):
+  left out of "Place a device", `choose-device` refuses them, and an existing
+  placement of a guest is an `Analysis` `:hosted_device` warning (instead of the
+  position / location checks) with a "Remove from plan" button (`unplace-device`).
+- Network page (owner, like devices): the list's name / row opens `/networks/:id`
+  (`Networks.Live.Show`, read only; Edit / Delete there; the form saves back to it,
+  `RecordForm.save/4` accepts a path function). Each logical range is a table of
+  every address (`Inventory.NetworkUsage.range_rows/2`, free ones as empty rows,
+  at most 1024), holders = interfaces and virtual IPs of the network (declared, else
+  by address) and the gateway when nothing else holds it; a device whose kind is
+  not the range's gets a yellow triangle (`[data-kind-mismatch]`). Held addresses
+  outside every range are listed last.
+- Languages (owner): English and French (`priv/gettext/fr`). `BelgoWeb.Locale`
+  resolves the user's choice, else `Accept-Language`, else `en`; `Plugs.Locale`
+  (cookie `belgo_locale`, session `locale`, `<html lang>`), `Hooks.Locale` (LiveView
+  connect param `locale`, else session). The choice is stored in localStorage
+  (`belgo:locale`, `assets/js/locale.js`), mirrored in the cookie on each load so
+  the first render matches. Settings page `/settings` (the user button at the
+  bottom of the menu): language select (`LocaleSetting` hook, reloads). Enum labels
+  (`Format.label/1`) go through the hand-maintained `values` domain
+  (`priv/gettext/values.pot`, `fr/.../values.po`); `pgettext("plan anchor",
+  "Floor")` = "Sol" vs "Étage". After adding strings: `mix gettext.extract` then
+  `mix gettext.merge priv/gettext --locale fr`, and translate empty / fuzzy entries.
+  Provider / audit messages built in core modules are still English.
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under
@@ -595,4 +622,3 @@ first addressed interface only, other interfaces are named through their
 2. Watch the data directory (file_system) to reload automatically after git pulls.
 3. Switch ports view (who is plugged where), rack / physical map visuals.
 4. Kubernetes manifests.
-5. French translation (gettext).
