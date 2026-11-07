@@ -34,4 +34,10 @@ defmodule BelgoWeb.SettingsTest do
     {:ok, _view, html} = live(conn, ~p"/")
     refute html =~ "Reload files"
   end
+
+  test "git versioning shows as disabled without git in config.yaml", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/settings")
+    assert render_async(view) =~ "Disabled: add a git key to config.yaml"
+    refute has_element?(view, "#git-commit")
+  end
 end

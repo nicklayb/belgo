@@ -611,6 +611,15 @@ first addressed interface only, other interfaces are named through their
   tokens `--color-{proxmox,docker,kubernetes}` (+ `-soft`, light-dark) in `app.css`,
   badge tones of the same names (`platform_badges`, `data-platform`), and the group
   icons of the Hosting page.
+- Git card in Settings (owner): `Versioning.Status.current/1` (read only: `status
+  --porcelain`, last commit, remote branch through `ls-remote`, never fetched nor
+  pulled; `to_push?` = the remote branch is missing or does not contain `HEAD`,
+  `ahead` when its commit is known locally), read with `start_async` (network).
+  *Commit* (`Server.commit_now/1`, commits even without pending timer, e.g. hand
+  edits) is disabled without change; *Push* (`Server.push/1`) without anything to
+  push or while pushing. The server broadcasts `{:versioning_committed, result}` and
+  `{:versioning_pushed, result}` on `Server.topic/0`; `Versioning.format_error/1`
+  is shared. Measured with a bare remote: push, hand edit, commit, "1 commit to push".
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

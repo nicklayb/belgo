@@ -57,4 +57,10 @@ defmodule Belgo.Versioning do
       do: Secrets.fetch(@username_secret, environment),
       else: {:ok, @default_username}
   end
+
+  @doc "Readable message of a git failure."
+  @spec format_error(term()) :: String.t()
+  def format_error({:git, status, output}), do: "git exited with #{status}: #{output}"
+  def format_error(message) when is_binary(message), do: message
+  def format_error(reason), do: inspect(reason)
 end

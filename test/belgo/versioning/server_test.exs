@@ -127,6 +127,30 @@ defmodule Belgo.Versioning.ServerTest do
     assert Process.alive?(server)
   end
 
+  test "commits now on demand and broadcasts commits and pushes", %{
+    directory: directory,
+    tmp_dir: tmp_dir
+  } do
+    remote = Path.join(tmp_dir, "remote.git")
+    {_output, 0} = System.cmd("git", ["init", "--quiet", "--bare", remote])
+    write_config(directory, "git:\n  commit_delay: 1h\n  remote: #{remote}\n  branch: main\n")
+    pubsub = Belgo.Versioning.ServerTest.PubSub
+    start_supervised!({Phoenix.PubSub, name: pubsub})
+    Phoenix.PubSub.subscribe(pubsub, Server.topic())
+    server = start_server(directory, pubsub: pubsub)
+    assert_receive {:versioning_committed, {:ok, ["config.yaml", "devices.yaml"]}}
+
+    # No timer pending: the hand edit is committed anyway.
+    File.write!(Path.join(directory, "devices.yaml"), "homer-laptop: {}\nlisa-laptop: {}\n")
+    assert {:ok, ["devices.yaml"]} == Server.commit_now(server)
+    assert {:ok, []} == Server.commit_now(server)
+    assert ["Update devices.yaml", "Initial inventory"] == log(directory)
+
+    Server.push(server)
+    assert_receive {:versioning_pushed, {:ok, _sha}}, 5_000
+    assert %{pushing?: false, directory: ^directory} = Server.info(server)
+  end
+
   test "commits the pending changes when stopping", %{directory: directory} do
     write_config(directory, "git:\n  commit_delay: 1h\n")
     server = start_server(directory)
@@ -138,12 +162,14 @@ defmodule Belgo.Versioning.ServerTest do
     assert ["Update locations.yaml", "Initial inventory"] == log(directory)
   end
 
-  defp start_server(directory) do
+  defp start_server(directory, options \\ []) do
     start_supervised!({Task.Supervisor, name: task_supervisor(directory)})
 
     server =
       start_supervised!(
-        {Server, directory: directory, name: nil, task_supervisor: task_supervisor(directory)},
+        {Server,
+         [directory: directory, name: nil, task_supervisor: task_supervisor(directory)] ++
+           options},
         restart: :temporary
       )
 

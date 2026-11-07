@@ -72,7 +72,7 @@ msgstr "%{name} pointe aujourd'hui vers %{current} : le prochain envoi le fera p
 msgid "%{name} saved."
 msgstr "%{name} enregistré."
 
-#: lib/belgo_web/live/hosting/live.ex:81
+#: lib/belgo_web/live/hosting/live.ex:89
 #, elixir-autogen, elixir-format
 msgid "%{runs_as} on %{hosts}"
 msgstr "%{runs_as} sur %{hosts}"
@@ -141,7 +141,7 @@ msgid_plural "%{count} do not answer"
 msgstr[0] "1 ne répond pas"
 msgstr[1] "%{count} ne répondent pas"
 
-#: lib/belgo_web/live/hosting/live.ex:77
+#: lib/belgo_web/live/hosting/live.ex:85
 #, elixir-autogen, elixir-format
 msgid "1 guest"
 msgid_plural "%{count} guests"
@@ -189,7 +189,7 @@ msgstr "Un appareil hébergé se trouve là où est son hôte."
 msgid "A load balancer or floating address, not a machine"
 msgstr "Un répartiteur de charge ou une adresse flottante, pas une machine"
 
-#: lib/belgo_web/components/core.ex:223
+#: lib/belgo_web/components/core.ex:230
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr "Actions"
@@ -247,7 +247,7 @@ msgstr "Ajouter un niveau"
 msgid "Add names in the form, or claim them from Discovery."
 msgstr "Ajoutez des noms dans le formulaire, ou associez-les depuis la découverte."
 
-#: lib/belgo_web/components/inventory.ex:308
+#: lib/belgo_web/components/inventory.ex:310
 #: lib/belgo_web/live/devices/show.ex:216
 #: lib/belgo_web/live/networks/show.ex:205
 #: lib/belgo_web/live/sync/live.ex:55
@@ -310,7 +310,7 @@ msgstr "Tous répondent"
 msgid "All consistent"
 msgstr "Tout est cohérent"
 
-#: lib/belgo_web/components/inventory.ex:373
+#: lib/belgo_web/components/inventory.ex:375
 #, elixir-autogen, elixir-format
 msgid "All kinds"
 msgstr "Tous les types"
@@ -393,7 +393,7 @@ msgstr "Rattachement…"
 msgid "Auto client"
 msgstr "Client automatique"
 
-#: lib/belgo_web/components/core.ex:43
+#: lib/belgo_web/components/core.ex:46
 #: lib/belgo_web/live/plans/editor.ex:1380
 #, elixir-autogen, elixir-format
 msgid "Back"
@@ -435,12 +435,12 @@ msgstr "Centré"
 msgid "Check the ports again"
 msgstr "Vérifier les ports à nouveau"
 
-#: lib/belgo_web/components/inventory.ex:320
+#: lib/belgo_web/components/inventory.ex:322
 #, elixir-autogen, elixir-format
 msgid "Checked %{count} common ports on %{date}."
 msgstr "%{count} ports courants vérifiés le %{date}."
 
-#: lib/belgo_web/components/inventory.ex:301
+#: lib/belgo_web/components/inventory.ex:303
 #, elixir-autogen, elixir-format
 msgid "Checking ports…"
 msgstr "Vérification des ports…"
@@ -645,7 +645,7 @@ msgstr "Enregistrements DNS"
 msgid "DNS rewrite"
 msgstr "Réécriture DNS"
 
-#: lib/belgo_web/live/hosting/live.ex:48
+#: lib/belgo_web/live/hosting/live.ex:53
 #, elixir-autogen, elixir-format
 msgid "Declare a platform on a device, or host a device on another one."
 msgstr "Déclarez une plateforme sur un appareil, ou hébergez un appareil sur un autre."
@@ -757,7 +757,7 @@ msgstr "Découverts"
 msgid "Discovery"
 msgstr "Découverte"
 
-#: lib/belgo_web/components/core.ex:320
+#: lib/belgo_web/components/core.ex:327
 #, elixir-autogen, elixir-format
 msgid "Dismiss"
 msgstr "Fermer"
@@ -1098,8 +1098,8 @@ msgstr "Hôte"
 msgid "Hosted on another device"
 msgstr "Hébergé sur un autre appareil"
 
-#: lib/belgo_web/live/hosting/live.ex:23
-#: lib/belgo_web/live/hosting/live.ex:40
+#: lib/belgo_web/live/hosting/live.ex:28
+#: lib/belgo_web/live/hosting/live.ex:45
 #: lib/belgo_web/navigation.ex:63
 #, elixir-autogen, elixir-format
 msgid "Hosting"
@@ -1192,7 +1192,7 @@ msgstr "Interfaces"
 msgid "Interfaces added to %{name}."
 msgstr "Interfaces ajoutées à %{name}."
 
-#: lib/belgo_web/live/settings/live.ex:21
+#: lib/belgo_web/live/settings/live.ex:86
 #, elixir-autogen, elixir-format
 msgid "Inventory reloaded from disk."
 msgstr "Inventaire rechargé depuis le disque."
@@ -1515,7 +1515,7 @@ msgstr "Aucun appareil sur le plan pour l'instant : utilisez Placer un appareil 
 msgid "No device selected"
 msgstr "Aucun appareil sélectionné"
 
-#: lib/belgo_web/live/hosting/live.ex:47
+#: lib/belgo_web/live/hosting/live.ex:52
 #, elixir-autogen, elixir-format
 msgid "No host yet"
 msgstr "Aucun hôte pour l'instant"
@@ -1566,7 +1566,7 @@ msgstr "Aucun réseau pour l'instant"
 msgid "No new network"
 msgstr "Aucun nouveau réseau"
 
-#: lib/belgo_web/components/inventory.ex:315
+#: lib/belgo_web/components/inventory.ex:317
 #, elixir-autogen, elixir-format
 msgid "No open port"
 msgstr "Aucun port ouvert"
@@ -1600,7 +1600,7 @@ msgstr "Aucune IP virtuelle pour l'instant"
 msgid "None"
 msgstr "Aucun"
 
-#: lib/belgo_web/components/inventory.ex:317
+#: lib/belgo_web/components/inventory.ex:319
 #, elixir-autogen, elixir-format
 msgid "None of the %{count} checked ports accepts connections."
 msgstr "Aucun des %{count} ports vérifiés n'accepte de connexions."
@@ -1659,7 +1659,7 @@ msgstr "Aucun résultat."
 msgid "Nothing matches, or the inventory is empty."
 msgstr "Rien ne correspond, ou l'inventaire est vide."
 
-#: lib/belgo_web/live/hosting/live.ex:94
+#: lib/belgo_web/live/hosting/live.ex:102
 #, elixir-autogen, elixir-format
 msgid "Nothing runs here yet."
 msgstr "Rien ne s'exécute ici pour l'instant."
@@ -1706,7 +1706,7 @@ msgstr "Ports ouverts"
 msgid "Opening"
 msgstr "Ouverture"
 
-#: lib/belgo_web/live/hosting/live.ex:100
+#: lib/belgo_web/live/hosting/live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Other hosts"
 msgstr "Autres hôtes"
@@ -1805,7 +1805,7 @@ msgstr "Branché sur"
 msgid "PoE"
 msgstr "PoE"
 
-#: lib/belgo_web/components/inventory.ex:304
+#: lib/belgo_web/components/inventory.ex:306
 #: lib/belgo_web/live/devices/form.ex:385
 #, elixir-autogen, elixir-format
 msgid "Port"
@@ -1835,7 +1835,7 @@ msgstr "Ports utilisés par les appareils qui y sont branchés"
 msgid "Preview"
 msgstr "Aperçu"
 
-#: lib/belgo_web/live/hosting/live.ex:42
+#: lib/belgo_web/live/hosting/live.ex:47
 #, elixir-autogen, elixir-format
 msgid "Proxmox, Docker and Kubernetes hosts with what runs on them."
 msgstr "Hôtes Proxmox, Docker et Kubernetes avec ce qui s'y exécute."
@@ -1851,6 +1851,7 @@ msgid "Pulling…"
 msgstr "Récupération…"
 
 #: lib/belgo_web/live/devices/show.ex:175
+#: lib/belgo_web/live/settings/live.ex:233
 #: lib/belgo_web/live/virtual_ips/show.ex:157
 #, elixir-autogen, elixir-format
 msgid "Push"
@@ -1905,7 +1906,7 @@ msgstr "Référence"
 msgid "Refresh"
 msgstr "Actualiser"
 
-#: lib/belgo_web/live/settings/live.ex:69
+#: lib/belgo_web/live/settings/live.ex:136
 #, elixir-autogen, elixir-format
 msgid "Reload files"
 msgstr "Recharger les fichiers"
@@ -2070,7 +2071,7 @@ msgstr "Sélectionnez d'abord des appareils dans la liste."
 msgid "Send a wake-on-LAN magic packet"
 msgstr "Envoyer un paquet magique wake-on-LAN"
 
-#: lib/belgo_web/components/inventory.ex:307
+#: lib/belgo_web/components/inventory.ex:309
 #, elixir-autogen, elixir-format
 msgid "Service"
 msgstr "Service"
@@ -2206,7 +2207,7 @@ msgstr "Tags"
 msgid "The cluster or host answering for this address."
 msgstr "La grappe ou l'hôte qui répond pour cette adresse."
 
-#: lib/belgo_web/live/settings/live.ex:24
+#: lib/belgo_web/live/settings/live.ex:89
 #, elixir-autogen, elixir-format
 msgid "The files are invalid, nothing changed:"
 msgstr "Les fichiers sont invalides, rien n'a changé :"
@@ -2564,34 +2565,34 @@ msgstr "providers.yaml est invalide"
 msgid "virtual IP"
 msgstr "IP virtuelle"
 
-#: lib/belgo_web/live/settings/live.ex:52
+#: lib/belgo_web/live/settings/live.ex:117
 #, elixir-autogen, elixir-format
 msgid "Automatic (browser language)"
 msgstr "Automatique (langue du navigateur)"
 
-#: lib/belgo_web/live/settings/live.ex:43
+#: lib/belgo_web/live/settings/live.ex:108
 #, elixir-autogen, elixir-format
 msgid "Interface language"
 msgstr "Langue de l'interface"
 
-#: lib/belgo_web/live/settings/live.ex:41
+#: lib/belgo_web/live/settings/live.ex:106
 #, elixir-autogen, elixir-format
 msgid "Language"
 msgstr "Langue"
 
-#: lib/belgo_web/live/settings/live.ex:57
+#: lib/belgo_web/live/settings/live.ex:122
 #, elixir-autogen, elixir-format
 msgid "Now: %{language}."
 msgstr "Actuellement : %{language}."
 
-#: lib/belgo_web/live/settings/live.ex:58
+#: lib/belgo_web/live/settings/live.ex:123
 #, elixir-autogen, elixir-format
 msgid "Saved in this browser."
 msgstr "Enregistrés dans ce navigateur."
 
 #: lib/belgo_web/components/layouts.ex:137
-#: lib/belgo_web/live/settings/live.ex:15
-#: lib/belgo_web/live/settings/live.ex:38
+#: lib/belgo_web/live/settings/live.ex:27
+#: lib/belgo_web/live/settings/live.ex:103
 #, elixir-autogen, elixir-format
 msgid "Settings"
 msgstr "Paramètres"
@@ -2632,12 +2633,122 @@ msgstr "Synchronisation"
 msgid "Visualization"
 msgstr "Visualisation"
 
-#: lib/belgo_web/live/settings/live.ex:64
+#: lib/belgo_web/live/settings/live.ex:131
 #, elixir-autogen, elixir-format
 msgid "After editing the inventory files by hand, re-read them: invalid files change nothing."
 msgstr "Après avoir modifié les fichiers d'inventaire à la main, relisez-les : des fichiers invalides ne changent rien."
 
-#: lib/belgo_web/live/settings/live.ex:62
+#: lib/belgo_web/live/settings/live.ex:129
 #, elixir-autogen, elixir-format
 msgid "Inventory files"
 msgstr "Fichiers d'inventaire"
+
+#: lib/belgo_web/live/settings/live.ex:220
+#, elixir-autogen, elixir-format
+msgid "%{remote} is up to date."
+msgstr "%{remote} est à jour."
+
+#: lib/belgo_web/live/settings/live.ex:211
+#, elixir-autogen, elixir-format
+msgid "1 commit to push to %{remote}"
+msgid_plural "%{count} commits to push to %{remote}"
+msgstr[0] "1 commit à pousser vers %{remote}"
+msgstr[1] "%{count} commits à pousser vers %{remote}"
+
+#: lib/belgo_web/live/settings/live.ex:199
+#, elixir-autogen, elixir-format
+msgid "1 uncommitted change"
+msgid_plural "%{count} uncommitted changes"
+msgstr[0] "1 changement non commité"
+msgstr[1] "%{count} changements non commités"
+
+#: lib/belgo_web/live/settings/live.ex:177
+#: lib/belgo_web/live/settings/live.ex:180
+#, elixir-autogen, elixir-format
+msgid "Check again"
+msgstr "Vérifier à nouveau"
+
+#: lib/belgo_web/live/settings/live.ex:183
+#, elixir-autogen, elixir-format
+msgid "Checking…"
+msgstr "Vérification…"
+
+#: lib/belgo_web/live/settings/live.ex:225
+#, elixir-autogen, elixir-format
+msgid "Commit"
+msgstr "Commiter"
+
+#: lib/belgo_web/live/settings/live.ex:69
+#, elixir-autogen, elixir-format
+msgid "Commit failed: %{message}"
+msgstr "Échec du commit : %{message}"
+
+#: lib/belgo_web/live/settings/live.ex:218
+#, elixir-autogen, elixir-format
+msgid "Commits to push to %{remote}."
+msgstr "Des commits sont à pousser vers %{remote}."
+
+#: lib/belgo_web/live/settings/live.ex:66
+#, elixir-autogen, elixir-format
+msgid "Committed: %{paths}."
+msgstr "Commité : %{paths}."
+
+#: lib/belgo_web/live/settings/live.ex:185
+#, elixir-autogen, elixir-format
+msgid "Disabled: add a git key to config.yaml to version the inventory files."
+msgstr "Désactivé : ajoutez une clé git à config.yaml pour versionner les fichiers d'inventaire."
+
+#: lib/belgo_web/live/settings/live.ex:171
+#, elixir-autogen, elixir-format
+msgid "Git versioning"
+msgstr "Versionnement git"
+
+#: lib/belgo_web/live/settings/live.ex:72
+#, elixir-autogen, elixir-format
+msgid "Git versioning is disabled."
+msgstr "Le versionnement git est désactivé."
+
+#: lib/belgo_web/live/settings/live.ex:193
+#, elixir-autogen, elixir-format
+msgid "Last commit:"
+msgstr "Dernier commit :"
+
+#: lib/belgo_web/live/settings/live.ex:209
+#, elixir-autogen, elixir-format
+msgid "No remote configured (git.remote): nothing is pushed."
+msgstr "Aucun dépôt distant configuré (git.remote) : rien n'est poussé."
+
+#: lib/belgo_web/live/settings/live.ex:197
+#, elixir-autogen, elixir-format
+msgid "No uncommitted change."
+msgstr "Aucun changement non commité."
+
+#: lib/belgo_web/live/settings/live.ex:63
+#, elixir-autogen, elixir-format
+msgid "Nothing to commit."
+msgstr "Rien à commiter."
+
+#: lib/belgo_web/live/settings/live.ex:162
+#, elixir-autogen, elixir-format
+msgid "Push failed: %{message}"
+msgstr "Échec du push : %{message}"
+
+#: lib/belgo_web/live/settings/live.ex:156
+#, elixir-autogen, elixir-format
+msgid "Pushed %{commit}."
+msgstr "%{commit} poussé."
+
+#: lib/belgo_web/live/settings/live.ex:233
+#, elixir-autogen, elixir-format
+msgid "Pushing…"
+msgstr "Envoi…"
+
+#: lib/belgo_web/live/settings/live.ex:159
+#, elixir-autogen, elixir-format
+msgid "The remote is up to date."
+msgstr "Le dépôt distant est à jour."
+
+#: lib/belgo_web/live/settings/live.ex:190
+#, elixir-autogen, elixir-format
+msgid "The repository is created on the first commit."
+msgstr "Le dépôt est créé au premier commit."

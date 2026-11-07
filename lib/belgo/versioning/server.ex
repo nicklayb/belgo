@@ -11,6 +11,10 @@ defmodule Belgo.Versioning.Server do
 
   `config.yaml` is read on each event, so its changes apply on the next one.
 
+  Commits and pushes are broadcast on `topic/0` (`{:versioning_committed, result}`,
+  `{:versioning_pushed, result}`) for the settings page, which can also commit now
+  (`commit_now/1`) and push now (`push/1`).
+
   Options: `:directory` (the data directory, where `config.yaml` lives), `:pubsub`,
   `:task_supervisor` (`Belgo.TaskSupervisor` by default), `:name`.
   """
@@ -26,6 +30,14 @@ defmodule Belgo.Versioning.Server do
   alias Belgo.Versioning.Git
 
   @short_sha_length 7
+  @topic "versioning"
+
+  @typedoc "Outcome of a commit: the committed paths (none: nothing to commit)."
+  @type commit_result :: {:ok, [String.t()]} | {:error, String.t()} | :disabled
+
+  @doc "PubSub topic of the commit and push results."
+  @spec topic() :: String.t()
+  def topic, do: @topic
 
   @doc "Starts the server."
   @spec start_link(Keyword.t()) :: GenServer.on_start()
@@ -36,6 +48,14 @@ defmodule Belgo.Versioning.Server do
   @doc "Commits the pending changes now instead of waiting for the delay."
   @spec flush(GenServer.server()) :: :ok
   def flush(server \\ __MODULE__), do: GenServer.call(server, :flush)
+
+  @doc "Commits every pending change now (timer or not), and tells what was committed."
+  @spec commit_now(GenServer.server()) :: commit_result()
+  def commit_now(server \\ __MODULE__), do: GenServer.call(server, :commit_now)
+
+  @doc "The data directory and whether a push is running."
+  @spec info(GenServer.server()) :: %{directory: Path.t(), pushing?: boolean()}
+  def info(server \\ __MODULE__), do: GenServer.call(server, :info)
 
   @doc "Pushes now (when a remote is configured), without waiting for the interval."
   @spec push(GenServer.server()) :: :ok
@@ -50,6 +70,7 @@ defmodule Belgo.Versioning.Server do
     {:ok,
      %{
        directory: Keyword.fetch!(options, :directory),
+       pubsub: pubsub,
        task_supervisor: Keyword.get(options, :task_supervisor, Belgo.TaskSupervisor),
        commit_timer: nil,
        push_timer: nil,
@@ -68,6 +89,22 @@ defmodule Belgo.Versioning.Server do
 
   @impl GenServer
   def handle_call(:flush, _from, %{commit_timer: nil} = state), do: {:reply, :ok, state}
+
+  def handle_call(:info, _from, state),
+    do: {:reply, %{directory: state.directory, pushing?: state.push_task != nil}, state}
+
+  def handle_call(:commit_now, _from, state) do
+    if state.commit_timer, do: Process.cancel_timer(state.commit_timer)
+
+    case git_config(state) do
+      nil ->
+        {:reply, :disabled, %{state | commit_timer: nil}}
+
+      git ->
+        {state, result} = commit_reporting(state, git)
+        {:reply, result, state}
+    end
+  end
 
   def handle_call(:flush, _from, state) do
     Process.cancel_timer(state.commit_timer)
@@ -94,11 +131,13 @@ defmodule Belgo.Versioning.Server do
 
   def handle_info({reference, result}, %{push_task: reference} = state) do
     Process.demonitor(reference, [:flush])
+    broadcast(state, {:versioning_pushed, push_outcome(result)})
     {:noreply, %{finish_push(state, result) | push_task: nil}}
   end
 
   def handle_info({:DOWN, reference, :process, _pid, reason}, %{push_task: reference} = state) do
     Logger.error("[git] push crashed: #{inspect(reason)}")
+    broadcast(state, {:versioning_pushed, {:error, inspect(reason)}})
     {:noreply, %{state | push_task: nil}}
   end
 
@@ -137,15 +176,31 @@ defmodule Belgo.Versioning.Server do
   end
 
   defp commit(state, git) do
-    with :ok <- ensure_repository(state.directory),
-         {:ok, paths} <- Git.stage_all(state.directory) do
-      commit_paths(state.directory, paths, git)
-    else
-      {:error, reason} -> Logger.error("[git] commit failed: #{format_error(reason)}")
-    end
-
-    %{state | commit_timer: nil}
+    {state, _result} = commit_reporting(state, git)
+    state
   end
+
+  defp commit_reporting(state, git) do
+    result =
+      with :ok <- ensure_repository(state.directory),
+           {:ok, paths} <- Git.stage_all(state.directory),
+           :ok <- commit_paths(state.directory, paths, git) do
+        {:ok, paths}
+      else
+        {:error, reason} ->
+          message = Versioning.format_error(reason)
+          Logger.error("[git] commit failed: #{message}")
+          {:error, message}
+      end
+
+    broadcast(state, {:versioning_committed, result})
+    {%{state | commit_timer: nil}, result}
+  end
+
+  defp broadcast(%{pubsub: nil}, _message), do: :ok
+
+  defp broadcast(%{pubsub: pubsub}, message),
+    do: Phoenix.PubSub.broadcast(pubsub, @topic, message)
 
   defp ensure_repository(directory) do
     if Git.repository?(directory) do
@@ -209,13 +264,13 @@ defmodule Belgo.Versioning.Server do
   defp finish_push(state, :up_to_date), do: state
 
   defp finish_push(state, {:error, reason}) do
-    Logger.error("[git] push failed: #{format_error(reason)}")
+    Logger.error("[git] push failed: #{Versioning.format_error(reason)}")
     state
   end
 
-  defp short(sha), do: String.slice(sha, 0, @short_sha_length)
+  defp push_outcome({:pushed, {_remote, _branch, sha}}), do: {:ok, short(sha)}
+  defp push_outcome(:up_to_date), do: :up_to_date
+  defp push_outcome({:error, reason}), do: {:error, Versioning.format_error(reason)}
 
-  defp format_error({:git, status, output}), do: "git exited with #{status}: #{output}"
-  defp format_error(message) when is_binary(message), do: message
-  defp format_error(reason), do: inspect(reason)
+  defp short(sha), do: String.slice(sha, 0, @short_sha_length)
 end
