@@ -77,7 +77,7 @@ defmodule BelgoWeb.Components.Layouts do
   attr(:navigation_badges, :map, required: true)
 
   defp sidebar(assigns) do
-    assigns = assign(assigns, :items, Navigation.items())
+    assigns = assign(assigns, :sections, Navigation.sections())
 
     ~H"""
     <div class="px-5 py-5"><.logo /></div>
@@ -92,28 +92,44 @@ defmodule BelgoWeb.Components.Layouts do
         <kbd class="rounded border border-border px-1 font-sans text-xs">⌘K</kbd>
       </button>
     </div>
-    <nav class="flex-1 space-y-0.5 px-3">
-      <.link
-        :for={item <- @items}
-        navigate={item.path}
-        class={[
-          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-          if(Navigation.active?(item, @current_path),
-            do: "bg-accent-soft text-accent",
-            else: "text-muted hover:bg-surface-muted hover:text-foreground"
-          )
-        ]}
-      >
-        <.icon name={item.icon} class="size-5" />
-        <span class="flex-1">{item.label}</span>
-        <span
-          :for={count <- List.wrap(Navigation.badge_count(item, @navigation_badges))}
-          class="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs leading-5 font-semibold text-accent-foreground tabular-nums"
-          aria-label={gettext("%{label}: %{count}", label: item.label, count: count)}
+    <nav class="flex-1 space-y-4 overflow-y-auto px-3">
+      <div :for={section <- @sections} class="space-y-0.5">
+        <p
+          :if={section.title}
+          class="px-3 pb-1 text-xs font-medium tracking-wide text-muted uppercase"
         >
-          {count}
-        </span>
-      </.link>
+          {section.title}
+        </p>
+        <.link
+          :for={item <- section.items}
+          navigate={item.path}
+          class={[
+            "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+            if(Navigation.active?(item, @current_path),
+              do: "bg-accent-soft text-accent",
+              else: "text-muted hover:bg-surface-muted hover:text-foreground"
+            )
+          ]}
+        >
+          <.icon name={item.icon} class="size-5" />
+          <span class="flex-1">{item.label}</span>
+          <span
+            :for={{badge, count} <- Navigation.badge_counts(item, @navigation_badges)}
+            data-badge={badge}
+            title={Navigation.badge_label(badge)}
+            class={[
+              "min-w-5 rounded-full px-1.5 text-center text-xs leading-5 font-semibold tabular-nums",
+              badge == :overview && "bg-warning text-white",
+              badge != :overview && "bg-accent text-accent-foreground"
+            ]}
+            aria-label={
+              gettext("%{label}: %{count}", label: Navigation.badge_label(badge), count: count)
+            }
+          >
+            {count}
+          </span>
+        </.link>
+      </div>
     </nav>
     <.link
       navigate={~p"/settings"}

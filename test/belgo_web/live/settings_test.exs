@@ -25,4 +25,13 @@ defmodule BelgoWeb.SettingsTest do
     assert html =~ ~s(<html lang="en")
     assert html =~ "Settings"
   end
+
+  test "the inventory files are reloaded from the settings", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/settings")
+    render_click(element(view, "#inventory-files button", "Reload files"))
+    assert render(view) =~ "Inventory reloaded from disk."
+
+    {:ok, _view, html} = live(conn, ~p"/")
+    refute html =~ "Reload files"
+  end
 end

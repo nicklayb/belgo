@@ -207,7 +207,9 @@ defmodule BelgoWeb.Components.Inventory do
   @doc "Badges of the virtualisation platforms of a host."
   def platform_badges(assigns) do
     ~H"""
-    <.badge :for={platform <- @platforms} tone={:accent}>{Format.label(platform)}</.badge>
+    <.badge :for={platform <- @platforms} tone={platform} data-platform={platform}>
+      {Format.label(platform)}
+    </.badge>
     """
   end
 

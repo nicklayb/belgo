@@ -33,6 +33,11 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
 - UI: modern, responsive, unified, no gratuitous animation. Built to grow: new pages
   register in `BelgoWeb.Navigation`.
 
+## Documentation
+
+`README.md` stays minimal (owner): what Belgo does, main features, deployment,
+development. Detailed user documentation goes to `docs/guide.md`.
+
 ## Architecture
 
 - `Belgo.Inventory` – facade (snapshot, change, create/update/delete, reload, issues).
@@ -104,7 +109,7 @@ or IP is in the inventory → divergences) or unknown (suggested). Subnets missi
 the inventory become `DiscoveredNetwork`s. `Belgo.Discovery.Suggestion` prefills the
 claim forms (`/devices/new?discovered=…`, `/networks/new?discovered=…`).
 
-- `Belgo.Discovery.Server` – re-reads `providers.yaml` and pulls providers concurrently
+- `Belgo.Discovery.Server` (UI: the Discovery section of the Overview) – re-reads `providers.yaml` and pulls providers concurrently
   (Task.Supervisor) at boot and on demand; recorrelates on inventory changes;
   broadcasts `{:discovery_changed, state}`.
 - `Belgo.Providers.Provider` behaviour; `Belgo.Providers.Opnsense` (Kea DHCPv4 subnets
@@ -584,12 +589,28 @@ first addressed interface only, other interfaces are named through their
   connect param `locale`, else session). The choice is stored in localStorage
   (`belgo:locale`, `assets/js/locale.js`), mirrored in the cookie on each load so
   the first render matches. Settings page `/settings` (the user button at the
-  bottom of the menu): language select (`LocaleSetting` hook, reloads). Enum labels
+  bottom of the menu): language select (`LocaleSetting` hook, reloads). The
+  *Reload files* button (re-reads the inventory) moved there from the Overview (owner). Enum labels
   (`Format.label/1`) go through the hand-maintained `values` domain
   (`priv/gettext/values.pot`, `fr/.../values.po`); `pgettext("plan anchor",
   "Floor")` = "Sol" vs "Étage". After adding strings: `mix gettext.extract` then
   `mix gettext.merge priv/gettext --locale fr`, and translate empty / fuzzy entries.
   Provider / audit messages built in core modules are still English.
+- Overview = former Overview + Discovery (owner): `Dashboard.Live` (`/`) shows the
+  stats, the collapsible *Issues* card (`collapse_key="overview-issues"`: inventory
+  issues, divergences, provider duplicates), then `Discovery.Section` (a component
+  module, not a LiveView: `mount/1`, `handle_params/2`, `assign_inventory/1`,
+  `assign_discovery/1`, `handle_event/3` for `events/0`, `section/1`); the former
+  Discovery *Divergences* card is gone (duplicate). The *Out of DHCP* filter lives in
+  `/?…`; `/discovery` redirects there (301, query kept, `Redirect.Controller`).
+  Menu (`Navigation.sections/0`): Overview, then Data (Devices, Virtual IPs,
+  Locations, Networks), Visualization (Plan, Hosting, Routing), Providers
+  (Synchronization). Overview carries both counters (`Item.badges`): issues to fix
+  (warning colour) and devices out of DHCP (accent), `[data-badge]`.
+- Platform colours (owner): Proxmox orange, Docker pale blue, Kubernetes mauve;
+  tokens `--color-{proxmox,docker,kubernetes}` (+ `-soft`, light-dark) in `app.css`,
+  badge tones of the same names (`platform_badges`, `data-platform`), and the group
+  icons of the Hosting page.
 - Hosting page grouped by platform (owner): `Hosting.groups/1` – Proxmox (VM, LXC
   guests), Docker and Kubernetes (container guests), each host with its direct guests
   of that platform and the hosts it runs on; a VM running Docker is a guest under

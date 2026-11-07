@@ -10,6 +10,11 @@ defmodule BelgoWeb.Hosting.Live do
   alias Belgo.Topology.Hosting.Host
   alias BelgoWeb.Format
 
+  @platform_colors %{
+    proxmox: "text-proxmox",
+    docker: "text-docker",
+    kubernetes: "text-kubernetes"
+  }
   @platform_icons %{
     proxmox: "hero-server-stack",
     docker: "hero-cube",
@@ -52,7 +57,10 @@ defmodule BelgoWeb.Hosting.Live do
       <div class="space-y-8">
         <section :for={%Group{} = group <- @groups} id={"platform-#{group.platform || "other"}"}>
           <h2 class="mb-3 flex items-center gap-2 text-sm font-semibold tracking-wide text-muted uppercase">
-            <.icon name={platform_icon(group.platform)} class="size-5 text-accent" />
+            <.icon
+              name={platform_icon(group.platform)}
+              class={["size-5", platform_color(group.platform)]}
+            />
             {platform_label(group.platform)}
             <.badge>{length(group.hosts)}</.badge>
           </h2>
@@ -99,6 +107,9 @@ defmodule BelgoWeb.Hosting.Live do
 
   defp platform_label(nil), do: gettext("Other hosts")
   defp platform_label(platform), do: Format.label(platform)
+
+  # The platform's colour (same as its badges), the accent for "Other".
+  defp platform_color(platform), do: Map.get(@platform_colors, platform, "text-accent")
 
   defp platform_icon(platform), do: Map.get(@platform_icons, platform, "hero-rectangle-stack")
 end

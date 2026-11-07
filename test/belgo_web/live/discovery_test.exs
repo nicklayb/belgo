@@ -6,7 +6,7 @@ defmodule BelgoWeb.DiscoveryTest do
 
   test "explains how to enable providers", %{conn: conn} do
     Belgo.Discovery.refresh()
-    {:ok, _view, html} = live(conn, ~p"/discovery")
+    {:ok, _view, html} = live(conn, ~p"/")
 
     assert html =~ "No provider configured"
   end
@@ -18,7 +18,7 @@ defmodule BelgoWeb.DiscoveryTest do
     end
 
     test "lists unknown devices, new networks and divergences", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/discovery")
+      {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "moe-pc"
       assert html =~ "10.0.5.0/24"
@@ -26,7 +26,7 @@ defmodule BelgoWeb.DiscoveryTest do
     end
 
     test "cards are collapsible, unknown devices collapsed by default", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/discovery")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       assert has_element?(
                view,
@@ -40,7 +40,7 @@ defmodule BelgoWeb.DiscoveryTest do
     end
 
     test "unknown devices are pinged and show whether they answer", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/discovery")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       assert Enum.find_value(1..20, fn _attempt ->
                has_element?(view, ~s(#unknown-devices [data-reachability][data-state="down"])) ||
@@ -73,7 +73,7 @@ defmodule BelgoWeb.DiscoveryTest do
 
     test "claims a DNS name on the interface holding its address", %{conn: conn} do
       release_assistant_name()
-      {:ok, view, _html} = live(conn, ~p"/discovery")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       assert has_element?(view, "#dns-names", "assistant.springfield.lan")
       assert has_element?(view, "#dns-names", "Smithers")
@@ -90,7 +90,7 @@ defmodule BelgoWeb.DiscoveryTest do
       refute has_element?(claim, "#claim-address-warning")
 
       submitted = render_submit(form(claim, "#claim-dns-name"))
-      assert {:error, {:live_redirect, %{to: "/discovery"}}} = submitted
+      assert {:error, {:live_redirect, %{to: "/"}}} = submitted
 
       # Back on Discovery, the notice links to the device.
       {:ok, discovery, _html} = follow_redirect(submitted, conn)
@@ -125,7 +125,7 @@ defmodule BelgoWeb.DiscoveryTest do
 
       assert has_element?(claim, "#claim-address-warning", "10.0.0.10")
 
-      assert {:error, {:live_redirect, %{to: "/discovery"}}} =
+      assert {:error, {:live_redirect, %{to: "/"}}} =
                claim
                |> form("#claim-dns-name")
                |> render_submit()
@@ -193,7 +193,7 @@ defmodule BelgoWeb.DiscoveryTest do
           user: :system
         )
 
-      {:ok, _view, html} = live(conn, ~p"/discovery")
+      {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ "Out of DHCP"
       assert html =~ ~s(id="out-of-dhcp-devices")
@@ -208,7 +208,7 @@ defmodule BelgoWeb.DiscoveryTest do
           user: :system
         )
 
-      {:ok, view, html} = live(conn, ~p"/discovery")
+      {:ok, view, html} = live(conn, ~p"/")
       assert html =~ ~s(aria-sort="ascending")
 
       by_address = out_of_dhcp_names(html)
@@ -222,7 +222,7 @@ defmodule BelgoWeb.DiscoveryTest do
       assert length(by_address) > 1
       assert by_device == Enum.sort(by_device)
       assert Enum.reverse(by_device) == by_device_descending
-      assert_patch(view, "/discovery?direction=desc&sort=device")
+      assert_patch(view, "/?direction=desc&sort=device")
     end
 
     test "the out of DHCP filter and order are restored from the URL", %{conn: conn} do
@@ -234,7 +234,7 @@ defmodule BelgoWeb.DiscoveryTest do
           user: :system
         )
 
-      {:ok, view, html} = live(conn, ~p"/discovery?sort=device&direction=desc&provider=opnsense")
+      {:ok, view, html} = live(conn, ~p"/?sort=device&direction=desc&provider=opnsense")
       names = out_of_dhcp_names(html)
 
       assert length(names) > 1
@@ -242,7 +242,7 @@ defmodule BelgoWeb.DiscoveryTest do
       assert html =~ ~s(aria-sort="descending")
       assert has_element?(view, ~s(#out-of-dhcp-filter option[value="opnsense"][selected]))
 
-      {:ok, _view, html} = live(conn, ~p"/discovery?query=krusty")
+      {:ok, _view, html} = live(conn, ~p"/?query=krusty")
       assert html =~ "No device matches"
       assert html =~ ~s(value="krusty")
     end
@@ -271,7 +271,7 @@ defmodule BelgoWeb.DiscoveryTest do
         )
 
       %Belgo.Discovery.State{} = Belgo.Discovery.state()
-      {:ok, view, html} = live(conn, ~p"/discovery")
+      {:ok, view, html} = live(conn, ~p"/")
       assert html =~ "moe-pc"
 
       html =
@@ -280,7 +280,7 @@ defmodule BelgoWeb.DiscoveryTest do
         |> render_change()
 
       assert html =~ ~s(id="out-of-dhcp-devices")
-      assert_patch(view, "/discovery?query=10.0.0.50")
+      assert_patch(view, "/?query=10.0.0.50")
 
       html =
         view
@@ -316,7 +316,7 @@ defmodule BelgoWeb.DiscoveryTest do
     end
 
     test "ignoring a device adds it to the denylist", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/discovery")
+      {:ok, view, _html} = live(conn, ~p"/")
 
       render_click(view, "ignore", %{"id" => "mac-02-00-00-00-06-66"})
 
@@ -329,7 +329,11 @@ defmodule BelgoWeb.DiscoveryTest do
 
       assert html =~ "Divergences with providers"
       assert html =~ "reservation of 02:00:00:00:00:11 uses 10.0.0.99, Belgo has 10.0.0.11"
-      assert html =~ ~s(aria-label="Overview:)
+      assert html =~ ~s(data-badge="overview")
+    end
+
+    test "the former Discovery page redirects to the Overview", %{conn: conn} do
+      assert "/?query=krusty" == redirected_to(get(conn, "/discovery?query=krusty"), 301)
     end
 
     test "device pages show their divergences", %{conn: conn} do
@@ -342,10 +346,10 @@ defmodule BelgoWeb.DiscoveryTest do
   describe "navigation badge" do
     test "counts only the devices out of the DHCP pool", %{conn: conn} do
       {:ok, view, html} = live(conn, ~p"/devices")
-      refute html =~ ~s(aria-label="Discovery:)
+      refute html =~ ~s(data-badge="discovery")
 
       enable_opnsense()
-      refute render(view) =~ ~s(aria-label="Discovery:)
+      refute render(view) =~ ~s(data-badge="discovery")
 
       {:ok, _network} =
         Inventory.update(
@@ -356,7 +360,7 @@ defmodule BelgoWeb.DiscoveryTest do
         )
 
       %Belgo.Discovery.State{} = Belgo.Discovery.state()
-      assert render(view) =~ ~s(aria-label="Discovery: 1")
+      assert render(view) =~ ~s(aria-label="Devices out of DHCP: 1")
     end
   end
 
@@ -393,7 +397,7 @@ defmodule BelgoWeb.DiscoveryTest do
       "version: 1\nproviders:\n  home_assistant:\n    url: https://broken.example\n"
     )
 
-    {:ok, view, html} = live(conn, ~p"/discovery")
+    {:ok, view, html} = live(conn, ~p"/")
     assert html =~ "auth_invalid"
 
     assert has_element?(
@@ -413,7 +417,7 @@ defmodule BelgoWeb.DiscoveryTest do
   test "a working provider has no refresh button of its own", %{conn: conn} do
     enable_home_assistant()
 
-    {:ok, view, _html} = live(conn, ~p"/discovery")
+    {:ok, view, _html} = live(conn, ~p"/")
     refute has_element?(view, ~s(button[phx-click="refresh-provider"]))
   end
 
@@ -424,7 +428,7 @@ defmodule BelgoWeb.DiscoveryTest do
     end
 
     test "lists the floors and areas missing from the inventory", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/discovery")
+      {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ ~s(id="new-locations")
       assert html =~ "Moe&#39;s Corner"

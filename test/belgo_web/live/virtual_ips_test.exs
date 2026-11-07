@@ -78,7 +78,7 @@ defmodule BelgoWeb.VirtualIpsTest do
     end
 
     test "an unknown address can be claimed as a virtual IP", %{conn: conn} do
-      {:ok, discovery, _html} = live(conn, ~p"/discovery")
+      {:ok, discovery, _html} = live(conn, ~p"/")
 
       assert has_element?(
                discovery,
@@ -112,7 +112,7 @@ defmodule BelgoWeb.VirtualIpsTest do
       assert has_element?(claim, "#claim-address-warning", "10.0.0.110")
 
       submitted = render_submit(form(claim, "#claim-dns-name"))
-      assert {:error, {:live_redirect, %{to: "/discovery"}}} = submitted
+      assert {:error, {:live_redirect, %{to: "/"}}} = submitted
       {:ok, discovery, _html} = follow_redirect(submitted, conn)
       assert has_element?(discovery, ~s(#flash-info a[href="/virtual-ips/kwik-e-mart"]))
 

@@ -81,7 +81,7 @@ defmodule BelgoWeb.Discovery.Live.ClaimDnsName do
         {:noreply,
          socket
          |> put_flash(:info, claimed_message(dns_name, record))
-         |> push_navigate(to: ~p"/discovery")}
+         |> push_navigate(to: ~p"/")}
 
       error ->
         {:noreply, put_flash(socket, :error, describe_error(error))}
@@ -219,7 +219,7 @@ defmodule BelgoWeb.Discovery.Live.ClaimDnsName do
       current_path={@current_path}
       navigation_badges={@navigation_badges}
     >
-      <.page_header title={gettext("Claim a DNS name")} back={~p"/discovery"}>
+      <.page_header title={gettext("Claim a DNS name")} back={~p"/"}>
         <:subtitle :if={@dns_name}>
           <span class="font-mono">{@dns_name.name}</span>
           → <span class="font-mono">{@dns_name.ip}</span>
@@ -282,7 +282,7 @@ defmodule BelgoWeb.Discovery.Live.ClaimDnsName do
             </p>
           </div>
           <div class="flex justify-end gap-2">
-            <Form.button navigate={~p"/discovery"}>{gettext("Cancel")}</Form.button>
+            <Form.button navigate={~p"/"}>{gettext("Cancel")}</Form.button>
             <Form.button type="submit" variant={:primary} disabled={is_nil(@destination)}>
               {gettext("Claim")}
             </Form.button>

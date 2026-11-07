@@ -1,13 +1,15 @@
-defmodule BelgoWeb.Discovery.Live do
+defmodule BelgoWeb.Discovery.Section do
   @moduledoc """
-  Suggestions from the providers: records to claim or ignore, and divergences with
-  the inventory to reconcile.
+  Suggestions from the providers, shown on the Overview page: provider statuses,
+  records to claim or ignore (new networks, locations, devices out of DHCP, unknown
+  devices, DNS names) and ignored devices. Divergences are listed with the issues of
+  the Overview. The page delegates its state (`mount/1`, `handle_params/2`,
+  `assign_inventory/1`, `assign_discovery/1`) and the events in `events/0` here.
   """
 
-  @behaviour BelgoWeb.Hooks.Discovery
-  @behaviour BelgoWeb.Hooks.Inventory
+  use BelgoWeb, :component
 
-  use BelgoWeb, :live_view
+  import Phoenix.LiveView, only: [put_flash: 3, push_patch: 2]
 
   alias Belgo.Discovery
   alias Belgo.Discovery.Correlation
@@ -21,20 +23,22 @@ defmodule BelgoWeb.Discovery.Live do
   alias BelgoWeb.Live.Mutation
   alias BelgoWeb.Live.Reachability
 
-  @impl Phoenix.LiveView
-  def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:page_title, gettext("Discovery"))
-     |> assign(:out_of_dhcp_filter, OutOfDhcpFilter.new())
-     |> Reachability.subscribe()
-     |> assign_inventory()
-     |> assign_discovery()}
+  @events ~w(refresh refresh-provider filter_out_of_dhcp sort_out_of_dhcp ignore stop-ignoring)
+
+  @doc "Events handled by `handle_event/3`."
+  @spec events() :: [String.t()]
+  def events, do: @events
+
+  @doc "Initial assigns of the section (the page subscribes to reachability)."
+  @spec mount(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def mount(socket) do
+    socket
+    |> assign(:out_of_dhcp_filter, OutOfDhcpFilter.new())
+    |> assign_inventory()
   end
 
-  # Pings the discovered devices without a recent result (the discovery server also
-  # pings them after each pull).
-  @impl BelgoWeb.Hooks.Discovery
+  @doc "Pings the discovered devices without a recent result (the server also pings them after each pull)."
+  @spec assign_discovery(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
   def assign_discovery(socket),
     do:
       Reachability.check(
@@ -42,25 +46,22 @@ defmodule BelgoWeb.Discovery.Live do
         Correlation.discovered_addresses(socket.assigns.discovery.correlation)
       )
 
-  @impl Phoenix.LiveView
-  def handle_params(params, _uri, socket),
-    do: {:noreply, assign(socket, :out_of_dhcp_filter, OutOfDhcpFilter.new(params))}
+  @doc "Reads the *Out of DHCP* filter from the query string."
+  @spec handle_params(map(), Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def handle_params(params, socket),
+    do: assign(socket, :out_of_dhcp_filter, OutOfDhcpFilter.new(params))
 
-  @impl BelgoWeb.Hooks.Inventory
-  def assign_inventory(socket) do
-    assign(socket, :record_names, record_names(socket.assigns.snapshot))
-  end
+  @doc "Names of the records the suggestions point to."
+  @spec assign_inventory(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
+  def assign_inventory(socket),
+    do: assign(socket, :record_names, record_names(socket.assigns.snapshot))
 
-  @impl Phoenix.LiveView
-  def handle_info({:reachability_changed, address_statuses}, socket),
-    do: {:noreply, Reachability.changed(socket, address_statuses)}
-
-  def handle_info(_message, socket), do: {:noreply, socket}
-
-  @impl Phoenix.LiveView
+  @doc "Handles an event of `events/0`."
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) ::
+          Phoenix.LiveView.Socket.t()
   def handle_event("refresh", _params, socket) do
     Discovery.refresh()
-    {:noreply, socket}
+    socket
   end
 
   def handle_event("refresh-provider", %{"provider" => name}, socket) do
@@ -69,50 +70,44 @@ defmodule BelgoWeb.Discovery.Live do
       nil -> :ok
     end
 
-    {:noreply, socket}
+    socket
   end
 
   def handle_event("filter_out_of_dhcp", params, socket),
-    do:
-      {:noreply,
-       patch_filter(socket, OutOfDhcpFilter.update(socket.assigns.out_of_dhcp_filter, params))}
+    do: patch_filter(socket, OutOfDhcpFilter.update(socket.assigns.out_of_dhcp_filter, params))
 
   def handle_event("sort_out_of_dhcp", %{"field" => name}, socket) do
     case Sorting.parse_field(name) do
       nil ->
-        {:noreply, socket}
+        socket
 
       field ->
-        {:noreply,
-         patch_filter(socket, OutOfDhcpFilter.sort_by(socket.assigns.out_of_dhcp_filter, field))}
+        patch_filter(socket, OutOfDhcpFilter.sort_by(socket.assigns.out_of_dhcp_filter, field))
     end
   end
 
-  def handle_event("ignore", %{"id" => id}, socket) do
-    with_discovered_device(socket, id, &Discovery.ignore(&1, Mutation.options(socket)))
-  end
+  def handle_event("ignore", %{"id" => id}, socket),
+    do: with_discovered_device(socket, id, &Discovery.ignore(&1, Mutation.options(socket)))
 
-  def handle_event("stop-ignoring", %{"id" => id}, socket) do
-    with_discovered_device(socket, id, &Discovery.stop_ignoring(&1, Mutation.options(socket)))
-  end
+  def handle_event("stop-ignoring", %{"id" => id}, socket),
+    do: with_discovered_device(socket, id, &Discovery.stop_ignoring(&1, Mutation.options(socket)))
 
   defp with_discovered_device(socket, id, function) do
     with {:ok, discovered} <- Correlation.fetch_device(socket.assigns.discovery.correlation, id),
          {:ok, _entries} <- function.(discovered) do
-      {:noreply, socket}
+      socket
     else
       {:error, :no_mac_address} ->
-        {:noreply,
-         put_flash(socket, :error, gettext("Only devices with a MAC address can be ignored."))}
+        put_flash(socket, :error, gettext("Only devices with a MAC address can be ignored."))
 
       error ->
-        {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
+        put_flash(socket, :error, Mutation.describe_error(error))
     end
   end
 
   defp patch_filter(socket, filter) do
     push_patch(socket,
-      to: ~p"/discovery?#{OutOfDhcpFilter.to_query_params(filter)}",
+      to: ~p"/?#{OutOfDhcpFilter.to_query_params(filter)}",
       replace: true
     )
   end
@@ -148,19 +143,17 @@ defmodule BelgoWeb.Discovery.Live do
     end
   end
 
-  defp divergence_groups(divergences) do
-    divergences
-    |> Enum.group_by(&{&1.collection, &1.id})
-    |> Enum.sort()
-  end
-
   defp record_path({:devices, id}), do: ~p"/devices/#{id}"
-  defp record_path({:networks, id}), do: ~p"/networks/#{id}/edit"
-  defp record_path({:locations, id}), do: ~p"/locations/#{id}"
   defp record_path({:virtual_ips, id}), do: ~p"/virtual-ips/#{id}"
 
-  @impl Phoenix.LiveView
-  def render(assigns) do
+  attr(:discovery, :any, required: true)
+  attr(:snapshot, :any, required: true)
+  attr(:out_of_dhcp_filter, :any, required: true)
+  attr(:record_names, :map, required: true)
+  attr(:address_statuses, :map, required: true)
+
+  @doc "The Discovery section of the Overview."
+  def section(assigns) do
     assigns =
       assigns
       |> assign(:correlation, assigns.discovery.correlation)
@@ -173,29 +166,25 @@ defmodule BelgoWeb.Discovery.Live do
       )
 
     ~H"""
-    <Layouts.app
-      flash={@flash}
-      current_user={@current_user}
-      current_path={@current_path}
-      navigation_badges={@navigation_badges}
-    >
-      <.page_header title={gettext("Discovery")}>
-        <:subtitle>
-          {gettext(
-            "What your providers know and Belgo does not. Nothing is saved until you claim it."
-          )}
-        </:subtitle>
-        <:actions>
-          <Form.button
-            phx-click="refresh"
-            disabled={@discovery.providers == [] or Enum.any?(@discovery.providers, & &1.running?)}
-          >
-            <.icon name="hero-arrow-path-mini" class="size-4" /> {gettext("Refresh")}
-          </Form.button>
-        </:actions>
-      </.page_header>
+    <section id="discovery" class="mt-10 space-y-6">
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold">{gettext("Discovery")}</h2>
+          <p class="text-sm text-muted">
+            {gettext(
+              "What your providers know and Belgo does not. Nothing is saved until you claim it."
+            )}
+          </p>
+        </div>
+        <Form.button
+          phx-click="refresh"
+          disabled={@discovery.providers == [] or Enum.any?(@discovery.providers, & &1.running?)}
+        >
+          <.icon name="hero-arrow-path-mini" class="size-4" /> {gettext("Refresh")}
+        </Form.button>
+      </div>
 
-      <.card :if={@discovery.settings_errors != []} class="mb-6 border-danger/40">
+      <.card :if={@discovery.settings_errors != []} class="border-danger/40">
         <p class="mb-2 text-sm font-medium text-danger">{gettext("providers.yaml is invalid")}</p>
         <p :for={message <- @discovery.settings_errors} class="font-mono text-xs">{message}</p>
       </.card>
@@ -405,31 +394,6 @@ defmodule BelgoWeb.Discovery.Live do
           </.table>
         </.card>
 
-        <.card title={gettext("Divergences")} padded={false} collapse_key="discovery-divergences">
-          <:actions>
-            <.badge tone={if @correlation.divergences == [], do: :neutral, else: :warning}>
-              {length(@correlation.divergences)}
-            </.badge>
-          </:actions>
-          <.empty_state
-            :if={@correlation.divergences == []}
-            icon="hero-check-circle"
-            title={gettext("Providers agree with Belgo")}
-          />
-          <div
-            :for={{record, divergences} <- divergence_groups(@correlation.divergences)}
-            class="border-b border-border last:border-0"
-          >
-            <.link
-              navigate={record_path(record)}
-              class="block px-5 pt-3 text-sm font-medium hover:text-accent"
-            >
-              {Map.get(@record_names, record, elem(record, 1))}
-            </.link>
-            <.divergence_list divergences={divergences} />
-          </div>
-        </.card>
-
         <.card
           :if={@correlation.ignored_devices != []}
           title={gettext("Ignored")}
@@ -456,7 +420,7 @@ defmodule BelgoWeb.Discovery.Live do
           </.table>
         </.card>
       </div>
-    </Layouts.app>
+    </section>
     """
   end
 

@@ -267,6 +267,10 @@ defmodule BelgoWeb.PagesTest do
     assert has_element?(view, "#platform-docker", "Itchy")
     assert has_element?(view, "#platform-docker", "Virtual machine on Burns Node")
     refute has_element?(view, "#platform-proxmox", "Itchy")
+
+    # Each platform has its colour: Proxmox orange, Docker pale blue.
+    assert has_element?(view, ~s(#platform-proxmox [data-platform="proxmox"].text-proxmox))
+    assert has_element?(view, ~s(#platform-docker [data-platform="docker"].text-docker))
   end
 
   test "pages follow inventory changes", %{conn: conn} do

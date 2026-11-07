@@ -11,7 +11,10 @@ defmodule BelgoWeb.Components.Core do
     accent: "bg-accent-soft text-accent ring-accent/20",
     success: "bg-success-soft text-success ring-success/20",
     warning: "bg-warning-soft text-warning ring-warning/20",
-    danger: "bg-danger-soft text-danger ring-danger/20"
+    danger: "bg-danger-soft text-danger ring-danger/20",
+    proxmox: "bg-proxmox-soft text-proxmox ring-proxmox/25",
+    docker: "bg-docker-soft text-docker ring-docker/25",
+    kubernetes: "bg-kubernetes-soft text-kubernetes ring-kubernetes/25"
   }
 
   attr(:name, :string, required: true, doc: "a `hero-*` class")
@@ -116,6 +119,7 @@ defmodule BelgoWeb.Components.Core do
 
   attr(:tone, :atom, default: :neutral, values: Map.keys(@badge_tones))
   attr(:class, :any, default: nil)
+  attr(:rest, :global)
   slot(:inner_block, required: true)
 
   @doc "A small label."
@@ -123,11 +127,14 @@ defmodule BelgoWeb.Components.Core do
     assigns = assign(assigns, :tone_class, Map.fetch!(@badge_tones, assigns.tone))
 
     ~H"""
-    <span class={[
-      "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap",
-      @tone_class,
-      @class
-    ]}>
+    <span
+      class={[
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium ring-1 ring-inset whitespace-nowrap",
+        @tone_class,
+        @class
+      ]}
+      {@rest}
+    >
       {render_slot(@inner_block)}
     </span>
     """

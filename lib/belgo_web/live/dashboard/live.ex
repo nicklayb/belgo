@@ -1,5 +1,9 @@
 defmodule BelgoWeb.Dashboard.Live do
-  @moduledoc "Overview: key figures and the issues of the inventory."
+  @moduledoc """
+  Overview: key figures, the issues to fix (inventory issues, divergences with the
+  providers, duplicates on providers; collapsible), then the Discovery section
+  (`BelgoWeb.Discovery.Section`, its events and filter delegated there).
+  """
 
   @behaviour BelgoWeb.Hooks.Discovery
   @behaviour BelgoWeb.Hooks.Inventory
@@ -13,6 +17,9 @@ defmodule BelgoWeb.Dashboard.Live do
   alias Belgo.Reachability.Status
   alias Belgo.Sync.DesiredState
   alias Belgo.Topology.Hosting
+  alias BelgoWeb.Discovery.Section, as: DiscoverySection
+
+  @discovery_events DiscoverySection.events()
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Reachability
 
@@ -22,8 +29,13 @@ defmodule BelgoWeb.Dashboard.Live do
      socket
      |> assign(:page_title, gettext("Overview"))
      |> Reachability.subscribe()
+     |> DiscoverySection.mount()
      |> assign_inventory()}
   end
+
+  @impl Phoenix.LiveView
+  def handle_params(params, _uri, socket),
+    do: {:noreply, DiscoverySection.handle_params(params, socket)}
 
   @impl BelgoWeb.Hooks.Inventory
   def assign_inventory(socket) do
@@ -36,6 +48,7 @@ defmodule BelgoWeb.Dashboard.Live do
     |> Reachability.check(List.flatten(addresses_by_device))
     |> assign(:issues, Inventory.issues(snapshot))
     |> assign_discovery()
+    |> DiscoverySection.assign_inventory()
     |> assign(
       :host_count,
       snapshot
@@ -59,6 +72,7 @@ defmodule BelgoWeb.Dashboard.Live do
     |> assign(:divergence_groups, divergence_groups(correlation.divergences, snapshot))
     |> assign(:conflicts, Correlation.unowned_conflicts(correlation))
     |> assign(:divergence_count, length(correlation.divergences))
+    |> DiscoverySection.assign_discovery()
   end
 
   defp divergence_groups(divergences, snapshot) do
@@ -77,7 +91,7 @@ defmodule BelgoWeb.Dashboard.Live do
   end
 
   defp record_path({:devices, id}), do: ~p"/devices/#{id}"
-  defp record_path({:networks, id}), do: ~p"/networks/#{id}/edit"
+  defp record_path({:networks, id}), do: ~p"/networks/#{id}"
   defp record_path({:locations, id}), do: ~p"/locations/#{id}"
   defp record_path({:virtual_ips, id}), do: ~p"/virtual-ips/#{id}"
 
@@ -88,16 +102,8 @@ defmodule BelgoWeb.Dashboard.Live do
   def handle_info(_message, socket), do: {:noreply, socket}
 
   @impl Phoenix.LiveView
-  def handle_event("reload", _params, socket) do
-    case Inventory.reload() do
-      :ok ->
-        {:noreply, put_flash(socket, :info, gettext("Inventory reloaded from disk."))}
-
-      {:error, {:invalid_inventory, messages}} ->
-        message = Enum.join([gettext("The files are invalid, nothing changed:") | messages], "\n")
-        {:noreply, put_flash(socket, :error, message)}
-    end
-  end
+  def handle_event(event, params, socket) when event in @discovery_events,
+    do: {:noreply, DiscoverySection.handle_event(event, params, socket)}
 
   attr(:counts, :map, required: true)
 
@@ -146,11 +152,6 @@ defmodule BelgoWeb.Dashboard.Live do
     >
       <.page_header title={gettext("Overview")}>
         <:subtitle>{gettext("Your homelab at a glance.")}</:subtitle>
-        <:actions>
-          <Form.button phx-click="reload" title={gettext("Re-read the inventory files")}>
-            <.icon name="hero-arrow-path-mini" class="size-4" /> {gettext("Reload files")}
-          </Form.button>
-        </:actions>
       </.page_header>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -186,7 +187,7 @@ defmodule BelgoWeb.Dashboard.Live do
         />
       </div>
 
-      <.card title={gettext("Issues")} class="mt-6" padded={false}>
+      <.card title={gettext("Issues")} class="mt-6" padded={false} collapse_key="overview-issues">
         <:actions>
           <.badge tone={
             if @issues == [] and @divergence_count == 0 and @conflicts == [],
@@ -235,6 +236,14 @@ defmodule BelgoWeb.Dashboard.Live do
           </ul>
         </div>
       </.card>
+
+      <DiscoverySection.section
+        discovery={@discovery}
+        snapshot={@snapshot}
+        out_of_dhcp_filter={@out_of_dhcp_filter}
+        record_names={@record_names}
+        address_statuses={@address_statuses}
+      />
     </Layouts.app>
     """
   end

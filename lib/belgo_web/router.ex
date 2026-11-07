@@ -17,6 +17,12 @@ defmodule BelgoWeb.Router do
     get("/health", Health.Controller, :show)
   end
 
+  # Discovery is now part of the Overview: former links keep working.
+  scope "/", BelgoWeb do
+    pipe_through(:browser)
+    get("/discovery", Redirect.Controller, :overview)
+  end
+
   scope "/", BelgoWeb do
     pipe_through(:browser)
 
@@ -31,7 +37,6 @@ defmodule BelgoWeb.Router do
       ] do
       live("/", Dashboard.Live, :show)
 
-      live("/discovery", Discovery.Live, :show)
       live("/settings", Settings.Live, :show)
       live("/discovery/dns-names/:id", Discovery.Live.ClaimDnsName, :new)
 

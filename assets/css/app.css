@@ -31,6 +31,14 @@
   --color-warning-soft: light-dark(oklch(0.965 0.05 90), oklch(0.28 0.05 70));
   --color-danger: light-dark(oklch(0.56 0.22 27), oklch(0.7 0.18 25));
   --color-danger-soft: light-dark(oklch(0.965 0.02 17), oklch(0.28 0.07 25));
+
+  /* Virtualisation platforms (owner): Proxmox orange, Docker pale blue, Kubernetes mauve. */
+  --color-proxmox: light-dark(oklch(0.6 0.17 50), oklch(0.76 0.15 55));
+  --color-proxmox-soft: light-dark(oklch(0.96 0.04 60), oklch(0.29 0.07 50));
+  --color-docker: light-dark(oklch(0.58 0.12 235), oklch(0.8 0.1 230));
+  --color-docker-soft: light-dark(oklch(0.96 0.03 230), oklch(0.29 0.05 235));
+  --color-kubernetes: light-dark(oklch(0.52 0.18 310), oklch(0.74 0.14 310));
+  --color-kubernetes-soft: light-dark(oklch(0.96 0.03 310), oklch(0.29 0.07 310));
 }
 
 @layer base {
