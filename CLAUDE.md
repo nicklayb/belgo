@@ -120,6 +120,10 @@ config forbids several pipes on one line), `mix compile --warnings-as-errors`,
   variable) fell back to `trusted_headers` and failed 89 LiveView tests
   (`connect_from_static_token/3`). Reproduce CI with
   `nix develop path:. --ignore-environment --keep HOME -c just check`.
+- `ConnCase` waits (`on_exit`) for the test's LiveViews (`$callers`) to stop: a
+  closing plan editor saves pending changes in `terminate/2`, which landed in the
+  next test's reset inventory on CI (`create_home`: "id is already taken"; flaky,
+  not reproduced locally where those views are killed without `terminate`).
 - Logger level in tests is `:warning`; tests capturing debug/info logs must raise it
   and run `async: false`.
 - Elixir 1.19 everywhere (owner decision). Move to 1.20 once officially released
@@ -127,6 +131,11 @@ config forbids several pipes on one line), `mix compile --warnings-as-errors`,
   (`File.cp_r/3` copies directory permissions before their content).
 - YAML parsers keep only one of duplicated keys silently, hence `DuplicateKeys`.
 - The dev shell `shellHook` ends with `eval "$(direnv hook bash)"`: keep it (owner).
+- The image sets `SSL_CERT_FILE` (cacert bundle): Nix's git / curl does not look in
+  `/etc/ssl`, HTTPS remotes failed with "unable to get local issuer certificate"
+  (measured in the cluster). The chart's clone script restarts from scratch when
+  `/data/.git` has no commit (an interrupted first attempt, the init container is
+  retried), else the empty repository was taken for a finished clone.
 - The release needs `RELEASE_COOKIE` (nixpkgs removes it); the image sets a dummy one
   with distribution disabled.
 
