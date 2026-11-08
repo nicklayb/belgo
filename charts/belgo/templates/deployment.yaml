@@ -4,6 +4,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "belgo.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "belgo.labels" . | nindent 4 }}
 spec:

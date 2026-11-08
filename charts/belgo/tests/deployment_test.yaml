@@ -185,3 +185,11 @@ tests:
       - equal:
           path: spec.template.spec.dnsPolicy
           value: ClusterFirstWithHostNet
+
+  - it: sets the release namespace (kustomize helmCharts, helm template | kubectl apply)
+    release:
+      namespace: springfield
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: springfield

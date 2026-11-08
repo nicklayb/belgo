@@ -1,5 +1,6 @@
-# Format, warnings, Credo and tests (`just check`) in the Nix dev shell, so CI uses
-# the same toolchain as development. Runs for pull requests to main, and is called
+# Format, warnings, Credo, tests and the Helm chart (`just check`) in the Nix dev
+# shell, so CI uses the same toolchain as development; pull requests changing the
+# chart must bump its version. Runs for pull requests to main, and is called
 # by the release workflow before anything is released.
 name: Tests
 
@@ -32,6 +33,13 @@ jobs:
             .nix-hex
           key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock', 'flake.lock') }}
           restore-keys: ${{ runner.os }}-mix-
+
+      # Published chart versions are never replaced: a chart change needs a new one.
+      - name: Chart version bumped
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags --depth=1 origin "$GITHUB_BASE_REF"
+          nix shell --inputs-from . nixpkgs#just --command just chart-version-bumped "origin/$GITHUB_BASE_REF"
 
       - name: Check
         run: nix develop --command just check

@@ -2,9 +2,11 @@ apiVersion: v2
 name: belgo
 description: Belgo, an all-in-one homelab manager (inventory, addresses, placement, provider sync).
 type: application
-# Both follow the repository's VERSION file (`just chart-check` fails otherwise).
-version: 0.1.0
-appVersion: "0.1.0"
+# Chart version: bump it on every chart change, appVersion included (CI publishes
+# a version once, when its `chart-<version>` tag does not exist).
+version: 0.2.0
+# Follows the repository's VERSION file (`just chart-check` fails otherwise).
+appVersion: "0.2.0"
 home: https://github.com/nicklayb/belgo
 sources:
   - https://github.com/nicklayb/belgo

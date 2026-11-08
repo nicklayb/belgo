@@ -53,11 +53,21 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
   touches an existing repository), read-only root fs + `/tmp` emptyDir (`HOME`),
   ping sysctl, generic `ingress` (templated annotations) and Gateway API
   `httpRoute`, `extraObjects`, `values.schema.json` (no unknown keys).
-  `Chart.yaml` version / appVersion must equal `VERSION` (`just chart-check`: lint,
+  `just bump patch|minor|major` (semver, pure bash) bumps `VERSION`, the chart's
+  appVersion and its version (same level); `just bump-chart <level>` the chart only.
+  Chart `version` is its own (bumped on every chart change, enforced on PRs by
+  `just chart-version-bumped`), `appVersion` must equal `VERSION` (`just chart-check`: lint,
   helm-unittest `tests/`, kubeconform on `ci/*-values.yaml`, CRDs from the datree
   catalog, needs network; part of `just check`). Measured with the real image:
-  clone, read-only boot, commit and push to `BELGO_GIT_REMOTE` work. Not published
-  as an OCI chart yet (Docker Hub `nboisvert/belgo` holds the image: same name).
+  clone, read-only boot, commit and push to `BELGO_GIT_REMOTE` work. Published by the
+  `chart` job of `release.yml` (after the image job) to
+  `oci://ghcr.io/nicklayb/charts` only when the git tag `chart-<version>` is absent,
+  then tagged (`just release-chart`; not Docker Hub:
+  `nboisvert/belgo` is the image, same name). Templates set `metadata.namespace:
+  {{ .Release.Namespace }}`: measured, kustomize `helmCharts` leaves rendered
+  resources without namespace otherwise. Deployed by the owner's `~/dev/talos`
+  (`homelab/apps/belgo`: kustomize `helmCharts`, ksops secret, Traefik
+  `traefik-authelia@kubernetescrd`, Longhorn).
 - UI: modern, responsive, unified, no gratuitous animation. Built to grow: new pages
   register in `BelgoWeb.Navigation`.
 

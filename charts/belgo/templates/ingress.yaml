@@ -4,6 +4,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "belgo.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}

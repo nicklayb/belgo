@@ -251,11 +251,13 @@ then `docker load`; the image is `belgo:<version>`).
 
 ## Kubernetes
 
-The Helm chart lives in `charts/belgo` (its `version` and `appVersion` follow
-`VERSION`; `just chart-check` lints it, runs its unit tests in `charts/belgo/tests`
+The Helm chart lives in `charts/belgo` (its own `version`, its `appVersion`
+follows `VERSION`; `just chart-check` lints it, runs its unit tests in `charts/belgo/tests`
 and validates the examples of `charts/belgo/ci` against the Kubernetes schemas).
-It does not depend on a GitOps tool: install it with `helm`, or point Flux /
-Argo CD at the `charts/belgo` path of this repository.
+CI publishes each chart version once to `oci://ghcr.io/nicklayb/charts/belgo`. It does not depend on a GitOps tool: install it with `helm`,
+kustomize `helmCharts` (`repo: oci://ghcr.io/nicklayb/charts`), Flux or Argo CD.
+Every namespaced resource sets `metadata.namespace` to the release namespace
+(kustomize does not apply its `namespace` to rendered charts otherwise).
 
 ```sh
 kubectl create namespace belgo
@@ -263,7 +265,8 @@ kubectl --namespace belgo create secret generic belgo \
   --from-literal=SECRET_KEY_BASE="$(openssl rand -base64 64)" \
   --from-literal=LIVE_VIEW_SALT="$(openssl rand -base64 24)" \
   --from-literal=BELGO_GIT_TOKEN=…
-helm install belgo ./charts/belgo --namespace belgo --values my-values.yaml
+helm install belgo oci://ghcr.io/nicklayb/charts/belgo --version <version> \
+  --namespace belgo --values my-values.yaml
 ```
 
 What the chart does, and why:
@@ -329,7 +332,9 @@ if other workloads share the cluster.
 ## Releasing
 
 The version lives in `VERSION` (read by `mix.exs`, `flake.nix`, the Justfile and CI).
-To release, bump it and merge into `main`:
+To release, bump it and merge into `main`. `just bump patch | minor | major` follows
+semver (`1.4.3` → minor → `1.5.0`, `1.6.3` → major → `2.0.0`) and bumps the chart's
+`appVersion` and `version` with it; `just bump-chart <level>` bumps the chart alone.
 
 * Pull requests to `main` run `just check` (format, warnings, Credo, tests) in the
   Nix dev shell (`.github/workflows/test.yml`).
@@ -338,8 +343,13 @@ To release, bump it and merge into `main`:
   (`<version>` and `latest`) and creates the release `<version>` with generated
   notes (`.github/workflows/release.yml`). A push without version bump releases
   nothing.
-* `just check` includes `just chart-check`: bump `charts/belgo/Chart.yaml`
-  (`version` and `appVersion`) with `VERSION`.
+* The Helm chart is versioned on its own (`charts/belgo/Chart.yaml` `version`).
+  After the image job, every push to `main` publishes it to
+  `oci://ghcr.io/nicklayb/charts` (`just release-chart`, `GITHUB_TOKEN` with
+  `packages: write`) only when the tag `chart-<version>` does not exist, then
+  creates that tag. Pull requests changing `charts/belgo` must bump its version
+  (`just chart-version-bumped`); `just chart-check` requires `appVersion` to equal
+  `VERSION`, so a new app version is also a new chart version.
 * The repository needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets (a
   Docker Hub access token with write access to `nboisvert/belgo`).
 
