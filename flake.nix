@@ -96,6 +96,9 @@
             ];
             Env = [
               "LANG=C.UTF-8"
+              # Nix's git (curl) does not look in /etc/ssl: without it, HTTPS remotes
+              # fail with "unable to get local issuer certificate".
+              "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
               "PORT=4000"
               "BELGO_DATA_PATH=/data"
               # iputils ping (busybox also ships one); needs unprivileged ICMP
