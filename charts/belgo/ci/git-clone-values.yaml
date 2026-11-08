@@ -1,0 +1,12 @@
+# Clones the data repository on first start, then pushes to its own branch.
+existingSecret: belgo
+appHost: https://belgo.springfield.lan
+git:
+  remote: https://gitlab.com/simpson/homelab.git
+  branch: cluster
+  clone:
+    enabled: true
+    sourceBranch: main
+persistence:
+  storageClass: longhorn
+  size: 2Gi

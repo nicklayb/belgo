@@ -1,0 +1,10 @@
+# Gateway API instead of an Ingress.
+existingSecret: belgo
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: internal
+      namespace: gateway
+      sectionName: https
+  hostnames:
+    - belgo.springfield.lan

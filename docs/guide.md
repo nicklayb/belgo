@@ -172,6 +172,7 @@ this browser (kept in its local storage).
 | `SECRET_KEY_BASE`, `LIVE_VIEW_SALT` | – | Phoenix secrets |
 | `APP_HOST`, `PORT` | `http://localhost:4000`, `4000` | Public URL and listening port |
 | `BELGO_LOG_LEVEL` | `info` | `debug`, `info`, `warning` or `error` (release only) |
+| `BELGO_GIT_REMOTE` / `BELGO_GIT_BRANCH` | – | Override `git.remote` / `git.branch` of `config.yaml` (one branch per instance sharing the data repository) |
 
 ### Authentication
 
@@ -248,6 +249,83 @@ services:
 To build the image locally instead: `just docker-build` (`nix build .#dockerImage`,
 then `docker load`; the image is `belgo:<version>`).
 
+## Kubernetes
+
+The Helm chart lives in `charts/belgo` (its `version` and `appVersion` follow
+`VERSION`; `just chart-check` lints it, runs its unit tests in `charts/belgo/tests`
+and validates the examples of `charts/belgo/ci` against the Kubernetes schemas).
+It does not depend on a GitOps tool: install it with `helm`, or point Flux /
+Argo CD at the `charts/belgo` path of this repository.
+
+```sh
+kubectl create namespace belgo
+kubectl --namespace belgo create secret generic belgo \
+  --from-literal=SECRET_KEY_BASE="$(openssl rand -base64 64)" \
+  --from-literal=LIVE_VIEW_SALT="$(openssl rand -base64 24)" \
+  --from-literal=BELGO_GIT_TOKEN=…
+helm install belgo ./charts/belgo --namespace belgo --values my-values.yaml
+```
+
+What the chart does, and why:
+
+* **One replica, `Recreate`.** The files are the state, owned by one process: the
+  chart never scales Belgo nor runs two pods on the volume.
+* **`/data` on a PersistentVolumeClaim** (default StorageClass, `ReadWriteOnce`,
+  kept by `helm uninstall`), or `persistence.existingClaim`.
+* **Secrets never in the values:** `existingSecret` (required) is loaded as
+  environment variables; it holds `SECRET_KEY_BASE`, `LIVE_VIEW_SALT`, provider
+  secrets and `BELGO_GIT_TOKEN`. Create it by hand or with any secret tool (SOPS,
+  Sealed Secrets, External Secrets).
+* **Data repository:** `git.remote` / `git.branch` set `BELGO_GIT_REMOTE` /
+  `BELGO_GIT_BRANCH` (git itself is enabled by `config.yaml`). With
+  `git.clone.enabled`, an init container clones the repository into an empty
+  volume on the first start, from `git.clone.sourceBranch` (e.g. `main`) onto
+  `git.branch` (e.g. `cluster`); an existing repository is never touched, and
+  Belgo never pulls. SSH remotes: mount a key with `extraVolumes` /
+  `extraVolumeMounts` and set `GIT_SSH_COMMAND` in `extraEnv`.
+* **Hardened:** runs as 65534 with `fsGroup` (writable volume), read-only root
+  filesystem (an `emptyDir` on `/tmp`, also `HOME`), no capability, no service
+  account token; the safe sysctl `net.ipv4.ping_group_range` lets it ping.
+* **Probes** on `/health` (not authenticated).
+* **Exposure is yours:** a standard `Ingress` (`ingress.className`, free
+  `annotations`, templated) for any controller, or a Gateway API `HTTPRoute`
+  (`httpRoute.parentRefs`), both off by default. `extraObjects` renders any other
+  manifest with the release (a Traefik `Middleware`, a `NetworkPolicy`…).
+  `hostNetwork: true` lets Wake-on-LAN broadcasts reach the LAN.
+* `values.schema.json` rejects unknown keys and invalid values at install time.
+
+Traefik with Authelia (`charts/belgo/ci/traefik-authelia-values.yaml`): the
+chart's `Middleware` forwards each request to Authelia and passes its `Remote-*`
+headers on, the Ingress annotation attaches it.
+
+```yaml
+existingSecret: belgo
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: '{{ .Release.Namespace }}-belgo-authelia@kubernetescrd'
+  hosts:
+    - host: belgo.home.lan
+      paths:
+        - path: /
+          pathType: Prefix
+extraObjects:
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: belgo-authelia
+    spec:
+      forwardAuth:
+        address: http://authelia.authelia.svc.cluster.local/api/authz/forward-auth
+        trustForwardHeader: true
+        authResponseHeaders: [Remote-User, Remote-Groups, Remote-Email, Remote-Name]
+```
+
+Belgo trusts those headers from anyone who reaches it: keep the Service internal
+(`ClusterIP`), and restrict it to the ingress controller with a `NetworkPolicy`
+if other workloads share the cluster.
+
 ## Releasing
 
 The version lives in `VERSION` (read by `mix.exs`, `flake.nix`, the Justfile and CI).
@@ -260,6 +338,8 @@ To release, bump it and merge into `main`:
   (`<version>` and `latest`) and creates the release `<version>` with generated
   notes (`.github/workflows/release.yml`). A push without version bump releases
   nothing.
+* `just check` includes `just chart-check`: bump `charts/belgo/Chart.yaml`
+  (`version` and `appVersion`) with `VERSION`.
 * The repository needs the `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` secrets (a
   Docker Hub access token with write access to `nboisvert/belgo`).
 

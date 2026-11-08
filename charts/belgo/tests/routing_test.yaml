@@ -1,0 +1,51 @@
+suite: ingress and HTTPRoute
+templates:
+  - templates/ingress.yaml
+  - templates/httproute.yaml
+tests:
+  - it: renders nothing by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: renders the ingress with templated annotations
+    template: templates/ingress.yaml
+    release:
+      namespace: springfield
+    set:
+      ingress.enabled: true
+      ingress.className: traefik
+      ingress.annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: "{{ .Release.Namespace }}-belgo-authelia@kubernetescrd"
+    asserts:
+      - equal:
+          path: spec.ingressClassName
+          value: traefik
+      - equal:
+          path: metadata.annotations["traefik.ingress.kubernetes.io/router.middlewares"]
+          value: springfield-belgo-authelia@kubernetescrd
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.name
+          value: http
+
+  - it: requires parent references for the HTTPRoute
+    template: templates/httproute.yaml
+    set:
+      httpRoute.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "httpRoute.parentRefs is required: the Gateway(s) the route attaches to"
+
+  - it: routes every rule to the service
+    template: templates/httproute.yaml
+    set:
+      httpRoute.enabled: true
+      httpRoute.parentRefs:
+        - name: internal
+    asserts:
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 80
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /

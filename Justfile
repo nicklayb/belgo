@@ -33,6 +33,7 @@ check:
 	mix compile --warnings-as-errors
 	mix credo
 	mix test
+	just chart-check
 
 # Installs dependencies
 deps:
@@ -72,3 +73,17 @@ docker-run:
 		-v $PWD/data:/data \
 		-p 4001:4000 \
 		{{docker_image}}
+
+# Lints the Helm chart, runs its unit tests and validates every example against the
+# Kubernetes schemas (CRDs from the datree catalog); the chart follows VERSION
+chart-check:
+	test "$(helm show chart charts/belgo | sed -n 's/^version: //p')" = "{{version}}" || (echo "charts/belgo/Chart.yaml version is not {{version}}" && exit 1)
+	test "$(helm show chart charts/belgo | sed -n 's/^appVersion: //p' | tr -d '\"')" = "{{version}}" || (echo "charts/belgo/Chart.yaml appVersion is not {{version}}" && exit 1)
+	helm lint --strict charts/belgo --values charts/belgo/ci/default-values.yaml
+	helm unittest charts/belgo
+	for values in charts/belgo/ci/*-values.yaml; do \
+		helm template belgo charts/belgo --namespace belgo --values "$values" \
+			| kubeconform -strict -summary -schema-location default \
+				-schema-location 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{{{.Group}}/{{{{.ResourceKind}}_{{{{.ResourceAPIVersion}}.json' \
+			|| exit 1; \
+	done

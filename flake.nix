@@ -73,6 +73,11 @@
           '';
         };
 
+        # Helm with the unit test plugin, for the chart in charts/belgo.
+        helm = pkgs.wrapHelm pkgs.kubernetes-helm {
+          plugins = [ pkgs.kubernetes-helmPlugins.helm-unittest ];
+        };
+
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "belgo";
           tag = version;
@@ -130,6 +135,8 @@
             pkgs.iputils
             pkgs.git
             pkgs.nodejs
+            helm
+            pkgs.kubeconform
           ];
 
           shellHook = ''

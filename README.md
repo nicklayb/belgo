@@ -35,7 +35,8 @@ Run it with a writable volume on `/data` (the inventory files) and at least
 `SECRET_KEY_BASE`, `LIVE_VIEW_SALT` and `APP_HOST`, behind Authelia's forward auth
 (trusted `Remote-*` headers); Belgo is meant for the internal network only.
 Providers are optional (`providers.yaml`, secrets in environment variables). See
-[Docker](docs/guide.md#docker) for a `docker run` / Compose example and the
+[Docker](docs/guide.md#docker) for a `docker run` / Compose example, the Helm
+chart in `charts/belgo` for [Kubernetes](docs/guide.md#kubernetes) and the
 [configuration](docs/guide.md#configuration).
 
 Releases follow `VERSION`: a push to `main` with a new version runs the tests,

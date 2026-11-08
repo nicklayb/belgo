@@ -1,0 +1,163 @@
+# Belgo keeps its state in files (/data) owned by a single process: the chart always
+# runs one replica, replaced with the Recreate strategy (never two pods on the volume).
+
+image:
+  repository: nboisvert/belgo
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# Public URL of Belgo (APP_HOST), e.g. https://belgo.home.lan. Defaults to the first
+# ingress / HTTPRoute host over https, else http://localhost:4000.
+appHost: ""
+
+# debug | info | warning | error (BELGO_LOG_LEVEL).
+logLevel: info
+
+# trusted_headers: Authelia (or any forward auth) sets the Remote-* headers.
+# static: everyone reaching Belgo is the static user (trials only).
+authentication:
+  mode: trusted_headers
+
+# Secrets are never in the values. Name of an existing Secret loaded as environment
+# variables; it must hold SECRET_KEY_BASE and LIVE_VIEW_SALT, and may hold provider
+# secrets (BELGO_OPNSENSE_API_KEY…) and BELGO_GIT_TOKEN / BELGO_GIT_USERNAME.
+existingSecret: ""
+
+git:
+  # BELGO_GIT_REMOTE / BELGO_GIT_BRANCH: override git.remote / git.branch of
+  # config.yaml (git itself is enabled by the `git` key of config.yaml).
+  remote: ""
+  branch: ""
+  # Init container cloning the data repository into an empty volume (first start
+  # only, an existing repository is left untouched). Uses the image's git and the
+  # BELGO_GIT_TOKEN of existingSecret for HTTPS remotes.
+  clone:
+    enabled: false
+    # Defaults to git.remote.
+    remote: ""
+    # Branch to start from (e.g. main), defaults to git.branch, else the remote's HEAD.
+    sourceBranch: ""
+
+# Extra environment variables (list of EnvVar), e.g. GIT_SSH_COMMAND.
+extraEnv: []
+# Extra envFrom sources (Secrets / ConfigMaps).
+extraEnvFrom: []
+# Extra volumes and mounts of the Belgo container (SSH keys, secret files…).
+extraVolumes: []
+extraVolumeMounts: []
+
+persistence:
+  # Without persistence /data is an emptyDir: everything is lost with the pod.
+  enabled: true
+  # Use an existing PersistentVolumeClaim instead of creating one.
+  existingClaim: ""
+  # Empty: the cluster's default StorageClass. "-": no class (static provisioning).
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 1Gi
+  annotations: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  annotations: {}
+
+# Kubernetes Ingress, for any controller: set the class and its annotations
+# (e.g. a Traefik middleware doing forward auth, see ci/traefik-authelia-values.yaml).
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: belgo.home.lan
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Gateway API HTTPRoute, the alternative to an Ingress.
+httpRoute:
+  enabled: false
+  annotations: {}
+  # Gateways the route attaches to, e.g. [{name: internal, namespace: gateway}].
+  parentRefs: []
+  hostnames:
+    - belgo.home.lan
+  # Rules without backendRefs: the Belgo service is added to each.
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+# Wake-on-LAN broadcasts do not leave the pod network: the host network lets them
+# reach the LAN (Belgo then listens on the node's port 4000).
+hostNetwork: false
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  # Makes the volume writable by the image's user.
+  fsGroup: 65534
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+  # Unprivileged ICMP so that Belgo can ping devices (a "safe" sysctl).
+  sysctls:
+    - name: net.ipv4.ping_group_range
+      value: "0 2147483647"
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 30
+  timeoutSeconds: 5
+readinessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 5
+# Startup reads the inventory, give it time before the liveness probe counts.
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 5
+  failureThreshold: 30
+
+# Belgo does not talk to the Kubernetes API.
+automountServiceAccountToken: false
+
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+priorityClassName: ""
+
+# Any other manifest rendered with the release (strings are templated), e.g. a
+# Traefik Middleware or a NetworkPolicy.
+extraObjects: []

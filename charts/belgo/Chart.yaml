@@ -1,0 +1,14 @@
+apiVersion: v2
+name: belgo
+description: Belgo, an all-in-one homelab manager (inventory, addresses, placement, provider sync).
+type: application
+# Both follow the repository's VERSION file (`just chart-check` fails otherwise).
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/nicklayb/belgo
+sources:
+  - https://github.com/nicklayb/belgo
+keywords:
+  - homelab
+  - inventory
+  - ipam
