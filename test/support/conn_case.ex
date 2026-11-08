@@ -22,9 +22,35 @@ defmodule BelgoWeb.ConnCase do
     end
   end
 
+  @live_view_exit_timeout 1_000
+
   setup _tags do
     reset_inventory()
+
+    test_pid = self()
+    on_exit(fn -> await_live_views(test_pid) end)
+
     {:ok, conn: Phoenix.ConnTest.build_conn()}
+  end
+
+  # A LiveView of the test can still be closing once the test is over: its
+  # `terminate/2` may save (the plan editor saves pending changes) and must not
+  # write into the next test's freshly reset inventory.
+  defp await_live_views(test_pid) do
+    monitors =
+      for pid <- Process.list(),
+          {:dictionary, dictionary} <- [Process.info(pid, :dictionary)],
+          match?({Phoenix.LiveView, _, _}, dictionary[:"$process_label"]),
+          test_pid in Keyword.get(dictionary, :"$callers", []),
+          do: Process.monitor(pid)
+
+    for monitor <- monitors do
+      receive do
+        {:DOWN, ^monitor, :process, _pid, _reason} -> :ok
+      after
+        @live_view_exit_timeout -> ExUnit.Assertions.flunk("a LiveView did not stop")
+      end
+    end
   end
 
   @doc "Writes the fixture inventory to the application storage and reloads it."
