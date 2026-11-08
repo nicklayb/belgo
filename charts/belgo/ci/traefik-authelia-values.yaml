@@ -1,0 +1,32 @@
+# Traefik Ingress with Authelia forward auth (Authelia ≥ 4.38 endpoint). The
+# middleware is named <namespace>-<name>@kubernetescrd in the annotation.
+existingSecret: belgo
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.middlewares: '{{ .Release.Namespace }}-belgo-authelia@kubernetescrd'
+  hosts:
+    - host: belgo.springfield.lan
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - belgo.springfield.lan
+      secretName: belgo-tls
+extraObjects:
+  - apiVersion: traefik.io/v1alpha1
+    kind: Middleware
+    metadata:
+      name: belgo-authelia
+    spec:
+      forwardAuth:
+        address: http://authelia.authelia.svc.cluster.local/api/authz/forward-auth
+        trustForwardHeader: true
+        authResponseHeaders:
+          - Remote-User
+          - Remote-Groups
+          - Remote-Email
+          - Remote-Name

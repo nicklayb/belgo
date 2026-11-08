@@ -1,0 +1,15 @@
+Belgo {{ .Chart.AppVersion }} is deployed as {{ include "belgo.fullname" . }} (one replica, data on
+{{- if .Values.persistence.enabled }} the claim {{ include "belgo.claimName" . }}{{ else }} an emptyDir: LOST WITH THE POD{{ end }}).
+{{- with include "belgo.appHost" . }}
+
+URL: {{ . }}
+{{- else }}
+
+No ingress nor HTTPRoute: try it with
+  kubectl port-forward --namespace {{ .Release.Namespace }} service/{{ include "belgo.fullname" . }} 4000:{{ .Values.service.port }}
+{{- end }}
+{{- if eq .Values.authentication.mode "trusted_headers" }}
+
+Belgo trusts the Remote-* headers: only expose it through a forward auth (Authelia),
+never directly, and keep it inside your network.
+{{- end }}

@@ -121,4 +121,27 @@ defmodule Belgo.ConfigTest do
     assert {:ok, %Config{plan: %Belgo.Config.Plan{autosave_delay: 10_000}}} =
              Config.parse(%{"version" => 1, "plan" => %{"autosave_delay" => "10s"}})
   end
+
+  test "BELGO_GIT_REMOTE and BELGO_GIT_BRANCH override config.yaml", %{tmp_dir: tmp_dir} do
+    File.write!(
+      Path.join(tmp_dir, "config.yaml"),
+      "version: 1\ngit:\n  remote: git@gitlab.com:simpson/homelab.git\n  branch: dev\n"
+    )
+
+    environment = %{
+      "BELGO_GIT_REMOTE" => "https://gitlab.com/simpson/homelab.git",
+      "BELGO_GIT_BRANCH" => "main"
+    }
+
+    assert {:ok,
+            %Config{git: %Git{remote: "https://gitlab.com/simpson/homelab.git", branch: "main"}}} =
+             Config.load(tmp_dir, environment)
+
+    # Empty variables are ignored, and never enable git by themselves.
+    assert {:ok, %Config{git: %Git{branch: "dev"}}} =
+             Config.load(tmp_dir, %{"BELGO_GIT_BRANCH" => ""})
+
+    File.write!(Path.join(tmp_dir, "config.yaml"), "version: 1\n")
+    assert {:ok, %Config{git: nil}} = Config.load(tmp_dir, environment)
+  end
 end

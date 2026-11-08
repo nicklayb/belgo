@@ -1,0 +1,34 @@
+suite: persistent volume claim
+templates:
+  - templates/pvc.yaml
+tests:
+  - it: is kept when the release is uninstalled
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/resource-policy"]
+          value: keep
+      - notExists:
+          path: spec.storageClassName
+
+  - it: uses the given class
+    set:
+      persistence.storageClass: longhorn
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: longhorn
+
+  - it: disables dynamic provisioning with "-"
+    set:
+      persistence.storageClass: "-"
+    asserts:
+      - equal:
+          path: spec.storageClassName
+          value: ""
+
+  - it: is not created for an existing claim
+    set:
+      persistence.existingClaim: homer-data
+    asserts:
+      - hasDocuments:
+          count: 0

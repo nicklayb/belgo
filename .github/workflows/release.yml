@@ -4,6 +4,11 @@
 # release (tag `<version>`, title `v<version>`). The image is pushed first: if the
 # push fails, no release exists and the next push to main tries again.
 #
+# The Helm chart (charts/belgo) has its own version (Chart.yaml `version`; its
+# appVersion follows VERSION): after the image, it is pushed to
+# oci://ghcr.io/nicklayb/charts if, and only if, the tag `chart-<version>` does not
+# exist yet, then that tag is created (same retry logic).
+#
 # Secrets: DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (a Docker Hub access token).
 name: Release
 
@@ -69,3 +74,58 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: gh release create "$VERSION" --title "v$VERSION" --target "$GITHUB_SHA" --generate-notes
+
+  chart:
+    name: Publish the chart if new
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check whether the chart version is published
+        id: chart
+        run: |
+          version="$(sed -n 's/^version: //p' charts/belgo/Chart.yaml | tr -d '"')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          status=0
+          git ls-remote --exit-code --tags origin "refs/tags/chart-$version" > /dev/null || status=$?
+          case "$status" in
+            0)
+              echo "Chart $version already published: nothing to publish."
+              echo "new=false" >> "$GITHUB_OUTPUT"
+              ;;
+            2)
+              echo "Chart $version is not published yet: publishing."
+              echo "new=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              exit "$status"
+              ;;
+          esac
+
+      - uses: cachix/install-nix-action@v31
+        if: steps.chart.outputs.new == 'true'
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push the chart to GHCR
+        if: steps.chart.outputs.new == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          nix shell --inputs-from . nixpkgs#just nixpkgs#kubernetes-helm --command bash -c '
+            helm registry login ghcr.io --username "$GITHUB_ACTOR" --password-stdin <<< "$GH_TOKEN"
+            just release-chart
+          '
+
+      - name: Tag the chart version
+        if: steps.chart.outputs.new == 'true'
+        env:
+          VERSION: ${{ steps.chart.outputs.version }}
+        run: |
+          git tag "chart-$VERSION" "$GITHUB_SHA"
+          git push origin "chart-$VERSION"

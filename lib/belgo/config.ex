@@ -79,9 +79,17 @@ defmodule Belgo.Config do
     end
   end
 
-  @doc "Reads and validates `config.yaml` from the inventory directory."
-  @spec load(Path.t()) :: {:ok, t()} | {:error, [String.t()]}
-  def load(directory) do
+  @doc """
+  Reads and validates `config.yaml` from the inventory directory, then applies the
+  environment overrides of git (`Belgo.Config.Git.with_environment/2`).
+  """
+  @spec load(Path.t(), %{String.t() => String.t()}) :: {:ok, t()} | {:error, [String.t()]}
+  def load(directory, environment \\ System.get_env()) do
+    with {:ok, config} <- read(directory),
+         do: {:ok, %{config | git: Git.with_environment(config.git, environment)}}
+  end
+
+  defp read(directory) do
     path = Path.join(directory, @file_name)
 
     if File.exists?(path) do

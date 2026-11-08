@@ -1,0 +1,167 @@
+{{- $existingSecret := required "existingSecret is required: a Secret holding SECRET_KEY_BASE and LIVE_VIEW_SALT" .Values.existingSecret }}
+{{- $appHost := include "belgo.appHost" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "belgo.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "belgo.labels" . | nindent 4 }}
+spec:
+  # One process owns the files: never scaled, never two pods on the volume.
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "belgo.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "belgo.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      {{- end }}
+      {{- with .Values.priorityClassName }}
+      priorityClassName: {{ . }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- if .Values.git.clone.enabled }}
+      initContainers:
+        - name: clone-data
+          image: {{ include "belgo.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/bin/sh", "-c"]
+          args:
+            - {{ .Files.Get "files/clone-data.sh" | quote }}
+          env:
+            - name: CLONE_REMOTE
+              value: {{ required "git.clone.remote or git.remote is required to clone the data repository" (include "belgo.cloneRemote" .) | quote }}
+            - name: CLONE_SOURCE_BRANCH
+              value: {{ default .Values.git.branch .Values.git.clone.sourceBranch | quote }}
+            - name: CLONE_TARGET_BRANCH
+              value: {{ default "main" .Values.git.branch | quote }}
+            - name: HOME
+              value: /tmp
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ $existingSecret }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      {{- end }}
+      containers:
+        - name: belgo
+          image: {{ include "belgo.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4000
+              protocol: TCP
+          env:
+            - name: BELGO_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            - name: BELGO_AUTHENTICATION
+              value: {{ .Values.authentication.mode | quote }}
+            {{- with $appHost }}
+            - name: APP_HOST
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.git.remote }}
+            - name: BELGO_GIT_REMOTE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.git.branch }}
+            - name: BELGO_GIT_BRANCH
+              value: {{ . | quote }}
+            {{- end }}
+            # git and ssh look for their configuration in HOME.
+            - name: HOME
+              value: /tmp
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ $existingSecret }}
+            {{- with .Values.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "belgo.claimName" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        # The root filesystem is read-only: the release and git write here.
+        - name: tmp
+          emptyDir: {}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

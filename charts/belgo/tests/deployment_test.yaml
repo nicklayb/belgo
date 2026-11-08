@@ -1,0 +1,195 @@
+suite: deployment
+templates:
+  - templates/deployment.yaml
+set:
+  existingSecret: belgo
+tests:
+  - it: fails without the secret
+    set:
+      existingSecret: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "existingSecret is required: a Secret holding SECRET_KEY_BASE and LIVE_VIEW_SALT"
+
+  - it: runs a single replica replaced with Recreate
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+      - equal:
+          path: spec.strategy.type
+          value: Recreate
+
+  - it: tags the image with the appVersion by default
+    chart:
+      appVersion: 9.9.9
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: nboisvert/belgo:9.9.9
+
+  - it: loads the secret as environment variables
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: belgo
+
+  - it: is hardened and allowed to ping
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.runAsUser
+          value: 65534
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 65534
+      - contains:
+          path: spec.template.spec.securityContext.sysctls
+          content:
+            name: net.ipv4.ping_group_range
+            value: "0 2147483647"
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.readOnlyRootFilesystem
+          value: true
+      - equal:
+          path: spec.template.spec.automountServiceAccountToken
+          value: false
+
+  - it: probes /health
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /health
+
+  - it: mounts the claim on /data
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: RELEASE-NAME-belgo-data
+
+  - it: mounts an existing claim
+    set:
+      persistence.existingClaim: homer-data
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            persistentVolumeClaim:
+              claimName: homer-data
+
+  - it: uses an emptyDir without persistence
+    set:
+      persistence.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            emptyDir: {}
+
+  - it: sets the git overrides only when given
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BELGO_GIT_REMOTE
+          any: true
+
+  - it: passes the git remote and branch
+    set:
+      git.remote: https://gitlab.com/simpson/homelab.git
+      git.branch: cluster
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BELGO_GIT_REMOTE
+            value: https://gitlab.com/simpson/homelab.git
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: BELGO_GIT_BRANCH
+            value: cluster
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  - it: clones the data repository from the source branch
+    set:
+      git.remote: https://gitlab.com/simpson/homelab.git
+      git.branch: cluster
+      git.clone.enabled: true
+      git.clone.sourceBranch: main
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: clone-data
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: CLONE_SOURCE_BRANCH
+            value: main
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: CLONE_TARGET_BRANCH
+            value: cluster
+
+  - it: refuses to clone without remote
+    set:
+      git.clone.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: git.clone.remote or git.remote is required to clone the data repository
+
+  - it: derives APP_HOST from the ingress
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: belgo.springfield.lan
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APP_HOST
+            value: https://belgo.springfield.lan
+
+  - it: prefers an explicit APP_HOST
+    set:
+      appHost: http://belgo.internal:4000
+      ingress.enabled: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APP_HOST
+            value: http://belgo.internal:4000
+
+  - it: joins the host network for Wake-on-LAN
+    set:
+      hostNetwork: true
+    asserts:
+      - equal:
+          path: spec.template.spec.hostNetwork
+          value: true
+      - equal:
+          path: spec.template.spec.dnsPolicy
+          value: ClusterFirstWithHostNet
+
+  - it: sets the release namespace (kustomize helmCharts, helm template | kubectl apply)
+    release:
+      namespace: springfield
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: springfield
