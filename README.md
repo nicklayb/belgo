@@ -17,7 +17,7 @@ can edit by hand and version with git; there is no database.
 * Discovery from OPNsense, AdGuard Home, Omada and Home Assistant: unknown devices,
   networks and locations to claim, divergences to reconcile.
 * Non-destructive sync: DHCP reservations, DNS names and client names are pushed to
-  the providers, never deleted, except the Kea reservations of deleted devices and
+  the providers, never deleted, except (opt-in) the Kea reservations of deleted devices and
   interfaces.
 * Physical, hosting and routing views; device reachability, open ports and
   wake-on-LAN.

@@ -15,6 +15,9 @@ providers:
     interval: 5m
     url: https://opnsense.home.lan
     verify_tls: true
+    # never (default) | interface_deletion: delete the Kea reservations of deleted
+    # devices / interfaces (and of changed MACs), in write mode only.
+    delete_reservation: never
   adguard:
     mode: read
     url: https://adguard.home.lan

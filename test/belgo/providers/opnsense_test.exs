@@ -119,4 +119,23 @@ defmodule Belgo.Providers.OpnsenseTest do
     refute Translate.address_record?(%{"rr" => "MX (Mail server)"})
     refute Translate.address_record?(%{"rr" => "MX"})
   end
+
+  test "delete_reservation defaults to never and accepts interface_deletion only" do
+    environment = %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}
+
+    assert {:ok, %{delete_reservation: :never}} =
+             Opnsense.parse_config(%{"url" => "https://opnsense"}, environment)
+
+    assert {:ok, %{delete_reservation: :interface_deletion}} =
+             Opnsense.parse_config(
+               %{"url" => "https://opnsense", "delete_reservation" => "interface_deletion"},
+               environment
+             )
+
+    assert {:error, ["delete_reservation must be interface_deletion or never"]} =
+             Opnsense.parse_config(
+               %{"url" => "https://opnsense", "delete_reservation" => "always"},
+               environment
+             )
+  end
 end

@@ -25,7 +25,9 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
   has (`Device.released_mac_addresses/2` → `Sync.after_update/3` / `after_delete/2`
   from `UpdateRecord` / `DeleteRecord` → `Discovery.release_mac_addresses/2` →
   optional `Provider.release/2`, write mode only; the server drops MACs back in the
-  inventory). `Opnsense.release/2`: `Push.plan_kea_release/2`, `POST
+  inventory). Opt-in (owner): OPNsense option `delete_reservation: never` (default,
+  `release/2` writes nothing and reports it as skipped) | `interface_deletion`
+  (`Options.choice/4`). `Opnsense.release/2`: `Push.plan_kea_release/2`, `POST
   /api/kea/dhcpv4/del_reservation/{uuid}` (verified in the PHP sources: `delBase`,
   POST only, `{"result":"deleted"}` / `"not found"`, both accepted), then Kea
   reconfigure. Unbound, AdGuard and Omada are never deleted from.

@@ -200,7 +200,13 @@ defmodule Belgo.Discovery.ServerTest do
   end
 
   test "releases MAC addresses the inventory no longer has", context do
-    server = start_server(context, "https://opnsense.springfield.lan", "    mode: write\n")
+    server =
+      start_server(
+        context,
+        "https://opnsense.springfield.lan",
+        "    mode: write\n    delete_reservation: interface_deletion\n"
+      )
+
     previous_level = Logger.level()
     Logger.configure(level: :info)
     on_exit(fn -> Logger.configure(level: previous_level) end)

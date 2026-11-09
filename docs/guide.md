@@ -106,10 +106,11 @@ the providers in `write` mode: missing entries are created, differing ones updat
 and other devices are left untouched. The last push of each provider is shown in
 *Discovery*.
 
-The only deletion: when a device is deleted, or loses an interface or a MAC address,
-the Kea reservations of the MAC addresses the inventory no longer has are deleted
-from OPNsense (`write` mode only; a MAC address moved to another device meanwhile is
-kept). Unbound host overrides, AdGuard Home clients and Omada names are never
+The only deletion is opt-in: with `delete_reservation: interface_deletion` in the
+OPNsense options (default `never`), when a device is deleted, or loses an interface
+or a MAC address, the Kea reservations of the MAC addresses the inventory no longer
+has are deleted from OPNsense (`write` mode only; a MAC address moved to another
+device meanwhile is kept). Unbound host overrides, AdGuard Home clients and Omada names are never
 deleted.
 
 DNS names belong to an interface address: a short name gets the network domain
