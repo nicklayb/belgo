@@ -19,5 +19,13 @@ defmodule Belgo.Inventory.UseCase.DeleteRecord do
   end
 
   @impl Box.UseCase
+  def after_run(%{record: record}, options) do
+    options
+    |> Keyword.fetch!(:params)
+    |> elem(0)
+    |> Belgo.Sync.after_delete(record)
+  end
+
+  @impl Box.UseCase
   def return(%{record: record}, _options), do: record
 end

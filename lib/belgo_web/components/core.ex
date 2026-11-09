@@ -140,6 +140,40 @@ defmodule BelgoWeb.Components.Core do
     """
   end
 
+  attr(:id, :string, required: true)
+  attr(:text, :string, required: true, doc: "copied to the clipboard on click")
+  attr(:label, :string, default: nil, doc: "accessible label, defaults to \"Copy\"")
+  attr(:class, :any, default: nil)
+
+  @doc """
+  Small icon button copying `text` to the clipboard (`belgo:copy` listener in `app.js`),
+  which shows a check mark for a moment once copied.
+  """
+  def copy_button(assigns) do
+    assigns = assign(assigns, :label, assigns.label || gettext("Copy"))
+
+    ~H"""
+    <button
+      type="button"
+      id={@id}
+      phx-click={JS.dispatch("belgo:copy", detail: %{text: @text})}
+      title={@label}
+      aria-label={@label}
+      data-copy-button
+      class={[
+        "group/copy inline-flex size-5 shrink-0 items-center justify-center rounded text-muted hover:bg-surface-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none",
+        @class
+      ]}
+    >
+      <.icon name="hero-clipboard-document-micro" class="size-3.5 group-data-copied/copy:hidden" />
+      <.icon
+        name="hero-check-micro"
+        class="hidden size-3.5 text-success group-data-copied/copy:inline-block"
+      />
+    </button>
+    """
+  end
+
   attr(:icon, :string, required: true)
   attr(:title, :string, required: true)
   slot(:inner_block)

@@ -528,8 +528,18 @@ defmodule BelgoWeb.PagesTest do
              |> form("#network-form",
                network: %{
                  ranges: %{
-                   "0" => %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: "network"},
-                   "1" => %{name: "Media", start: "10.0.0.8", end: "10.0.0.12", kind: "media"}
+                   "0" => %{
+                     name: "Routing",
+                     start: "10.0.0.1",
+                     end: "10.0.0.5",
+                     kinds: ["network"]
+                   },
+                   "1" => %{
+                     name: "Media",
+                     start: "10.0.0.8",
+                     end: "10.0.0.12",
+                     kinds: ["media", "gaming"]
+                   }
                  }
                }
              )
@@ -538,8 +548,8 @@ defmodule BelgoWeb.PagesTest do
     assert {:ok,
             %{
               ranges: [
-                %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kind: :network},
-                %{name: "Media"}
+                %{name: "Routing", start: "10.0.0.1", end: "10.0.0.5", kinds: [:network]},
+                %{name: "Media", kinds: [:media, :gaming]}
               ]
             }} =
              Belgo.Inventory.Snapshot.fetch(Belgo.Inventory.snapshot(), :networks, "springfield")
@@ -562,6 +572,35 @@ defmodule BelgoWeb.PagesTest do
              ~s(#range-1-rows tr[data-address="10.0.0.10"] [data-kind-mismatch]),
              ""
            )
+  end
+
+  test "choosing a kind with a range on a new device suggests an address", %{conn: conn} do
+    {:ok, _network} =
+      Belgo.Inventory.update(
+        :networks,
+        "springfield",
+        %{
+          "ranges" => [
+            %{
+              "name" => "Living room",
+              "start" => "10.0.0.30",
+              "end" => "10.0.0.40",
+              "kinds" => ["media", "gaming"]
+            }
+          ]
+        },
+        user: :system
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/devices/new")
+
+    html =
+      view
+      |> form("#device-form", device: %{name: "Itchy & Scratchy", kind: "gaming"})
+      |> render_change()
+
+    assert has_element?(view, ~s(input[name="device[interfaces][0][ip]"][value="10.0.0.30"]))
+    assert html =~ "First free address of Living room"
   end
 
   test "editing a device offers the next free address of its kind's range", %{conn: conn} do

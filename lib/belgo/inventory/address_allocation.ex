@@ -29,7 +29,7 @@ defmodule Belgo.Inventory.AddressAllocation do
     for network <- snapshot.networks,
         network_id in [nil, network.id],
         range <- Enum.sort_by(network.ranges, &IpAddress.sort_key(&1.start)),
-        range.kind == kind,
+        AddressRange.for_kind?(range, kind),
         do: {network, range}
   end
 
@@ -133,19 +133,49 @@ defmodule Belgo.Inventory.AddressAllocation do
   outside the kind's ranges get one; an added interface (`"new"` in
   `interfaces_sort`) gets one. A suggested dynamic interface becomes reserved (with a
   MAC) or static. Returns the params and the suggestions by interface position.
-  """
-  @spec suggest_params(map(), atom() | nil, Snapshot.t(), MapSet.t(String.t())) ::
-          {map(), %{non_neg_integer() => Suggestion.t()}}
-  def suggest_params(params, previous_kind, %Snapshot{} = snapshot, used) do
-    kind = parse_kind(Map.get(params, "kind"))
-    sort = List.wrap(Map.get(params, @sort_key))
-    adding? = @new_entry in sort
 
-    if kind && ranges_for(snapshot, kind) != [] && (kind != previous_kind or adding?) do
-      fill(params, kind, kind != previous_kind, snapshot, used)
-    else
-      {params, %{}}
+  Options:
+
+    * `:add_interface` – when the kind changes and there is no interface, add one to
+      hold the suggestion (new devices), defaults to `false`
+  """
+  @spec suggest_params(map(), atom() | nil, Snapshot.t(), MapSet.t(String.t()), Keyword.t()) ::
+          {map(), %{non_neg_integer() => Suggestion.t()}}
+  def suggest_params(params, previous_kind, %Snapshot{} = snapshot, used, options \\ []) do
+    kind = parse_kind(Map.get(params, "kind"))
+    kind_changed? = kind != previous_kind
+    adding? = @new_entry in List.wrap(Map.get(params, @sort_key))
+
+    cond do
+      kind == nil or ranges_for(snapshot, kind) == [] ->
+        {params, %{}}
+
+      kind_changed? and Keyword.get(options, :add_interface, false) ->
+        fill(with_interface(params), kind, true, snapshot, used)
+
+      kind_changed? or adding? ->
+        fill(params, kind, kind_changed?, snapshot, used)
+
+      true ->
+        {params, %{}}
     end
+  end
+
+  # Without any interface, a "new" sort entry adds one (like the form's "Add" button).
+  defp with_interface(params) do
+    if interface_count(params) == 0,
+      do: Map.update(params, @sort_key, [@new_entry], &(List.wrap(&1) ++ [@new_entry])),
+      else: params
+  end
+
+  defp interface_count(params) do
+    sort_entries =
+      params
+      |> Map.get(@sort_key)
+      |> List.wrap()
+      |> Enum.reject(&(&1 == ""))
+
+    max(map_size(Map.get(params, @interfaces_key) || %{}), length(sort_entries))
   end
 
   defp fill(params, kind, kind_changed?, snapshot, used) do

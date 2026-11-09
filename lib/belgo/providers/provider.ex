@@ -27,9 +27,17 @@ defmodule Belgo.Providers.Provider do
 
   @doc """
   Writes a desired state to the provider: creates missing entries, updates differing
-  ones, never deletes. Only called for providers in `write` mode.
+  ones, never deletes (see `c:release/2`). Only called for providers in `write` mode.
   """
   @callback push(config(), DesiredState.t()) :: {:ok, PushReport.t()} | {:error, any()}
 
-  @optional_callbacks push: 2
+  @doc """
+  Deletes what the provider holds for MAC addresses removed from the inventory
+  (deleted device or interface, changed MAC). The only destructive write; only called
+  for providers in `write` mode.
+  """
+  @callback release(config(), mac_addresses :: [String.t()]) ::
+              {:ok, PushReport.t()} | {:error, any()}
+
+  @optional_callbacks push: 2, release: 2
 end

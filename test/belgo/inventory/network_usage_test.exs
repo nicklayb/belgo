@@ -17,7 +17,7 @@ defmodule Belgo.Inventory.NetworkUsageTest do
   end
 
   test "every address of a range has a row, free ones without holder", %{holders: holders} do
-    range = %AddressRange{name: "Routing", start: "10.0.0.1", end: "10.0.0.4", kind: :network}
+    range = %AddressRange{name: "Routing", start: "10.0.0.1", end: "10.0.0.4", kinds: [:network]}
 
     assert {:ok, rows} = NetworkUsage.range_rows(range, holders)
     assert ~w(10.0.0.1 10.0.0.2 10.0.0.3 10.0.0.4) == Enum.map(rows, & &1.address)
@@ -29,7 +29,7 @@ defmodule Belgo.Inventory.NetworkUsageTest do
   end
 
   test "devices of another kind than the range's are flagged", %{holders: holders} do
-    range = %AddressRange{name: "Media", start: "10.0.0.2", end: "10.0.0.2", kind: :media}
+    range = %AddressRange{name: "Media", start: "10.0.0.2", end: "10.0.0.2", kinds: [:media]}
 
     assert {:ok, [%{holders: [%{kind_mismatch?: true}]}]} =
              NetworkUsage.range_rows(range, holders)

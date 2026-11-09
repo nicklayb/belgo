@@ -89,7 +89,9 @@ defmodule BelgoWeb.Networks.Live.Index do
             >
               {range.name}
               <span class="font-mono">{range.start} – {range.end}</span>
-              <span :if={range.kind}>· {Format.label(range.kind)}</span>
+              <span :if={range.kinds != []}>
+                · {Enum.map_join(range.kinds, ", ", &Format.label/1)}
+              </span>
             </p>
           </:col>
           <:col

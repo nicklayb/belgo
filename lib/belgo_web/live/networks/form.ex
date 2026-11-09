@@ -115,12 +115,12 @@ defmodule BelgoWeb.Networks.Live.Form do
           </:actions>
           <p class="mb-3 text-sm text-muted">
             {gettext(
-              "Name parts of the network (routing, servers, IoT…). With a kind, new devices of that kind get the first free address of the range."
+              "Name parts of the network (routing, servers, IoT…). With kinds, new devices of those kinds get the first free address of the range."
             )}
           </p>
           <div id="network-ranges" class="space-y-3">
             <.inputs_for :let={range_form} field={@form[:ranges]}>
-              <div class="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_9rem_9rem_10rem_auto] sm:items-start">
+              <div class="grid grid-cols-1 gap-2 rounded-lg border border-border p-3 sm:grid-cols-[1fr_9rem_9rem_auto] sm:items-start">
                 <input type="hidden" name="network[ranges_sort][]" value={range_form.index} />
                 <Form.input
                   field={range_form[:name]}
@@ -129,12 +129,6 @@ defmodule BelgoWeb.Networks.Live.Form do
                 />
                 <Form.input field={range_form[:start]} placeholder="192.168.1.70" />
                 <Form.input field={range_form[:end]} placeholder="192.168.1.110" />
-                <Form.input
-                  field={range_form[:kind]}
-                  type="select"
-                  prompt={gettext("Any kind")}
-                  options={Format.options(Device.kinds())}
-                />
                 <Form.button
                   variant={:danger}
                   size={:small}
@@ -146,6 +140,13 @@ defmodule BelgoWeb.Networks.Live.Form do
                 >
                   <.icon name="hero-trash-micro" class="size-4" />
                 </Form.button>
+                <div class="sm:col-span-4">
+                  <Form.checkbox_group
+                    field={range_form[:kinds]}
+                    label={gettext("Device kinds (none: any kind)")}
+                    options={Format.options(Device.kinds())}
+                  />
+                </div>
               </div>
             </.inputs_for>
           </div>

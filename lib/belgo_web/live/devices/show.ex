@@ -211,7 +211,14 @@ defmodule BelgoWeb.Devices.Live.Show do
             <.table :if={@device.interfaces != []} id="interfaces" rows={@device.interfaces}>
               <:col :let={interface} label={gettext("Interface")}>
                 <p class="font-medium">{interface.name || "—"}</p>
-                <p class="font-mono text-xs text-muted">{interface.mac}</p>
+                <p :if={interface.mac} class="flex items-center gap-1 font-mono text-xs text-muted">
+                  {interface.mac}
+                  <.copy_button
+                    id={"copy-mac-#{interface_position(@device, interface)}"}
+                    text={interface.mac}
+                    label={gettext("Copy the MAC address")}
+                  />
+                </p>
               </:col>
               <:col :let={interface} label={gettext("Address")}>
                 <p class="font-mono">{interface.ip || "—"}</p>
@@ -449,6 +456,11 @@ defmodule BelgoWeb.Devices.Live.Show do
         <span class="inline-flex items-center gap-2">
           <.badge tone={:success}>DHCP</.badge>
           <span class="font-mono">{reservation.mac}</span>
+          <.copy_button
+            id={"copy-reservation-mac-#{reservation.mac}"}
+            text={reservation.mac}
+            label={gettext("Copy the MAC address")}
+          />
         </span>
         <span class="font-mono text-muted">{reservation.address}</span>
       </li>
@@ -459,6 +471,11 @@ defmodule BelgoWeb.Devices.Live.Show do
         <span class="inline-flex items-center gap-2">
           <.badge>{gettext("Client")}</.badge>
           <span class="font-mono">{client.mac}</span>
+          <.copy_button
+            id={"copy-client-mac-#{client.mac}"}
+            text={client.mac}
+            label={gettext("Copy the MAC address")}
+          />
         </span>
         <span class="text-muted">{client.name}</span>
       </li>

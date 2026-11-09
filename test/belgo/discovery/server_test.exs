@@ -199,6 +199,31 @@ defmodule Belgo.Discovery.ServerTest do
              ~r/\[info\] \[push\] \[opnsense\] \[smithers\] completed in \d+ms: update reservation/
   end
 
+  test "releases MAC addresses the inventory no longer has", context do
+    server = start_server(context, "https://opnsense.springfield.lan", "    mode: write\n")
+    previous_level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: previous_level) end)
+
+    log =
+      capture_log([level: :info], fn ->
+        # Smithers' MAC is still in the inventory: kept.
+        Discovery.release_mac_addresses(
+          {:devices, "moe-pc"},
+          ["02:00:00:00:05:01", "02:00:00:00:00:11"],
+          server
+        )
+
+        assert_receive {:discovery_changed,
+                        %{providers: [%{last_push: %{device_id: "moe-pc", result: {:ok, _}}}]}},
+                       1_000
+      end)
+
+    assert log =~ "[push] [opnsense] [moe-pc] completed"
+    assert log =~ "delete reservation 02:00:00:00:05:01"
+    refute log =~ "02:00:00:00:00:11"
+  end
+
   test "read providers are never pushed to", context do
     server = start_server(context, "https://opnsense.springfield.lan")
     previous_level = Logger.level()

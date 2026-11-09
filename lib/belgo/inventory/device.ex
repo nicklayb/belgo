@@ -179,6 +179,24 @@ defmodule Belgo.Inventory.Device do
   def dns_names(%__MODULE__{interfaces: interfaces}),
     do: Enum.flat_map(interfaces, & &1.dns_names)
 
+  @doc "Returns the MAC addresses of the device's interfaces."
+  @spec mac_addresses(t()) :: [String.t()]
+  def mac_addresses(%__MODULE__{interfaces: interfaces}) do
+    interfaces
+    |> Enum.map(& &1.mac)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  @doc """
+  Returns the MAC addresses `previous` had and `current` no longer has (removed
+  interfaces or changed MACs). `current` is `nil` when the device was deleted.
+  """
+  @spec released_mac_addresses(t(), t() | nil) :: [String.t()]
+  def released_mac_addresses(%__MODULE__{} = previous, nil), do: mac_addresses(previous)
+
+  def released_mac_addresses(%__MODULE__{} = previous, %__MODULE__{} = current),
+    do: mac_addresses(previous) -- mac_addresses(current)
+
   @doc "Returns the IP addresses of the device's interfaces."
   @spec ip_addresses(t()) :: [String.t()]
   def ip_addresses(%__MODULE__{interfaces: interfaces}) do

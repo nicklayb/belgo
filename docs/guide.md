@@ -102,9 +102,15 @@ on failure.
 ### Pushing
 
 Saving a device (or its *Push* button) pushes its DHCP reservations and DNS names to
-the providers in `write` mode: missing entries are created, differing ones updated,
-**nothing is ever deleted** and other devices are left untouched. The last push of
-each provider is shown in *Discovery*.
+the providers in `write` mode: missing entries are created, differing ones updated
+and other devices are left untouched. The last push of each provider is shown in
+*Discovery*.
+
+The only deletion: when a device is deleted, or loses an interface or a MAC address,
+the Kea reservations of the MAC addresses the inventory no longer has are deleted
+from OPNsense (`write` mode only; a MAC address moved to another device meanwhile is
+kept). Unbound host overrides, AdGuard Home clients and Omada names are never
+deleted.
 
 DNS names belong to an interface address: a short name gets the network domain
 (`plex` → `plex.home.lan`), a name with a dot is used as is. The device hostname only
@@ -114,9 +120,10 @@ are shown in *Overview* and never written until fixed in OPNsense.
 ## Logical ranges
 
 A network can name parts of itself (`.1`–`.5` routing, `.10`–`.20` servers, `.70`–`.110`
-IoT…) in its form. A range tied to a device kind suggests addresses: choosing that
-kind for a device (or adding an interface to it) fills its interfaces without
-address, or outside the range, with the first address of the range nothing uses
+IoT…) in its form. A range tied to device kinds (one or several, e.g. *Media* and
+*Gaming*) suggests addresses: choosing one of those kinds for a device (or adding an
+interface to it) fills its interfaces without address, or outside the range (a new
+device without interface gets one), with the first address of the range nothing uses
 (inventory, virtual IPs, gateways, and every address providers report). The hint
 under the field tells where it comes from; edit it freely.
 

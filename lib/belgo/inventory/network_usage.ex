@@ -3,7 +3,7 @@ defmodule Belgo.Inventory.NetworkUsage do
   Who holds the addresses of a network, for its page: device interfaces and virtual
   IPs in it (declared network, else by address), and its gateway when nothing else
   holds that address. Each logical range becomes one row per address, free ones
-  included; a device whose kind differs from the range's is flagged. Addresses held
+  included; a device whose kind is none of the range's kinds is flagged. Addresses held
   outside every range are listed apart. Pure functions.
   """
 
@@ -19,7 +19,7 @@ defmodule Belgo.Inventory.NetworkUsage do
   defmodule Holder do
     @moduledoc """
     What holds an address: a device (with its interface name), a virtual IP or the
-    network's gateway. `kind_mismatch?` marks a device of another kind than its range.
+    network's gateway. `kind_mismatch?` marks a device of none of its range's kinds.
     """
     @enforce_keys [:type, :name]
     defstruct [:type, :id, :name, :interface_name, :device_kind, kind_mismatch?: false]
@@ -87,7 +87,7 @@ defmodule Belgo.Inventory.NetworkUsage do
          for value <- first_value..(first_value + size - 1)//1 do
            address = IpAddress.format(IpAddress.from_integer(value, first))
            holders = Map.get(holders_by_address, address, [])
-           %Row{address: address, holders: Enum.map(holders, &flag(&1, range.kind))}
+           %Row{address: address, holders: Enum.map(holders, &flag(&1, range.kinds))}
          end}
       end
     else
@@ -127,8 +127,8 @@ defmodule Belgo.Inventory.NetworkUsage do
 
   defp in_network?(%{ip: ip}, network), do: Network.contains?(network, ip)
 
-  defp flag(%Holder{type: :device} = holder, kind) when not is_nil(kind),
-    do: %{holder | kind_mismatch?: holder.device_kind != kind}
+  defp flag(%Holder{type: :device} = holder, [_kind | _rest] = kinds),
+    do: %{holder | kind_mismatch?: holder.device_kind not in kinds}
 
-  defp flag(holder, _kind), do: holder
+  defp flag(holder, _kinds), do: holder
 end

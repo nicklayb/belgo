@@ -31,6 +31,19 @@ defmodule Belgo.Discovery do
   def push_device(device_id, server \\ Server),
     do: GenServer.cast(server, {:push, {:devices, device_id}})
 
+  @doc """
+  Deletes, in the providers in write mode, what they hold for MAC addresses removed
+  from the inventory (Kea reservations), in the background. `owner` is the changed
+  `{collection, id}`, used in logs; addresses back in the inventory meanwhile are kept.
+  """
+  @spec release_mac_addresses({atom(), String.t()}, [String.t()], GenServer.server()) :: :ok
+  def release_mac_addresses(owner, mac_addresses, server \\ Server)
+
+  def release_mac_addresses(_owner, [], _server), do: :ok
+
+  def release_mac_addresses({_collection, _id} = owner, mac_addresses, server),
+    do: GenServer.cast(server, {:release, owner, mac_addresses})
+
   @doc "Pushes the DNS names of a virtual IP to the providers in write mode, in the background."
   @spec push_virtual_ip(String.t(), GenServer.server()) :: :ok
   def push_virtual_ip(virtual_ip_id, server \\ Server),

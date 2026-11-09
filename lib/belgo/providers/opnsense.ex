@@ -2,7 +2,8 @@ defmodule Belgo.Providers.Opnsense do
   @moduledoc """
   OPNsense provider: Kea DHCPv4 subnets (networks) and reservations (devices), and
   Unbound host overrides (DNS names). Pushes write reservations and host overrides,
-  then reconfigure the touched services.
+  then reconfigure the touched services. Releases delete the Kea reservations of MAC
+  addresses removed from the inventory.
 
   Kea and Unbound are independent: one failing (missing privileges, service not
   used...) is reported without blocking the other, and a push only reads the
@@ -32,6 +33,8 @@ defmodule Belgo.Providers.Opnsense do
   @subnets_path "/api/kea/dhcpv4/search_subnet"
   @reservations_path "/api/kea/dhcpv4/search_reservation"
   @host_overrides_path "/api/unbound/settings/search_host_override"
+  # `deleted` answers a deletion, `not found` one of an entry already gone.
+  @successful_results ["saved", "deleted", "not found"]
   @reconfigure_paths %{
     kea: "/api/kea/service/reconfigure",
     unbound: "/api/unbound/service/reconfigure"
@@ -140,6 +143,15 @@ defmodule Belgo.Providers.Opnsense do
     end
   end
 
+  @impl Belgo.Providers.Provider
+  def release(%Config{client: client} = config, mac_addresses) do
+    with {:ok, reservation_rows} <- client.search(config, @reservations_path),
+         plan = Push.plan_kea_release(mac_addresses, %{reservations: reservation_rows}),
+         {:ok, plan} <- apply_plan(config, :kea, plan) do
+      {:ok, %PushReport{provider: key(), operations: plan.operations, skipped: plan.skipped}}
+    end
+  end
+
   defp push_service(config, service, desired_state) do
     with {:ok, plan} <- plan_service(config, service, desired_state) do
       apply_plan(config, service, plan)
@@ -173,7 +185,7 @@ defmodule Belgo.Providers.Opnsense do
 
   defp apply_operation(config, operation, :ok) do
     case config.client.post(config, operation.path, operation.body) do
-      {:ok, %{"result" => "saved"}} -> {:cont, :ok}
+      {:ok, %{"result" => result}} when result in @successful_results -> {:cont, :ok}
       {:ok, response} -> {:halt, {:error, {:rejected, operation.summary, response}}}
       {:error, reason} -> {:halt, {:error, {:failed, operation.summary, reason}}}
     end

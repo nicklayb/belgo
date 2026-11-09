@@ -20,6 +20,15 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
 - **Sync must never be destructive.** Create when missing, update when existing,
   never delete; entries unknown to the inventory are left untouched. Enforced by
   `Belgo.Sync.Plan`. Divergences are shown, never reconciled automatically.
+  **Single exception (owner, 2026-11):** deleting a device, removing an interface or
+  changing a MAC deletes the **Kea reservations** of the MACs the inventory no longer
+  has (`Device.released_mac_addresses/2` → `Sync.after_update/3` / `after_delete/2`
+  from `UpdateRecord` / `DeleteRecord` → `Discovery.release_mac_addresses/2` →
+  optional `Provider.release/2`, write mode only; the server drops MACs back in the
+  inventory). `Opnsense.release/2`: `Push.plan_kea_release/2`, `POST
+  /api/kea/dhcpv4/del_reservation/{uuid}` (verified in the PHP sources: `delBase`,
+  POST only, `{"result":"deleted"}` / `"not found"`, both accepted), then Kea
+  reconfigure. Unbound, AdGuard and Omada are never deleted from.
 - **Providers are optional**, configured in `providers.yaml` with a `mode`
   (`disabled` | `read` default | `write`) and public options only;
   secrets come from env vars or `*_FILE` files (`Belgo.Providers.Secrets`). An invalid
@@ -430,6 +439,10 @@ first addressed interface only, other interfaces are named through their
   `Reachability.Status.with_open_ports/2` (virtual IP pages count open ports as up).
   `BelgoWeb.Live.PortScans` and `Components.Inventory.open_ports/1` are shared with
   the device page.
+- Copy buttons (owner): `Components.Core.copy_button/1` dispatches `belgo:copy`
+  (listener in `app.js`: Clipboard API in secure contexts, `execCommand("copy")`
+  fallback over plain HTTP), `data-copied` shows a check for 1.5 s. Used next to MAC
+  addresses on the device page (interfaces, DHCP reservations, clients).
 - Devices list sorting (owner): `Inventory.DeviceSorting` (pure: name, placement
   label, first IP; missing values last) through `DeviceFilter` `sort` / `direction`
   (in the URL, defaults left out), sortable headers of `table`.
@@ -439,14 +452,17 @@ first addressed interface only, other interfaces are named through their
   inventory duplicates were already Audit errors. Not enforced in use cases (the
   discovery state is not part of the inventory).
 - Logical ranges (owner): `Network.ranges` (embedded `AddressRange`: name, start,
-  end, optional device kind; inside the network, no overlap; sort / drop params
+  end, device `kinds` (several allowed, none = any; a legacy single `kind` in files is
+  read as `kinds`), checkbox group in the form; inside the network, no overlap; sort / drop params
   `ranges_sort` / `ranges_drop`). `Inventory.AddressAllocation` (pure):
   `used_addresses/3` (inventory but the edited device, virtual IPs, gateways, every
   observation IP), `suggest/4` (first free, never network / broadcast address),
   `suggest_params/4` for the device form `validate` event: on a kind change, fills
   interfaces without IP or outside the kind's ranges (network set, dynamic becomes
   reserved / static); an added interface (`"new"` sort entry, materialised as an
-  index) is filled too. The form shows the range under the IP while it holds the
+  index) is filled too; a **new** device without interface gets one when its kind
+  changes to a kind with ranges (`add_interface: true`, before that choosing a kind
+  on `/devices/new` suggested nothing). The form shows the range under the IP while it holds the
   suggestion (`address_suggestions`). Editing never changes an address by itself
   (owner: a Media TV outside the Media range): `suggest_interfaces/4` offers the
   next free address under the IP (`range_suggestions`, `#range-suggestion-<i>`), the
