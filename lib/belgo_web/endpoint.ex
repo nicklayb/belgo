@@ -17,7 +17,8 @@ defmodule BelgoWeb.Endpoint do
     at: "/",
     from: :belgo,
     gzip: false,
-    only: BelgoWeb.static_paths()
+    only: BelgoWeb.static_paths(),
+    only_matching: BelgoWeb.static_file_prefixes()
   )
 
   if code_reloading? do

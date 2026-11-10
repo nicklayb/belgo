@@ -9,6 +9,12 @@ defmodule BelgoWeb do
   def static_paths,
     do: ~w(assets fonts images favicon.ico favicon.svg apple-touch-icon.png robots.txt)
 
+  @doc """
+  Name prefixes of the files served at the root, so their digested versions
+  (`favicon-<hash>.svg`) are served too.
+  """
+  def static_file_prefixes, do: ~w(favicon apple-touch-icon robots)
+
   @doc false
   def router do
     quote do
