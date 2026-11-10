@@ -17,11 +17,17 @@ defmodule Belgo.Fixtures.OpnsenseClient do
   def search(_config, "/api/kea/dhcpv4/search_subnet"), do: {:ok, subnets()}
   def search(_config, "/api/kea/dhcpv4/search_reservation"), do: {:ok, reservations()}
   def search(_config, "/api/unbound/settings/search_host_override"), do: {:ok, host_overrides()}
+  def search(_config, "/api/interfaces/overview/interfaces_info"), do: {:ok, interfaces()}
 
   @impl Belgo.Providers.Opnsense.Client
   def post(%{url: "https://rejecting.example"}, "/api/kea/dhcpv4/" <> _command, _body) do
     {:ok,
      %{"result" => "failed", "validations" => %{"reservation.ip_address" => "already in use"}}}
+  end
+
+  def post(_config, "/api/wol/wol/set" = path, body) do
+    send(self(), {:opnsense_post, path, body})
+    {:ok, %{"status" => "OK"}}
   end
 
   def post(_config, path, body) do
@@ -30,6 +36,19 @@ defmodule Belgo.Fixtures.OpnsenseClient do
     if String.ends_with?(path, "/reconfigure"),
       do: {:ok, %{"status" => "ok"}},
       else: {:ok, %{"result" => "saved", "uuid" => "new-uuid"}}
+  end
+
+  @doc "Interfaces overview: WAN, LAN on Springfield (with an alias), unassigned."
+  def interfaces do
+    [
+      %{"identifier" => "wan", "addr4" => "203.0.113.2/24", "ipv4" => []},
+      %{
+        "identifier" => "lan",
+        "addr4" => "10.0.0.1/24",
+        "ipv4" => [%{"ipaddr" => "10.0.0.1/24"}, %{"ipaddr" => "10.0.7.1/24"}]
+      },
+      %{"identifier" => "", "addr4" => "10.0.5.1/24", "ipv4" => []}
+    ]
   end
 
   @doc "Kea subnets: Springfield (known) and Shelbyville (new)."

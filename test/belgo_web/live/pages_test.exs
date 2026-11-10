@@ -492,6 +492,20 @@ defmodule BelgoWeb.PagesTest do
     assert eventually(fn -> render(view) =~ "Burns Node is awake" end)
   end
 
+  test "wake-on-LAN goes through OPNsense, whose option can hide the button", %{conn: conn} do
+    enable_opnsense()
+    {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
+
+    assert render_click(element(view, "#wake-0")) =~ "Magic packet sent to Burns Node"
+
+    enable_providers(
+      "version: 1\nproviders:\n  opnsense:\n    url: https://opnsense.springfield.lan\n    wake_on_lan: false\n"
+    )
+
+    {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
+    refute has_element?(view, "#wake-0")
+  end
+
   test "the device list sorts by address and keeps the order in the URL", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/devices")
 

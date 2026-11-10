@@ -39,5 +39,14 @@ defmodule Belgo.Providers.Provider do
   @callback release(config(), mac_addresses :: [String.t()]) ::
               {:ok, PushReport.t()} | {:error, any()}
 
-  @optional_callbacks push: 2, release: 2
+  @doc """
+  Returns `true` when devices are woken through this provider (`wake/3`), `false`
+  when its configuration turns wake-on-LAN off.
+  """
+  @callback wake_on_lan?(config()) :: boolean()
+
+  @doc "Wakes the device with `mac`, on the network holding `address`."
+  @callback wake(config(), mac :: String.t(), address :: String.t()) :: :ok | {:error, any()}
+
+  @optional_callbacks push: 2, release: 2, wake_on_lan?: 1, wake: 3
 end

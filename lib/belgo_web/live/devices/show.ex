@@ -29,6 +29,7 @@ defmodule BelgoWeb.Devices.Live.Show do
     {:ok,
      socket
      |> assign(:device_id, id)
+     |> assign(:wake_on_lan?, WakeOnLan.enabled?())
      |> Reachability.subscribe()
      |> PortScans.subscribe()
      |> assign_inventory()}
@@ -241,7 +242,7 @@ defmodule BelgoWeb.Devices.Live.Show do
               </:col>
               <:action :let={interface}>
                 <Form.button
-                  :if={interface.mac}
+                  :if={interface.mac && @wake_on_lan?}
                   id={"wake-#{interface_position(@device, interface)}"}
                   size={:small}
                   variant={:ghost}
@@ -393,6 +394,18 @@ defmodule BelgoWeb.Devices.Live.Show do
         "Magic packet sent to %{name}. Without IP address, Belgo cannot tell when it is awake.",
         name: device.name
       )
+    )
+  end
+
+  defp put_wake_flash(socket, _device, {:error, :disabled}) do
+    put_flash(socket, :error, gettext("Wake-on-LAN is turned off in providers.yaml."))
+  end
+
+  defp put_wake_flash(socket, _device, {:error, :no_address}) do
+    put_flash(
+      socket,
+      :error,
+      gettext("This interface has neither IP address nor network to find where to wake it.")
     )
   end
 

@@ -16,6 +16,10 @@ defmodule Belgo.Providers.Opnsense do
     * `delete_reservation` – `never` (default) keeps every Kea reservation;
       `interface_deletion` deletes the reservations of MAC addresses removed from the
       inventory (deleted device or interface, changed MAC), in `write` mode only
+    * `wake_on_lan` – wake devices through the `os-wol` plugin (the magic packet
+      leaves from the router, on the right interface), defaults to `true`; `false`
+      hides the *Wake* button. Needs the "Services: Wake on LAN" and "Status:
+      Interfaces" privileges
 
   Secrets: `BELGO_OPNSENSE_API_KEY` and `BELGO_OPNSENSE_API_SECRET` (or `*_FILE`).
   """
@@ -25,12 +29,13 @@ defmodule Belgo.Providers.Opnsense do
   alias Belgo.Discovery.Report
   alias Belgo.Providers.Opnsense.Push
   alias Belgo.Providers.Opnsense.Translate
+  alias Belgo.Providers.Opnsense.WakeOnLan
   alias Belgo.Providers.Options
   alias Belgo.Providers.Secrets
   alias Belgo.Sync.DesiredState
   alias Belgo.Sync.PushReport
 
-  @option_names ~w(url verify_tls delete_reservation)
+  @option_names ~w(url verify_tls delete_reservation wake_on_lan)
   @delete_reservation_option "delete_reservation"
   @delete_reservation_by_name %{"never" => :never, "interface_deletion" => :interface_deletion}
   @api_key_secret "BELGO_OPNSENSE_API_KEY"
@@ -38,6 +43,8 @@ defmodule Belgo.Providers.Opnsense do
   @subnets_path "/api/kea/dhcpv4/search_subnet"
   @reservations_path "/api/kea/dhcpv4/search_reservation"
   @host_overrides_path "/api/unbound/settings/search_host_override"
+  @interfaces_path "/api/interfaces/overview/interfaces_info"
+  @wake_path "/api/wol/wol/set"
   # `deleted` answers a deletion, `not found` one of an entry already gone.
   @successful_results ["saved", "deleted", "not found"]
   @reconfigure_paths %{
@@ -54,6 +61,7 @@ defmodule Belgo.Providers.Opnsense do
       :api_secret,
       verify_tls: true,
       delete_reservation: :never,
+      wake_on_lan: true,
       client: Belgo.Providers.Opnsense.HttpClient
     ]
 
@@ -63,6 +71,7 @@ defmodule Belgo.Providers.Opnsense do
             api_secret: String.t(),
             verify_tls: boolean(),
             delete_reservation: :never | :interface_deletion,
+            wake_on_lan: boolean(),
             client: module()
           }
   end
@@ -90,6 +99,7 @@ defmodule Belgo.Providers.Opnsense do
           @delete_reservation_by_name,
           :never
         ),
+      wake_on_lan: Options.boolean(Map.get(options, "wake_on_lan", true), "wake_on_lan"),
       api_key: Secrets.fetch(@api_key_secret, environment),
       api_secret: Secrets.fetch(@api_secret_secret, environment),
       client: {:ok, client()}
@@ -172,6 +182,18 @@ defmodule Belgo.Providers.Opnsense do
          plan = Push.plan_kea_release(mac_addresses, %{reservations: reservation_rows}),
          {:ok, plan} <- apply_plan(config, :kea, plan) do
       {:ok, %PushReport{provider: key(), operations: plan.operations, skipped: plan.skipped}}
+    end
+  end
+
+  @impl Belgo.Providers.Provider
+  def wake_on_lan?(%Config{wake_on_lan: wake_on_lan}), do: wake_on_lan
+
+  @impl Belgo.Providers.Provider
+  def wake(%Config{client: client} = config, mac, address) do
+    with {:ok, rows} <- client.search(config, @interfaces_path),
+         {:ok, identifier} <- WakeOnLan.interface_identifier(rows, address),
+         {:ok, response} <- client.post(config, @wake_path, WakeOnLan.body(identifier, mac)) do
+      WakeOnLan.result(response)
     end
   end
 

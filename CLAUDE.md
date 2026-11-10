@@ -393,7 +393,7 @@ first addressed interface only, other interfaces are named through their
   `DnsNames.stored_name/2`) then pushes. The name also stays a divergence of the
   device until claimed.
 - Wake-on-LAN (owner): *Wake* button per interface with MAC on the device page.
-  `Belgo.WakeOnLan.wake/3`: `MagicPacket` (pure), `Sender` (`:gen_udp` broadcast
+  `Belgo.WakeOnLan.wake/4`: `MagicPacket` (pure), `Sender` (`:gen_udp` broadcast
   port 9 to `255.255.255.255` + the network's last address), then a `Watch`
   (GenServer under `Belgo.WakeOnLan.Supervisor`, one per device via
   `Belgo.WakeOnLan.Registry`) pings every `wake_on_lan.ping_interval` (5s) until up
@@ -401,7 +401,20 @@ first addressed interface only, other interfaces are named through their
   `{:wake_on_lan, Outcome}` on `wake_on_lan`. `BelgoWeb.Hooks.Notifications`
   (on_mount of every page) turns it into a flash wherever the owner is. Tests
   inject `send` / `ping` (`config :belgo, Belgo.WakeOnLan`, fixtures never touch the
-  network).
+  network). Broadcasts never leave a pod (limited broadcast is not routed, Linux
+  does not forward directed broadcasts by default): hence `WakeOnLan.method/1`
+  (re-reads `providers.yaml`): the first provider with the optional `wake/3`
+  callback sends the packet (`{:provider, configured}`), `:disabled` when its
+  `wake_on_lan?/1` is false (OPNsense option `wake_on_lan`, default `true`; the
+  device page hides *Wake*), `:broadcast` without such provider (or invalid file).
+  `Opnsense.wake/3`: `search` `/api/interfaces/overview/interfaces_info` (rows
+  `identifier`, `addr4`, `ipv4[].ipaddr` as `a.b.c.d/prefix`; privilege "Status:
+  Interfaces"), the interface whose network holds the interface IP (else its
+  network's address) → `POST /api/wol/wol/set` `{"wake": {"interface", "mac"}}`
+  (privilege "Services: Wake on LAN"; `{"status": …}`, `"error"` + `error_msg`, or
+  `[]` on invalid input). Verified in the core / plugins sources (master), **not on
+  the owner's instance**. Pure part: `Opnsense.WakeOnLan`. Logs `info` / `error`
+  (`[wake_on_lan] [opnsense] [mac]`).
 - Open ports (owner: never disturb the device): `Belgo.PortScan.Server` (like
   Reachability: per address, in memory, `port_scan.cache_duration` 1h, pending
   broadcast then result, `{:port_scan_changed, [AddressScan]}` on `port_scan`).
