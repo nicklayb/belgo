@@ -2,7 +2,7 @@ defmodule BelgoWeb.Networks.Live.Show do
   @moduledoc """
   A network, read only (edited from its form): details, then each logical range as a
   table of all its addresses, free ones included (`Belgo.Inventory.NetworkUsage`); a
-  device whose kind is not the range's gets a warning triangle. Addresses held
+  device whose kind is none of the range's gets a warning triangle. Addresses held
   outside every range are listed last.
   """
 
@@ -115,7 +115,9 @@ defmodule BelgoWeb.Networks.Live.Show do
             <:actions>
               <span class="text-xs text-muted">
                 <span class="font-mono">{range.start} – {range.end}</span>
-                <span :if={range.kind}>· {Format.label(range.kind)}</span>
+                <span :if={range.kinds != []}>
+                  · {Enum.map_join(range.kinds, ", ", &Format.label/1)}
+                </span>
                 <span :if={match?({:ok, _rows}, result)} class="tabular-nums">
                   · {used_label(result)}
                 </span>
@@ -230,7 +232,7 @@ defmodule BelgoWeb.Networks.Live.Show do
     <span
       :if={@holder.kind_mismatch?}
       data-kind-mismatch
-      title={gettext("%{kind}, not the kind of this range", kind: Format.label(@holder.device_kind))}
+      title={gettext("%{kind}, not a kind of this range", kind: Format.label(@holder.device_kind))}
       class="inline-flex"
     >
       <.icon name="hero-exclamation-triangle-mini" class="size-4 text-warning" />

@@ -58,4 +58,23 @@ defmodule Belgo.Providers.Options do
   @spec boolean(any(), String.t()) :: {:ok, boolean()} | {:error, String.t()}
   def boolean(value, _name) when is_boolean(value), do: {:ok, value}
   def boolean(_value, name), do: {:error, "#{name} must be true or false"}
+
+  @doc """
+  Validates an option among named choices (`value_by_name` maps the accepted names to
+  their values); a missing option takes `default`.
+  """
+  @spec choice(any(), String.t(), %{String.t() => any()}, any()) ::
+          {:ok, any()} | {:error, String.t()}
+  def choice(nil, _name, _value_by_name, default), do: {:ok, default}
+
+  def choice(value, name, value_by_name, _default) do
+    case Map.fetch(value_by_name, value) do
+      {:ok, choice} ->
+        {:ok, choice}
+
+      :error ->
+        names = Enum.sort(Map.keys(value_by_name))
+        {:error, "#{name} must be #{Enum.join(names, " or ")}"}
+    end
+  end
 end

@@ -16,11 +16,6 @@ msgstr ""
 msgid "%{id} (deleted device)"
 msgstr "%{id} (appareil supprimé)"
 
-#: lib/belgo_web/live/networks/show.ex:233
-#, elixir-autogen, elixir-format
-msgid "%{kind}, not the kind of this range"
-msgstr "%{kind}, pas le type de cette plage"
-
 #: lib/belgo_web/components/layouts.ex:126
 #, elixir-autogen, elixir-format
 msgid "%{label}: %{count}"
@@ -36,7 +31,7 @@ msgstr "%{name} ajouté à %{device}."
 msgid "%{name} cannot be saved: %{messages}. Nothing was changed."
 msgstr "%{name} ne peut pas être enregistré : %{messages}. Rien n'a été modifié."
 
-#: lib/belgo_web/live/devices/show.ex:131
+#: lib/belgo_web/live/devices/show.ex:132
 #: lib/belgo_web/live/locations/index.ex:32
 #: lib/belgo_web/live/locations/show.ex:73
 #: lib/belgo_web/live/networks/show.ex:62
@@ -87,7 +82,7 @@ msgstr "Mur %{side}"
 msgid "%{side} wall (rectangle %{number})"
 msgstr "Mur %{side} (rectangle %{number})"
 
-#: lib/belgo_web/live/networks/show.ex:129
+#: lib/belgo_web/live/networks/show.ex:131
 #, elixir-autogen, elixir-format
 msgid "%{size} addresses: too many to list."
 msgstr "%{size} adresses : trop nombreuses pour être listées."
@@ -97,7 +92,7 @@ msgstr "%{size} adresses : trop nombreuses pour être listées."
 msgid "%{summary} (%{details}), checked %{time}."
 msgstr "%{summary} (%{details}), vérifié %{time}."
 
-#: lib/belgo_web/live/networks/show.ex:194
+#: lib/belgo_web/live/networks/show.ex:196
 #, elixir-autogen, elixir-format
 msgid "%{used} used / %{total}"
 msgstr "%{used} utilisées / %{total}"
@@ -112,7 +107,7 @@ msgstr "%{used}/%{total} ports"
 msgid "(greyed out above)."
 msgstr "(grisés ci-dessus)."
 
-#: lib/belgo_web/live/devices/show.ex:315
+#: lib/belgo_web/live/devices/show.ex:323
 #, elixir-autogen, elixir-format
 msgid "1 DNS name"
 msgid_plural "%{count} DNS names"
@@ -148,7 +143,7 @@ msgid_plural "%{count} guests"
 msgstr[0] "1 invité"
 msgstr[1] "%{count} invités"
 
-#: lib/belgo_web/live/devices/show.ex:163
+#: lib/belgo_web/live/devices/show.ex:164
 #, elixir-autogen, elixir-format
 msgid "1 port"
 msgid_plural "%{count} ports"
@@ -189,14 +184,14 @@ msgstr "Un appareil hébergé se trouve là où est son hôte."
 msgid "A load balancer or floating address, not a machine"
 msgstr "Un répartiteur de charge ou une adresse flottante, pas une machine"
 
-#: lib/belgo_web/components/core.ex:230
+#: lib/belgo_web/components/core.ex:264
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr "Actions"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:196
-#: lib/belgo_web/live/devices/form.ex:412
-#: lib/belgo_web/live/devices/show.ex:296
+#: lib/belgo_web/live/devices/form.ex:414
+#: lib/belgo_web/live/devices/show.ex:304
 #: lib/belgo_web/live/networks/form.ex:113
 #, elixir-autogen, elixir-format
 msgid "Add"
@@ -217,7 +212,7 @@ msgstr "Ajouter un emplacement à l'intérieur"
 msgid "Add a room on this side"
 msgstr "Ajouter une pièce de ce côté"
 
-#: lib/belgo_web/live/devices/show.ex:471
+#: lib/belgo_web/live/devices/show.ex:501
 #, elixir-autogen, elixir-format
 msgid "Add an interface with a MAC or an IP address."
 msgstr "Ajoutez une interface avec une adresse MAC ou IP."
@@ -227,7 +222,7 @@ msgstr "Ajoutez une interface avec une adresse MAC ou IP."
 msgid "Add inside"
 msgstr "Ajouter à l'intérieur"
 
-#: lib/belgo_web/live/devices/form.ex:510
+#: lib/belgo_web/live/devices/form.ex:512
 #, elixir-autogen, elixir-format
 msgid "Add interface"
 msgstr "Ajouter une interface"
@@ -248,8 +243,8 @@ msgid "Add names in the form, or claim them from Discovery."
 msgstr "Ajoutez des noms dans le formulaire, ou associez-les depuis la découverte."
 
 #: lib/belgo_web/components/inventory.ex:310
-#: lib/belgo_web/live/devices/show.ex:216
-#: lib/belgo_web/live/networks/show.ex:205
+#: lib/belgo_web/live/devices/show.ex:224
+#: lib/belgo_web/live/networks/show.ex:207
 #: lib/belgo_web/live/sync/live.ex:55
 #: lib/belgo_web/live/sync/live.ex:87
 #: lib/belgo_web/live/virtual_ips/index.ex:107
@@ -270,12 +265,12 @@ msgstr "Adresses"
 msgid "Addresses that are not machines: load balancers and floating addresses."
 msgstr "Des adresses qui ne sont pas des machines : répartiteurs de charge et adresses flottantes."
 
-#: lib/belgo_web/live/devices/form.ex:536
+#: lib/belgo_web/live/devices/form.ex:538
 #, elixir-autogen, elixir-format
 msgid "Addressing"
 msgstr "Adressage"
 
-#: lib/belgo_web/live/devices/form.ex:318
+#: lib/belgo_web/live/devices/form.ex:320
 #, elixir-autogen, elixir-format
 msgid "Adds its MAC and IP addresses as new interfaces of that device, instead of creating a new one."
 msgstr "Ajoute ses adresses MAC et IP comme nouvelles interfaces de cet appareil, au lieu d'en créer un nouveau."
@@ -347,11 +342,6 @@ msgstr "Les pièces ancrées suivent leur parent : modifiez leur décalage."
 msgid "Answers ping"
 msgstr "Répond au ping"
 
-#: lib/belgo_web/live/networks/form.ex:135
-#, elixir-autogen, elixir-format
-msgid "Any kind"
-msgstr "Tout type"
-
 #: lib/belgo_web/live/networks/form.ex:93
 #, elixir-autogen, elixir-format
 msgid "Appended to hostnames in DNS records."
@@ -367,23 +357,23 @@ msgstr "Appliqué"
 msgid "Area"
 msgstr "Zone"
 
-#: lib/belgo_web/live/networks/index.ex:124
-#: lib/belgo_web/live/networks/show.ex:167
+#: lib/belgo_web/live/networks/index.ex:126
+#: lib/belgo_web/live/networks/show.ex:169
 #, elixir-autogen, elixir-format
 msgid "Assigned"
 msgstr "Attribuées"
 
-#: lib/belgo_web/live/devices/form.ex:314
+#: lib/belgo_web/live/devices/form.ex:316
 #, elixir-autogen, elixir-format
 msgid "Attach interfaces"
 msgstr "Rattacher les interfaces"
 
-#: lib/belgo_web/live/devices/form.ex:286
+#: lib/belgo_web/live/devices/form.ex:288
 #, elixir-autogen, elixir-format
 msgid "Attach to an existing device"
 msgstr "Rattacher à un appareil existant"
 
-#: lib/belgo_web/live/devices/form.ex:313
+#: lib/belgo_web/live/devices/form.ex:315
 #, elixir-autogen, elixir-format
 msgid "Attaching…"
 msgstr "Rattachement…"
@@ -399,7 +389,7 @@ msgstr "Client automatique"
 msgid "Back"
 msgstr "Retour"
 
-#: lib/belgo_web/live/devices/form.ex:303
+#: lib/belgo_web/live/devices/form.ex:305
 #, elixir-autogen, elixir-format
 msgid "Best match: %{name} (%{score}%)"
 msgstr "Meilleure correspondance : %{name} (%{score}%)"
@@ -409,16 +399,16 @@ msgstr "Meilleure correspondance : %{name} (%{score}%)"
 msgid "Box (cm, empty = a point)"
 msgstr "Boîte (cm, vide = un point)"
 
-#: lib/belgo_web/live/devices/form.ex:416
+#: lib/belgo_web/live/devices/form.ex:418
 #, elixir-autogen, elixir-format
 msgid "Brand, model, serial number… add only what you know."
 msgstr "Marque, modèle, numéro de série… n'ajoutez que ce que vous savez."
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:241
-#: lib/belgo_web/live/devices/form.ex:612
+#: lib/belgo_web/live/devices/form.ex:614
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:285
 #: lib/belgo_web/live/locations/form.ex:111
-#: lib/belgo_web/live/networks/form.ex:157
+#: lib/belgo_web/live/networks/form.ex:158
 #: lib/belgo_web/live/virtual_ips/form.ex:139
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -429,7 +419,7 @@ msgstr "Annuler"
 msgid "Centred"
 msgstr "Centré"
 
-#: lib/belgo_web/live/devices/show.ex:262
+#: lib/belgo_web/live/devices/show.ex:270
 #: lib/belgo_web/live/virtual_ips/show.ex:220
 #, elixir-autogen, elixir-format
 msgid "Check the ports again"
@@ -445,7 +435,7 @@ msgstr "%{count} ports courants vérifiés le %{date}."
 msgid "Checking ports…"
 msgstr "Vérification des ports…"
 
-#: lib/belgo_web/live/devices/form.ex:297
+#: lib/belgo_web/live/devices/form.ex:299
 #: lib/belgo_web/live/plans/editor.ex:1638
 #, elixir-autogen, elixir-format
 msgid "Choose a device"
@@ -466,18 +456,18 @@ msgstr "Choisir un appareil ou une IP virtuelle"
 msgid "Choose a device, then click in a room: near a wall it hangs on it, elsewhere it stands on the floor."
 msgstr "Choisissez un appareil, puis cliquez dans une pièce : près d'un mur, il y est accroché, ailleurs il est posé au sol."
 
-#: lib/belgo_web/live/devices/form.ex:481
+#: lib/belgo_web/live/devices/form.ex:483
 #, elixir-autogen, elixir-format
 msgid "Choose a host"
 msgstr "Choisir un hôte"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:182
-#: lib/belgo_web/live/devices/form.ex:473
+#: lib/belgo_web/live/devices/form.ex:475
 #, elixir-autogen, elixir-format
 msgid "Choose a location"
 msgstr "Choisir un emplacement"
 
-#: lib/belgo_web/live/devices/form.ex:489
+#: lib/belgo_web/live/devices/form.ex:491
 #, elixir-autogen, elixir-format
 msgid "Choose how it runs"
 msgstr "Choisir comment il s'exécute"
@@ -502,7 +492,7 @@ msgstr "Ajouter"
 msgid "Claim a DNS name"
 msgstr "Associer un nom DNS"
 
-#: lib/belgo_web/live/devices/form.ex:262
+#: lib/belgo_web/live/devices/form.ex:264
 #, elixir-autogen, elixir-format
 msgid "Claim a discovered device"
 msgstr "Ajouter un appareil découvert"
@@ -554,7 +544,7 @@ msgid "Click to ping again."
 msgstr "Cliquez pour relancer le ping."
 
 #: lib/belgo_web/format.ex:121
-#: lib/belgo_web/live/devices/show.ex:460
+#: lib/belgo_web/live/devices/show.ex:485
 #, elixir-autogen, elixir-format
 msgid "Client"
 msgstr "Client"
@@ -564,7 +554,7 @@ msgstr "Client"
 msgid "Client names"
 msgstr "Noms des clients"
 
-#: lib/belgo_web/live/devices/form.ex:392
+#: lib/belgo_web/live/devices/form.ex:394
 #, elixir-autogen, elixir-format
 msgid "Comma separated."
 msgstr "Séparés par des virgules."
@@ -574,12 +564,12 @@ msgstr "Séparés par des virgules."
 msgid "Comma separated. A name without a dot gets the network domain. Pushed as Unbound host overrides."
 msgstr "Séparés par des virgules. Un nom sans point reçoit le domaine du réseau. Poussés comme host overrides Unbound."
 
-#: lib/belgo_web/live/devices/form.ex:588
+#: lib/belgo_web/live/devices/form.ex:590
 #, elixir-autogen, elixir-format
 msgid "Comma separated. Short names get the network domain."
 msgstr "Séparés par des virgules. Les noms courts reçoivent le domaine du réseau."
 
-#: lib/belgo_web/live/devices/show.ex:272
+#: lib/belgo_web/live/devices/show.ex:280
 #, elixir-autogen, elixir-format
 msgid "Connected to"
 msgstr "Connecté à"
@@ -594,8 +584,8 @@ msgstr "Créer"
 msgid "DHCP"
 msgstr "DHCP"
 
-#: lib/belgo_web/live/networks/index.ex:111
-#: lib/belgo_web/live/networks/show.ex:156
+#: lib/belgo_web/live/networks/index.ex:113
+#: lib/belgo_web/live/networks/show.ex:158
 #, elixir-autogen, elixir-format
 msgid "DHCP range"
 msgstr "Plage DHCP"
@@ -620,12 +610,12 @@ msgstr "Réservation DHCP"
 msgid "DHCP reservations"
 msgstr "Réservations DHCP"
 
-#: lib/belgo_web/live/devices/form.ex:341
+#: lib/belgo_web/live/devices/form.ex:343
 #, elixir-autogen, elixir-format
 msgid "DNS name. Defaults to the identifier."
 msgstr "Nom DNS. Par défaut, l'identifiant."
 
-#: lib/belgo_web/live/devices/form.ex:585
+#: lib/belgo_web/live/devices/form.ex:587
 #: lib/belgo_web/live/discovery/section.ex:354
 #: lib/belgo_web/live/virtual_ips/form.ex:120
 #: lib/belgo_web/live/virtual_ips/index.ex:120
@@ -660,7 +650,7 @@ msgstr "Hauteur de niveau par défaut (cm)"
 msgid "Default wall height (cm)"
 msgstr "Hauteur de mur par défaut (cm)"
 
-#: lib/belgo_web/live/devices/show.ex:185
+#: lib/belgo_web/live/devices/show.ex:186
 #: lib/belgo_web/live/locations/index.ex:129
 #: lib/belgo_web/live/locations/show.ex:128
 #: lib/belgo_web/live/networks/show.ex:96
@@ -678,7 +668,7 @@ msgstr "Supprimer"
 msgid "Delete %{name} and its rooms?"
 msgstr "Supprimer %{name} et ses pièces?"
 
-#: lib/belgo_web/live/devices/show.ex:183
+#: lib/belgo_web/live/devices/show.ex:184
 #: lib/belgo_web/live/locations/index.ex:128
 #: lib/belgo_web/live/locations/show.ex:126
 #: lib/belgo_web/live/networks/show.ex:94
@@ -705,9 +695,9 @@ msgstr "Description"
 msgid "Detach"
 msgstr "Détacher"
 
-#: lib/belgo_web/live/devices/show.ex:332
+#: lib/belgo_web/live/devices/show.ex:340
 #: lib/belgo_web/live/locations/show.ex:195
-#: lib/belgo_web/live/networks/show.ex:144
+#: lib/belgo_web/live/networks/show.ex:146
 #: lib/belgo_web/live/virtual_ips/show.ex:229
 #, elixir-autogen, elixir-format
 msgid "Details"
@@ -716,7 +706,7 @@ msgstr "Détails"
 #: lib/belgo_web/live/discovery/section.ex:404
 #: lib/belgo_web/live/discovery/section.ex:436
 #: lib/belgo_web/live/locations/show.ex:159
-#: lib/belgo_web/live/networks/show.ex:206
+#: lib/belgo_web/live/networks/show.ex:208
 #: lib/belgo_web/live/plans/editor.ex:1652
 #, elixir-autogen, elixir-format
 msgid "Device"
@@ -757,13 +747,13 @@ msgstr "Découverts"
 msgid "Discovery"
 msgstr "Découverte"
 
-#: lib/belgo_web/components/core.ex:327
+#: lib/belgo_web/components/core.ex:361
 #, elixir-autogen, elixir-format
 msgid "Dismiss"
 msgstr "Fermer"
 
 #: lib/belgo_web/live/dashboard/live.ex:212
-#: lib/belgo_web/live/devices/show.ex:196
+#: lib/belgo_web/live/devices/show.ex:197
 #: lib/belgo_web/live/locations/show.ex:139
 #: lib/belgo_web/live/virtual_ips/show.ex:178
 #, elixir-autogen, elixir-format
@@ -782,7 +772,7 @@ msgstr "Ne répond pas au ping, mais TCP %{ports} accepte des connexions."
 
 #: lib/belgo_web/live/discovery/section.ex:224
 #: lib/belgo_web/live/networks/form.ex:91
-#: lib/belgo_web/live/networks/show.ex:153
+#: lib/belgo_web/live/networks/show.ex:155
 #, elixir-autogen, elixir-format
 msgid "Domain"
 msgstr "Domaine"
@@ -844,7 +834,7 @@ msgid "East"
 msgstr "Est"
 
 #: lib/belgo_web/live/devices/index.ex:221
-#: lib/belgo_web/live/devices/show.ex:178
+#: lib/belgo_web/live/devices/show.ex:179
 #: lib/belgo_web/live/locations/index.ex:119
 #: lib/belgo_web/live/locations/show.ex:121
 #: lib/belgo_web/live/networks/show.ex:89
@@ -855,7 +845,7 @@ msgstr "Est"
 msgid "Edit"
 msgstr "Modifier"
 
-#: lib/belgo_web/live/devices/form.ex:263
+#: lib/belgo_web/live/devices/form.ex:265
 #: lib/belgo_web/live/locations/form.ex:56
 #: lib/belgo_web/live/networks/form.ex:46
 #: lib/belgo_web/live/plans/editor.ex:85
@@ -965,7 +955,7 @@ msgstr "Flottant"
 msgid "Floor"
 msgstr "Étage"
 
-#: lib/belgo_web/live/devices/form.ex:380
+#: lib/belgo_web/live/devices/form.ex:382
 #, elixir-autogen, elixir-format
 msgid "For devices without interface, like unmanaged switches."
 msgstr "Pour les appareils sans interface, comme les commutateurs non administrables."
@@ -994,9 +984,9 @@ msgstr "Depuis le début (gauche)"
 #: lib/belgo_web/format.ex:119
 #: lib/belgo_web/live/discovery/section.ex:221
 #: lib/belgo_web/live/networks/form.ex:76
-#: lib/belgo_web/live/networks/index.ex:104
-#: lib/belgo_web/live/networks/show.ex:150
-#: lib/belgo_web/live/networks/show.ex:257
+#: lib/belgo_web/live/networks/index.ex:106
+#: lib/belgo_web/live/networks/show.ex:152
+#: lib/belgo_web/live/networks/show.ex:259
 #, elixir-autogen, elixir-format
 msgid "Gateway"
 msgstr "Passerelle"
@@ -1006,12 +996,12 @@ msgstr "Passerelle"
 msgid "Gateway, switches and access points, with what is connected to them."
 msgstr "Passerelle, commutateurs et points d'accès, avec ce qui y est connecté."
 
-#: lib/belgo_web/live/devices/form.ex:356
+#: lib/belgo_web/live/devices/form.ex:358
 #, elixir-autogen, elixir-format
 msgid "Gateways, switches and access points appear in Routing."
 msgstr "Les passerelles, commutateurs et points d'accès apparaissent dans Routage."
 
-#: lib/belgo_web/live/devices/form.ex:329
+#: lib/belgo_web/live/devices/form.ex:331
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "Général"
@@ -1041,7 +1031,7 @@ msgstr "Sol à %{height} m, à %{percent} % de la hauteur de %{level}."
 msgid "Ground on"
 msgstr "Sol sur"
 
-#: lib/belgo_web/live/devices/show.ex:323
+#: lib/belgo_web/live/devices/show.ex:331
 #, elixir-autogen, elixir-format
 msgid "Guests"
 msgstr "Invités"
@@ -1088,12 +1078,12 @@ msgstr "Maisons"
 msgid "Horizontal"
 msgstr "Horizontal"
 
-#: lib/belgo_web/live/devices/form.ex:480
+#: lib/belgo_web/live/devices/form.ex:482
 #, elixir-autogen, elixir-format
 msgid "Host"
 msgstr "Hôte"
 
-#: lib/belgo_web/live/devices/form.ex:463
+#: lib/belgo_web/live/devices/form.ex:465
 #, elixir-autogen, elixir-format
 msgid "Hosted on another device"
 msgstr "Hébergé sur un autre appareil"
@@ -1105,7 +1095,7 @@ msgstr "Hébergé sur un autre appareil"
 msgid "Hosting"
 msgstr "Hébergement"
 
-#: lib/belgo_web/live/devices/form.ex:340
+#: lib/belgo_web/live/devices/form.ex:342
 #: lib/belgo_web/live/sync/live.ex:90
 #, elixir-autogen, elixir-format
 msgid "Hostname"
@@ -1116,7 +1106,7 @@ msgstr "Nom d'hôte"
 msgid "Hosts"
 msgstr "Hôtes"
 
-#: lib/belgo_web/live/devices/form.ex:495
+#: lib/belgo_web/live/devices/form.ex:497
 #, elixir-autogen, elixir-format
 msgid "Hosts guests with"
 msgstr "Héberge des invités avec"
@@ -1126,14 +1116,14 @@ msgstr "Héberge des invités avec"
 msgid "IP"
 msgstr "IP"
 
-#: lib/belgo_web/live/devices/form.ex:542
+#: lib/belgo_web/live/devices/form.ex:544
 #: lib/belgo_web/live/virtual_ips/form.ex:95
 #, elixir-autogen, elixir-format
 msgid "IP address"
 msgstr "Adresse IP"
 
-#: lib/belgo_web/live/devices/form.ex:334
-#: lib/belgo_web/live/devices/show.ex:348
+#: lib/belgo_web/live/devices/form.ex:336
+#: lib/belgo_web/live/devices/show.ex:356
 #: lib/belgo_web/live/locations/form.ex:77
 #: lib/belgo_web/live/locations/show.ex:201
 #: lib/belgo_web/live/networks/form.ex:67
@@ -1154,7 +1144,7 @@ msgid "Ignored"
 msgstr "Ignorés"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:116
-#: lib/belgo_web/live/devices/form.ex:462
+#: lib/belgo_web/live/devices/form.ex:464
 #, elixir-autogen, elixir-format
 msgid "In a location"
 msgstr "Dans un emplacement"
@@ -1170,7 +1160,7 @@ msgstr "Inclure la découverte"
 msgid "Inside"
 msgstr "Dans"
 
-#: lib/belgo_web/live/devices/show.ex:212
+#: lib/belgo_web/live/devices/show.ex:213
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:264
 #, elixir-autogen, elixir-format
 msgid "Interface"
@@ -1181,8 +1171,8 @@ msgstr "Interface"
 msgid "Interface %{position}"
 msgstr "Interface %{position}"
 
-#: lib/belgo_web/live/devices/form.ex:502
-#: lib/belgo_web/live/devices/show.ex:205
+#: lib/belgo_web/live/devices/form.ex:504
+#: lib/belgo_web/live/devices/show.ex:206
 #, elixir-autogen, elixir-format
 msgid "Interfaces"
 msgstr "Interfaces"
@@ -1229,7 +1219,7 @@ msgid "Keep the room where it is, no longer following its parent"
 msgstr "Garder la pièce où elle est, sans plus suivre son parent"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:167
-#: lib/belgo_web/live/devices/form.ex:346
+#: lib/belgo_web/live/devices/form.ex:348
 #: lib/belgo_web/live/locations/form.ex:84
 #: lib/belgo_web/live/locations/show.ex:197
 #: lib/belgo_web/live/virtual_ips/form.ex:99
@@ -1243,7 +1233,7 @@ msgid "Kind and placement"
 msgstr "Type et placement"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:211
-#: lib/belgo_web/live/devices/form.ex:425
+#: lib/belgo_web/live/devices/form.ex:427
 #, elixir-autogen, elixir-format
 msgid "Label"
 msgstr "Étiquette"
@@ -1279,13 +1269,13 @@ msgstr "Niveaux"
 msgid "Linked floor (floor/<id>) or area (area/<id>), set when claimed."
 msgstr "Étage (floor/<id>) ou zone (area/<id>) lié, défini lors de l'ajout."
 
-#: lib/belgo_web/live/devices/show.ex:300
+#: lib/belgo_web/live/devices/show.ex:308
 #, elixir-autogen, elixir-format
 msgid "Load balancer or floating addresses this device answers for."
 msgstr "Adresses de répartition de charge ou flottantes auxquelles cet appareil répond."
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:181
-#: lib/belgo_web/live/devices/form.ex:472
+#: lib/belgo_web/live/devices/form.ex:474
 #: lib/belgo_web/live/plans/editor.ex:1746
 #, elixir-autogen, elixir-format
 msgid "Location"
@@ -1315,38 +1305,38 @@ msgstr "Plages logiques"
 msgid "MAC"
 msgstr "MAC"
 
-#: lib/belgo_web/live/devices/form.ex:530
+#: lib/belgo_web/live/devices/form.ex:532
 #: lib/belgo_web/live/sync/live.ex:84
 #: lib/belgo_web/live/sync/live.ex:101
 #, elixir-autogen, elixir-format
 msgid "MAC address"
 msgstr "Adresse MAC"
 
-#: lib/belgo_web/live/devices/show.ex:375
+#: lib/belgo_web/live/devices/show.ex:383
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name} again, still waiting for it to answer."
 msgstr "Paquet magique renvoyé à %{name}, toujours en attente de sa réponse."
 
-#: lib/belgo_web/live/devices/show.ex:367
+#: lib/belgo_web/live/devices/show.ex:375
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name}, waiting for it to answer."
 msgstr "Paquet magique envoyé à %{name}, en attente de sa réponse."
 
-#: lib/belgo_web/live/devices/show.ex:385
+#: lib/belgo_web/live/devices/show.ex:393
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name}. Without IP address, Belgo cannot tell when it is awake."
 msgstr "Paquet magique envoyé à %{name}. Sans adresse IP, Belgo ne peut pas savoir quand il est réveillé."
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:188
-#: lib/belgo_web/live/devices/form.ex:404
+#: lib/belgo_web/live/devices/form.ex:406
 #, elixir-autogen, elixir-format
 msgid "Metadata"
 msgstr "Métadonnées"
 
 #: lib/belgo_web/components/discovery.ex:46
 #: lib/belgo_web/components/discovery.ex:56
-#: lib/belgo_web/live/devices/form.ex:331
-#: lib/belgo_web/live/devices/form.ex:525
+#: lib/belgo_web/live/devices/form.ex:333
+#: lib/belgo_web/live/devices/form.ex:527
 #: lib/belgo_web/live/devices/index.ex:249
 #: lib/belgo_web/live/discovery/section.ex:249
 #: lib/belgo_web/live/discovery/section.ex:367
@@ -1362,11 +1352,6 @@ msgstr "Métadonnées"
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr "Nom"
-
-#: lib/belgo_web/live/networks/form.ex:117
-#, elixir-autogen, elixir-format
-msgid "Name parts of the network (routing, servers, IoT…). With a kind, new devices of that kind get the first free address of the range."
-msgstr "Nommez des parties du réseau (routage, serveurs, IoT…). Avec un type, les nouveaux appareils de ce type reçoivent la première adresse libre de la plage."
 
 #: lib/belgo_web/live/networks/show.ex:105
 #, elixir-autogen, elixir-format
@@ -1393,9 +1378,9 @@ msgstr "Noms pointant vers l'adresse d'un appareil connu sans lui appartenir dan
 msgid "Nearest wall"
 msgstr "Mur le plus proche"
 
-#: lib/belgo_web/live/devices/form.ex:571
-#: lib/belgo_web/live/devices/show.ex:223
-#: lib/belgo_web/live/devices/show.ex:270
+#: lib/belgo_web/live/devices/form.ex:573
+#: lib/belgo_web/live/devices/show.ex:231
+#: lib/belgo_web/live/devices/show.ex:278
 #: lib/belgo_web/live/virtual_ips/form.ex:105
 #: lib/belgo_web/live/virtual_ips/show.ex:234
 #, elixir-autogen, elixir-format
@@ -1419,7 +1404,7 @@ msgstr "Chemin réseau"
 msgid "Networks"
 msgstr "Réseaux"
 
-#: lib/belgo_web/live/devices/form.ex:261
+#: lib/belgo_web/live/devices/form.ex:263
 #: lib/belgo_web/live/devices/index.ex:157
 #, elixir-autogen, elixir-format
 msgid "New device"
@@ -1470,7 +1455,7 @@ msgstr "Nouveau commutateur"
 msgid "New virtual IP"
 msgstr "Nouvelle IP virtuelle"
 
-#: lib/belgo_web/live/devices/form.ex:550
+#: lib/belgo_web/live/devices/form.ex:552
 #, elixir-autogen, elixir-format
 msgid "Next free address of %{range}:"
 msgstr "Prochaine adresse libre de %{range} :"
@@ -1480,7 +1465,7 @@ msgstr "Prochaine adresse libre de %{range} :"
 msgid "No DNS name"
 msgstr "Aucun nom DNS"
 
-#: lib/belgo_web/live/devices/form.ex:309
+#: lib/belgo_web/live/devices/form.ex:311
 #, elixir-autogen, elixir-format
 msgid "No close match, pick it manually."
 msgstr "Aucune correspondance proche, choisissez-le manuellement."
@@ -1520,12 +1505,12 @@ msgstr "Aucun appareil sélectionné"
 msgid "No host yet"
 msgstr "Aucun hôte pour l'instant"
 
-#: lib/belgo_web/live/devices/show.ex:209
+#: lib/belgo_web/live/devices/show.ex:210
 #, elixir-autogen, elixir-format
 msgid "No interface"
 msgstr "Aucune interface"
 
-#: lib/belgo_web/live/devices/form.ex:514
+#: lib/belgo_web/live/devices/form.ex:516
 #, elixir-autogen, elixir-format
 msgid "No interface yet. Interfaces carry the MAC and IP addresses synchronised to the network services."
 msgstr "Aucune interface pour l'instant. Les interfaces portent les adresses MAC et IP synchronisées avec les services réseau."
@@ -1591,9 +1576,9 @@ msgstr "Aucun appareil inconnu"
 msgid "No virtual IP yet"
 msgstr "Aucune IP virtuelle pour l'instant"
 
-#: lib/belgo_web/live/devices/form.ex:354
-#: lib/belgo_web/live/devices/form.ex:572
-#: lib/belgo_web/live/devices/form.ex:579
+#: lib/belgo_web/live/devices/form.ex:356
+#: lib/belgo_web/live/devices/form.ex:574
+#: lib/belgo_web/live/devices/form.ex:581
 #: lib/belgo_web/live/plans/editor.ex:1753
 #: lib/belgo_web/live/virtual_ips/form.ex:113
 #, elixir-autogen, elixir-format
@@ -1630,10 +1615,10 @@ msgstr "Non défini"
 msgid "Not set: pick the level the outside ground is on and how high on it (0 % = its floor, 100 % = one level higher). The 3D view then shows the exterior zones at that height."
 msgstr "Non défini : choisissez le niveau où se trouve le sol extérieur et à quelle hauteur (0 % = son plancher, 100 % = un niveau plus haut). La vue 3D affiche alors les zones extérieures à cette hauteur."
 
-#: lib/belgo_web/live/devices/form.ex:397
+#: lib/belgo_web/live/devices/form.ex:399
 #: lib/belgo_web/live/locations/form.ex:104
 #: lib/belgo_web/live/networks/form.ex:98
-#: lib/belgo_web/live/networks/show.ex:170
+#: lib/belgo_web/live/networks/show.ex:172
 #: lib/belgo_web/live/virtual_ips/form.ex:132
 #, elixir-autogen, elixir-format
 msgid "Notes"
@@ -1644,7 +1629,7 @@ msgstr "Notes"
 msgid "Nothing (top level)"
 msgstr "Rien (premier niveau)"
 
-#: lib/belgo_web/live/devices/form.ex:378
+#: lib/belgo_web/live/devices/form.ex:380
 #, elixir-autogen, elixir-format
 msgid "Nothing (top of the network)"
 msgstr "Rien (tête du réseau)"
@@ -1664,12 +1649,12 @@ msgstr "Rien ne correspond, ou l'inventaire est vide."
 msgid "Nothing runs here yet."
 msgstr "Rien ne s'exécute ici pour l'instant."
 
-#: lib/belgo_web/live/devices/show.ex:469
+#: lib/belgo_web/live/devices/show.ex:499
 #, elixir-autogen, elixir-format
 msgid "Nothing to synchronise"
 msgstr "Rien à synchroniser"
 
-#: lib/belgo_web/live/devices/form.ex:363
+#: lib/belgo_web/live/devices/form.ex:365
 #, elixir-autogen, elixir-format
 msgid "Number of ports"
 msgstr "Nombre de ports"
@@ -1694,7 +1679,7 @@ msgstr "Seuls les appareils avec une adresse MAC peuvent être ignorés."
 msgid "Open menu"
 msgstr "Ouvrir le menu"
 
-#: lib/belgo_web/live/devices/show.ex:253
+#: lib/belgo_web/live/devices/show.ex:261
 #: lib/belgo_web/live/virtual_ips/show.ex:213
 #, elixir-autogen, elixir-format
 msgid "Open ports"
@@ -1716,7 +1701,7 @@ msgstr "Autres hôtes"
 msgid "Out of DHCP"
 msgstr "Hors DHCP"
 
-#: lib/belgo_web/live/networks/show.ex:136
+#: lib/belgo_web/live/networks/show.ex:138
 #, elixir-autogen, elixir-format
 msgid "Outside the logical ranges"
 msgstr "Hors des plages logiques"
@@ -1741,7 +1726,7 @@ msgstr "Propriétaire"
 msgid "Partly failed"
 msgstr "Échec partiel"
 
-#: lib/belgo_web/live/devices/show.ex:283
+#: lib/belgo_web/live/devices/show.ex:291
 #, elixir-autogen, elixir-format
 msgid "Path"
 msgstr "Chemin"
@@ -1778,9 +1763,9 @@ msgid "Placed devices"
 msgstr "Appareils placés"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:174
-#: lib/belgo_web/live/devices/form.ex:454
+#: lib/belgo_web/live/devices/form.ex:456
 #: lib/belgo_web/live/devices/index.ex:261
-#: lib/belgo_web/live/devices/show.ex:334
+#: lib/belgo_web/live/devices/show.ex:342
 #, elixir-autogen, elixir-format
 msgid "Placement"
 msgstr "Placement"
@@ -1793,33 +1778,33 @@ msgstr "Placement"
 msgid "Plan"
 msgstr "Plan"
 
-#: lib/belgo_web/live/devices/form.ex:377
+#: lib/belgo_web/live/devices/form.ex:379
 #, elixir-autogen, elixir-format
 msgid "Plugged into"
 msgstr "Branché sur"
 
 #: lib/belgo_web/components/inventory.ex:47
 #: lib/belgo_web/components/inventory.ex:48
-#: lib/belgo_web/live/devices/show.ex:160
+#: lib/belgo_web/live/devices/show.ex:161
 #, elixir-autogen, elixir-format
 msgid "PoE"
 msgstr "PoE"
 
 #: lib/belgo_web/components/inventory.ex:306
-#: lib/belgo_web/live/devices/form.ex:385
+#: lib/belgo_web/live/devices/form.ex:387
 #, elixir-autogen, elixir-format
 msgid "Port"
 msgstr "Port"
 
-#: lib/belgo_web/live/devices/show.ex:232
+#: lib/belgo_web/live/devices/show.ex:240
 #, elixir-autogen, elixir-format
 msgid "Port %{port}"
 msgstr "Port %{port}"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:117
-#: lib/belgo_web/live/devices/form.ex:464
+#: lib/belgo_web/live/devices/form.ex:466
 #: lib/belgo_web/live/devices/index.ex:138
-#: lib/belgo_web/live/devices/show.ex:408
+#: lib/belgo_web/live/devices/show.ex:428
 #: lib/belgo_web/live/locations/index.ex:70
 #, elixir-autogen, elixir-format
 msgid "Portable"
@@ -1850,14 +1835,14 @@ msgstr "Récupérer %{provider} à nouveau"
 msgid "Pulling…"
 msgstr "Récupération…"
 
-#: lib/belgo_web/live/devices/show.ex:175
+#: lib/belgo_web/live/devices/show.ex:176
 #: lib/belgo_web/live/settings/live.ex:233
 #: lib/belgo_web/live/virtual_ips/show.ex:157
 #, elixir-autogen, elixir-format
 msgid "Push"
 msgstr "Pousser"
 
-#: lib/belgo_web/live/devices/show.ex:123
+#: lib/belgo_web/live/devices/show.ex:124
 #: lib/belgo_web/live/virtual_ips/show.ex:97
 #, elixir-autogen, elixir-format
 msgid "Push started, its result is shown in Discovery."
@@ -1866,7 +1851,7 @@ msgstr "Envoi lancé, son résultat s'affiche dans la découverte."
 #: lib/belgo_web/components/discovery.ex:63
 #: lib/belgo_web/live/discovery/section.ex:217
 #: lib/belgo_web/live/networks/index.ex:82
-#: lib/belgo_web/live/networks/show.ex:146
+#: lib/belgo_web/live/networks/show.ex:148
 #, elixir-autogen, elixir-format
 msgid "Range"
 msgstr "Plage"
@@ -1898,7 +1883,7 @@ msgstr "Rétablir (Ctrl+Shift+Z)"
 msgid "Reference"
 msgstr "Référence"
 
-#: lib/belgo_web/live/devices/show.ex:264
+#: lib/belgo_web/live/devices/show.ex:272
 #: lib/belgo_web/live/discovery/section.ex:183
 #: lib/belgo_web/live/discovery/section.ex:530
 #: lib/belgo_web/live/virtual_ips/show.ex:222
@@ -1912,9 +1897,9 @@ msgid "Reload files"
 msgstr "Recharger les fichiers"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:229
-#: lib/belgo_web/live/devices/form.ex:443
-#: lib/belgo_web/live/devices/form.ex:599
-#: lib/belgo_web/live/networks/form.ex:145
+#: lib/belgo_web/live/devices/form.ex:445
+#: lib/belgo_web/live/devices/form.ex:601
+#: lib/belgo_web/live/networks/form.ex:139
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Retirer"
@@ -1935,7 +1920,7 @@ msgstr "Retirer ce rectangle"
 msgid "Reported by"
 msgstr "Signalé par"
 
-#: lib/belgo_web/live/devices/form.ex:324
+#: lib/belgo_web/live/devices/form.ex:326
 #: lib/belgo_web/live/locations/form.ex:68
 #: lib/belgo_web/live/networks/form.ex:58
 #: lib/belgo_web/live/virtual_ips/form.ex:82
@@ -1948,7 +1933,7 @@ msgstr "Signalé par les fournisseurs"
 msgid "Roaming"
 msgstr "Itinérance"
 
-#: lib/belgo_web/live/devices/form.ex:353
+#: lib/belgo_web/live/devices/form.ex:355
 #, elixir-autogen, elixir-format
 msgid "Role in the network"
 msgstr "Rôle dans le réseau"
@@ -1971,20 +1956,20 @@ msgstr "Pièce %{number}"
 msgid "Routing"
 msgstr "Routage"
 
-#: lib/belgo_web/live/devices/form.ex:488
-#: lib/belgo_web/live/devices/show.ex:337
+#: lib/belgo_web/live/devices/form.ex:490
+#: lib/belgo_web/live/devices/show.ex:345
 #, elixir-autogen, elixir-format
 msgid "Runs as"
 msgstr "S'exécute comme"
 
-#: lib/belgo_web/live/devices/form.ex:296
+#: lib/belgo_web/live/devices/form.ex:298
 #, elixir-autogen, elixir-format
 msgid "Same machine as"
 msgstr "Même machine que"
 
-#: lib/belgo_web/live/devices/form.ex:615
+#: lib/belgo_web/live/devices/form.ex:617
 #: lib/belgo_web/live/locations/form.ex:113
-#: lib/belgo_web/live/networks/form.ex:159
+#: lib/belgo_web/live/networks/form.ex:160
 #: lib/belgo_web/live/virtual_ips/form.ex:141
 #, elixir-autogen, elixir-format
 msgid "Save"
@@ -2011,9 +1996,9 @@ msgid "Saved at %{time}"
 msgstr "Enregistré à %{time}"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:242
-#: lib/belgo_web/live/devices/form.ex:614
+#: lib/belgo_web/live/devices/form.ex:616
 #: lib/belgo_web/live/locations/form.ex:112
-#: lib/belgo_web/live/networks/form.ex:158
+#: lib/belgo_web/live/networks/form.ex:159
 #: lib/belgo_web/live/virtual_ips/form.ex:140
 #, elixir-autogen, elixir-format
 msgid "Saving…"
@@ -2066,7 +2051,7 @@ msgstr "Sélectionner tous les éléments affichés"
 msgid "Select devices in the list first."
 msgstr "Sélectionnez d'abord des appareils dans la liste."
 
-#: lib/belgo_web/live/devices/show.ex:243
+#: lib/belgo_web/live/devices/show.ex:251
 #, elixir-autogen, elixir-format
 msgid "Send a wake-on-LAN magic packet"
 msgstr "Envoyer un paquet magique wake-on-LAN"
@@ -2168,18 +2153,18 @@ msgstr "Sous-réseaux et VLAN à partir desquels les adresses sont attribuées."
 msgid "Suggested interface"
 msgstr "Interface suggérée"
 
-#: lib/belgo_web/live/devices/form.ex:370
+#: lib/belgo_web/live/devices/form.ex:372
 #, elixir-autogen, elixir-format
 msgid "Supplies PoE"
 msgstr "Fournit le PoE"
 
-#: lib/belgo_web/live/devices/form.ex:578
-#: lib/belgo_web/live/devices/show.ex:226
+#: lib/belgo_web/live/devices/form.ex:580
+#: lib/belgo_web/live/devices/show.ex:234
 #, elixir-autogen, elixir-format
 msgid "Switch"
 msgstr "Commutateur"
 
-#: lib/belgo_web/live/devices/form.ex:582
+#: lib/belgo_web/live/devices/form.ex:584
 #, elixir-autogen, elixir-format
 msgid "Switch port"
 msgstr "Port du commutateur"
@@ -2190,14 +2175,14 @@ msgstr "Port du commutateur"
 msgid "Sync"
 msgstr "Synchronisation"
 
-#: lib/belgo_web/live/devices/show.ex:327
+#: lib/belgo_web/live/devices/show.ex:335
 #, elixir-autogen, elixir-format
 msgid "Synchronised records"
 msgstr "Enregistrements synchronisés"
 
-#: lib/belgo_web/live/devices/form.ex:390
+#: lib/belgo_web/live/devices/form.ex:392
 #: lib/belgo_web/live/devices/index.ex:275
-#: lib/belgo_web/live/devices/show.ex:343
+#: lib/belgo_web/live/devices/show.ex:351
 #, elixir-autogen, elixir-format
 msgid "Tags"
 msgstr "Tags"
@@ -2223,12 +2208,12 @@ msgid "This DNS name is no longer unclaimed"
 msgstr "Ce nom DNS n'est plus disponible"
 
 #: lib/belgo_web/live/devices/form.ex:45
-#: lib/belgo_web/live/devices/show.ex:69
+#: lib/belgo_web/live/devices/show.ex:70
 #, elixir-autogen, elixir-format
 msgid "This device no longer exists."
 msgstr "Cet appareil n'existe plus."
 
-#: lib/belgo_web/live/devices/show.ex:115
+#: lib/belgo_web/live/devices/show.ex:116
 #, elixir-autogen, elixir-format
 msgid "This interface has no MAC address."
 msgstr "Cette interface n'a pas d'adresse MAC."
@@ -2274,7 +2259,7 @@ msgstr "Mur de cette pièce"
 msgid "This virtual IP no longer exists."
 msgstr "Cette IP virtuelle n'existe plus."
 
-#: lib/belgo_web/live/devices/show.ex:396
+#: lib/belgo_web/live/devices/show.ex:416
 #, elixir-autogen, elixir-format
 msgid "Unable to send the magic packet: %{reason}"
 msgstr "Impossible d'envoyer le paquet magique : %{reason}"
@@ -2310,9 +2295,9 @@ msgid "Unknown devices whose addresses are outside the DHCP range of their netwo
 msgstr "Appareils inconnus dont les adresses sont hors de la plage DHCP de leur réseau : adresses statiques ou réservées."
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:118
-#: lib/belgo_web/live/devices/form.ex:465
+#: lib/belgo_web/live/devices/form.ex:467
 #: lib/belgo_web/live/devices/index.ex:139
-#: lib/belgo_web/live/devices/show.ex:411
+#: lib/belgo_web/live/devices/show.ex:431
 #: lib/belgo_web/live/locations/index.ex:73
 #, elixir-autogen, elixir-format
 msgid "Unplaced"
@@ -2335,12 +2320,12 @@ msgid_plural "Update %{count} devices"
 msgstr[0] "Mettre à jour 1 appareil"
 msgstr[1] "Mettre à jour %{count} appareils"
 
-#: lib/belgo_web/live/devices/form.ex:561
+#: lib/belgo_web/live/devices/form.ex:563
 #, elixir-autogen, elixir-format
 msgid "Use this address"
 msgstr "Utiliser cette adresse"
 
-#: lib/belgo_web/live/devices/form.ex:335
+#: lib/belgo_web/live/devices/form.ex:337
 #: lib/belgo_web/live/locations/form.ex:78
 #: lib/belgo_web/live/networks/form.ex:68
 #: lib/belgo_web/live/virtual_ips/form.ex:92
@@ -2349,8 +2334,8 @@ msgid "Used in files and references. Defaults to the name."
 msgstr "Utilisé dans les fichiers et les références. Par défaut, le nom."
 
 #: lib/belgo_web/live/networks/form.ex:77
-#: lib/belgo_web/live/networks/index.ex:97
-#: lib/belgo_web/live/networks/show.ex:149
+#: lib/belgo_web/live/networks/index.ex:99
+#: lib/belgo_web/live/networks/show.ex:151
 #, elixir-autogen, elixir-format
 msgid "VLAN"
 msgstr "VLAN"
@@ -2361,7 +2346,7 @@ msgid "VLAN %{vlan}"
 msgstr "VLAN %{vlan}"
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:218
-#: lib/belgo_web/live/devices/form.ex:432
+#: lib/belgo_web/live/devices/form.ex:434
 #, elixir-autogen, elixir-format
 msgid "Value"
 msgstr "Valeur"
@@ -2384,7 +2369,7 @@ msgstr "Vue"
 msgid "Virtual IP"
 msgstr "IP virtuelle"
 
-#: lib/belgo_web/live/devices/show.ex:289
+#: lib/belgo_web/live/devices/show.ex:297
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:180
 #: lib/belgo_web/live/virtual_ips/index.ex:23
 #: lib/belgo_web/live/virtual_ips/index.ex:70
@@ -2393,7 +2378,7 @@ msgstr "IP virtuelle"
 msgid "Virtual IPs"
 msgstr "IP virtuelles"
 
-#: lib/belgo_web/live/devices/show.ex:245
+#: lib/belgo_web/live/devices/show.ex:253
 #, elixir-autogen, elixir-format
 msgid "Wake"
 msgstr "Réveiller"
@@ -2449,7 +2434,7 @@ msgstr "Où se trouvent physiquement les appareils, niveau par niveau."
 msgid "Where every device physically is. Guests follow their host."
 msgstr "Où se trouve physiquement chaque appareil. Les invités suivent leur hôte."
 
-#: lib/belgo_web/live/devices/form.ex:460
+#: lib/belgo_web/live/devices/form.ex:462
 #, elixir-autogen, elixir-format
 msgid "Where is it?"
 msgstr "Où se trouve-t-il?"
@@ -2470,7 +2455,7 @@ msgstr "Largeur"
 msgid "Width (cm)"
 msgstr "Largeur (cm)"
 
-#: lib/belgo_web/live/devices/show.ex:173
+#: lib/belgo_web/live/devices/show.ex:174
 #, elixir-autogen, elixir-format
 msgid "Write its DHCP reservations and DNS names to the providers"
 msgstr "Écrire ses réservations DHCP et noms DNS chez les fournisseurs"
@@ -2560,7 +2545,7 @@ msgstr "port %{port}"
 msgid "providers.yaml is invalid"
 msgstr "providers.yaml est invalide"
 
-#: lib/belgo_web/live/networks/show.ex:251
+#: lib/belgo_web/live/networks/show.ex:253
 #, elixir-autogen, elixir-format
 msgid "virtual IP"
 msgstr "IP virtuelle"
@@ -2752,3 +2737,40 @@ msgstr "Le dépôt distant est à jour."
 #, elixir-autogen, elixir-format
 msgid "The repository is created on the first commit."
 msgstr "Le dépôt est créé au premier commit."
+
+#: lib/belgo_web/live/networks/show.ex:235
+#, elixir-autogen, elixir-format
+msgid "%{kind}, not a kind of this range"
+msgstr "%{kind}, pas un type de cette plage"
+
+#: lib/belgo_web/components/core.ex:153
+#, elixir-autogen, elixir-format
+msgid "Copy"
+msgstr "Copier"
+
+#: lib/belgo_web/live/devices/show.ex:220
+#: lib/belgo_web/live/devices/show.ex:475
+#: lib/belgo_web/live/devices/show.ex:490
+#, elixir-autogen, elixir-format
+msgid "Copy the MAC address"
+msgstr "Copier l'adresse MAC"
+
+#: lib/belgo_web/live/networks/form.ex:146
+#, elixir-autogen, elixir-format
+msgid "Device kinds (none: any kind)"
+msgstr "Types d'appareils (aucun : tous les types)"
+
+#: lib/belgo_web/live/networks/form.ex:117
+#, elixir-autogen, elixir-format
+msgid "Name parts of the network (routing, servers, IoT…). With kinds, new devices of those kinds get the first free address of the range."
+msgstr "Nommez des parties du réseau (routage, serveurs, IoT…). Avec des types, les nouveaux appareils de ces types reçoivent la première adresse libre de la plage."
+
+#: lib/belgo_web/live/devices/show.ex:408
+#, elixir-autogen, elixir-format
+msgid "This interface has neither IP address nor network to find where to wake it."
+msgstr "Cette interface n'a ni adresse IP ni réseau pour savoir où la réveiller."
+
+#: lib/belgo_web/live/devices/show.ex:401
+#, elixir-autogen, elixir-format
+msgid "Wake-on-LAN is turned off in providers.yaml."
+msgstr "Le Wake-on-LAN est désactivé dans providers.yaml."

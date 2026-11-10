@@ -20,6 +20,17 @@ Started from https://github.com/nicklayb/live_template (Phoenix 1.8, LiveView, B
 - **Sync must never be destructive.** Create when missing, update when existing,
   never delete; entries unknown to the inventory are left untouched. Enforced by
   `Belgo.Sync.Plan`. Divergences are shown, never reconciled automatically.
+  **Single exception (owner, 2026-11):** deleting a device, removing an interface or
+  changing a MAC deletes the **Kea reservations** of the MACs the inventory no longer
+  has (`Device.released_mac_addresses/2` → `Sync.after_update/3` / `after_delete/2`
+  from `UpdateRecord` / `DeleteRecord` → `Discovery.release_mac_addresses/2` →
+  optional `Provider.release/2`, write mode only; the server drops MACs back in the
+  inventory). Opt-in (owner): OPNsense option `delete_reservation: never` (default,
+  `release/2` writes nothing and reports it as skipped) | `interface_deletion`
+  (`Options.choice/4`). `Opnsense.release/2`: `Push.plan_kea_release/2`, `POST
+  /api/kea/dhcpv4/del_reservation/{uuid}` (verified in the PHP sources: `delBase`,
+  POST only, `{"result":"deleted"}` / `"not found"`, both accepted), then Kea
+  reconfigure. Unbound, AdGuard and Omada are never deleted from.
 - **Providers are optional**, configured in `providers.yaml` with a `mode`
   (`disabled` | `read` default | `write`) and public options only;
   secrets come from env vars or `*_FILE` files (`Belgo.Providers.Secrets`). An invalid
@@ -382,7 +393,7 @@ first addressed interface only, other interfaces are named through their
   `DnsNames.stored_name/2`) then pushes. The name also stays a divergence of the
   device until claimed.
 - Wake-on-LAN (owner): *Wake* button per interface with MAC on the device page.
-  `Belgo.WakeOnLan.wake/3`: `MagicPacket` (pure), `Sender` (`:gen_udp` broadcast
+  `Belgo.WakeOnLan.wake/4`: `MagicPacket` (pure), `Sender` (`:gen_udp` broadcast
   port 9 to `255.255.255.255` + the network's last address), then a `Watch`
   (GenServer under `Belgo.WakeOnLan.Supervisor`, one per device via
   `Belgo.WakeOnLan.Registry`) pings every `wake_on_lan.ping_interval` (5s) until up
@@ -390,7 +401,20 @@ first addressed interface only, other interfaces are named through their
   `{:wake_on_lan, Outcome}` on `wake_on_lan`. `BelgoWeb.Hooks.Notifications`
   (on_mount of every page) turns it into a flash wherever the owner is. Tests
   inject `send` / `ping` (`config :belgo, Belgo.WakeOnLan`, fixtures never touch the
-  network).
+  network). Broadcasts never leave a pod (limited broadcast is not routed, Linux
+  does not forward directed broadcasts by default): hence `WakeOnLan.method/1`
+  (re-reads `providers.yaml`): the first provider with the optional `wake/3`
+  callback sends the packet (`{:provider, configured}`), `:disabled` when its
+  `wake_on_lan?/1` is false (OPNsense option `wake_on_lan`, default `true`; the
+  device page hides *Wake*), `:broadcast` without such provider (or invalid file).
+  `Opnsense.wake/3`: `search` `/api/interfaces/overview/interfaces_info` (rows
+  `identifier`, `addr4`, `ipv4[].ipaddr` as `a.b.c.d/prefix`; privilege "Status:
+  Interfaces"), the interface whose network holds the interface IP (else its
+  network's address) → `POST /api/wol/wol/set` `{"wake": {"interface", "mac"}}`
+  (privilege "Services: Wake on LAN"; `{"status": …}`, `"error"` + `error_msg`, or
+  `[]` on invalid input). Verified in the core / plugins sources (master), **not on
+  the owner's instance**. Pure part: `Opnsense.WakeOnLan`. Logs `info` / `error`
+  (`[wake_on_lan] [opnsense] [mac]`).
 - Open ports (owner: never disturb the device): `Belgo.PortScan.Server` (like
   Reachability: per address, in memory, `port_scan.cache_duration` 1h, pending
   broadcast then result, `{:port_scan_changed, [AddressScan]}` on `port_scan`).
@@ -430,6 +454,10 @@ first addressed interface only, other interfaces are named through their
   `Reachability.Status.with_open_ports/2` (virtual IP pages count open ports as up).
   `BelgoWeb.Live.PortScans` and `Components.Inventory.open_ports/1` are shared with
   the device page.
+- Copy buttons (owner): `Components.Core.copy_button/1` dispatches `belgo:copy`
+  (listener in `app.js`: Clipboard API in secure contexts, `execCommand("copy")`
+  fallback over plain HTTP), `data-copied` shows a check for 1.5 s. Used next to MAC
+  addresses on the device page (interfaces, DHCP reservations, clients).
 - Devices list sorting (owner): `Inventory.DeviceSorting` (pure: name, placement
   label, first IP; missing values last) through `DeviceFilter` `sort` / `direction`
   (in the URL, defaults left out), sortable headers of `table`.
@@ -439,14 +467,17 @@ first addressed interface only, other interfaces are named through their
   inventory duplicates were already Audit errors. Not enforced in use cases (the
   discovery state is not part of the inventory).
 - Logical ranges (owner): `Network.ranges` (embedded `AddressRange`: name, start,
-  end, optional device kind; inside the network, no overlap; sort / drop params
+  end, device `kinds` (several allowed, none = any; a legacy single `kind` in files is
+  read as `kinds`), checkbox group in the form; inside the network, no overlap; sort / drop params
   `ranges_sort` / `ranges_drop`). `Inventory.AddressAllocation` (pure):
   `used_addresses/3` (inventory but the edited device, virtual IPs, gateways, every
   observation IP), `suggest/4` (first free, never network / broadcast address),
   `suggest_params/4` for the device form `validate` event: on a kind change, fills
   interfaces without IP or outside the kind's ranges (network set, dynamic becomes
   reserved / static); an added interface (`"new"` sort entry, materialised as an
-  index) is filled too. The form shows the range under the IP while it holds the
+  index) is filled too; a **new** device without interface gets one when its kind
+  changes to a kind with ranges (`add_interface: true`, before that choosing a kind
+  on `/devices/new` suggested nothing). The form shows the range under the IP while it holds the
   suggestion (`address_suggestions`). Editing never changes an address by itself
   (owner: a Media TV outside the Media range): `suggest_interfaces/4` offers the
   next free address under the IP (`range_suggestions`, `#range-suggestion-<i>`), the

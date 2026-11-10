@@ -4,7 +4,9 @@ defmodule Belgo.Providers.Opnsense.Push do
 
   Kea reservations are matched by MAC address, Unbound host overrides by host and
   domain. Following `Belgo.Sync.Plan`, missing entries are created and differing
-  ones updated; nothing is ever deleted. A name Unbound already holds several times is
+  ones updated; pushes never delete. The only deletion is `plan_kea_release/2`: the
+  Kea reservations of MAC addresses removed from the inventory (deleted device or
+  interface, changed MAC). A name Unbound already holds several times is
   left untouched and reported, so pushes never make duplicates worse. Updates only send the managed fields, which
   OPNsense applies as a partial update. Reservations manage their IP, hostname,
   description (`Device.interface_label/2`, e.g. `Skynet (enp4s0)`) and subnet.
@@ -19,6 +21,7 @@ defmodule Belgo.Providers.Opnsense.Push do
 
   @add_reservation_path "/api/kea/dhcpv4/add_reservation"
   @set_reservation_path "/api/kea/dhcpv4/set_reservation/"
+  @delete_reservation_path "/api/kea/dhcpv4/del_reservation/"
   @add_host_override_path "/api/unbound/settings/add_host_override"
   @set_host_override_path "/api/unbound/settings/set_host_override/"
   @managed_reservation_fields [:ip, :hostname, :description, :subnet]
@@ -30,7 +33,7 @@ defmodule Belgo.Providers.Opnsense.Push do
 
     @type t :: %__MODULE__{
             service: :kea | :unbound,
-            action: :create | :update,
+            action: :create | :update | :delete,
             path: String.t(),
             body: map(),
             summary: String.t()
@@ -44,6 +47,24 @@ defmodule Belgo.Providers.Opnsense.Push do
   def plan_kea(%DesiredState{} = desired_state, rows) do
     {operations, skipped} = reservation_operations(desired_state, rows)
     %{operations: operations, skipped: skipped}
+  end
+
+  @doc """
+  Plans the deletion of the Kea reservations held by `mac_addresses` (MAC addresses
+  the inventory no longer has) from the Kea `reservations` rows.
+  """
+  @spec plan_kea_release([String.t()], %{reservations: [map()]}) :: plan()
+  def plan_kea_release(mac_addresses, rows) do
+    released = MapSet.new(mac_addresses, &normalize_mac/1)
+
+    operations =
+      rows.reservations
+      |> Enum.flat_map(&actual_reservation/1)
+      |> Enum.filter(&MapSet.member?(released, &1.mac))
+      |> Enum.sort_by(&{&1.mac, &1.ip})
+      |> Enum.map(&release_operation/1)
+
+    %{operations: operations, skipped: []}
   end
 
   @doc "Plans the Unbound host overrides from the `host_overrides` rows."
@@ -152,6 +173,16 @@ defmodule Belgo.Providers.Opnsense.Push do
         }
       },
       summary: "update reservation #{desired.mac}: #{reservation_changes(actual, desired)}"
+    }
+  end
+
+  defp release_operation(actual) do
+    %Operation{
+      service: :kea,
+      action: :delete,
+      path: @delete_reservation_path <> actual.uuid,
+      body: %{},
+      summary: "delete reservation #{actual.mac} → #{actual.ip} (#{actual.hostname})"
     }
   end
 
@@ -283,6 +314,13 @@ defmodule Belgo.Providers.Opnsense.Push do
     case Cidr.parse(value) do
       {:ok, cidr} -> Cidr.format(cidr)
       :error -> nil
+    end
+  end
+
+  defp normalize_mac(value) do
+    case MacAddress.normalize(value) do
+      {:ok, mac} -> mac
+      :error -> value
     end
   end
 

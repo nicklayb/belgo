@@ -6,6 +6,7 @@ defmodule Belgo.Inventory.UseCase.UpdateRecord do
 
   use Belgo.UseCase
 
+  alias Belgo.Inventory.Snapshot
   alias Belgo.Inventory.Transaction
 
   @impl Box.UseCase
@@ -15,15 +16,19 @@ defmodule Belgo.Inventory.UseCase.UpdateRecord do
 
   @impl Box.UseCase
   def run(multi, {collection, id, attributes}, _options) do
-    Transaction.put(multi, :record, collection, {id, attributes})
+    multi
+    |> Ecto.Multi.run(:previous, fn snapshot, _changes ->
+      Snapshot.fetch(snapshot, collection, id)
+    end)
+    |> Transaction.put(:record, collection, {id, attributes})
   end
 
   @impl Box.UseCase
-  def after_run(%{record: record}, options) do
+  def after_run(%{previous: previous, record: record}, options) do
     options
     |> Keyword.fetch!(:params)
     |> elem(0)
-    |> Belgo.Sync.after_save(record)
+    |> Belgo.Sync.after_update(previous, record)
   end
 
   @impl Box.UseCase

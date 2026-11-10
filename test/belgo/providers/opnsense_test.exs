@@ -119,4 +119,59 @@ defmodule Belgo.Providers.OpnsenseTest do
     refute Translate.address_record?(%{"rr" => "MX (Mail server)"})
     refute Translate.address_record?(%{"rr" => "MX"})
   end
+
+  test "delete_reservation defaults to never and accepts interface_deletion only" do
+    environment = %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}
+
+    assert {:ok, %{delete_reservation: :never}} =
+             Opnsense.parse_config(%{"url" => "https://opnsense"}, environment)
+
+    assert {:ok, %{delete_reservation: :interface_deletion}} =
+             Opnsense.parse_config(
+               %{"url" => "https://opnsense", "delete_reservation" => "interface_deletion"},
+               environment
+             )
+
+    assert {:error, ["delete_reservation must be interface_deletion or never"]} =
+             Opnsense.parse_config(
+               %{"url" => "https://opnsense", "delete_reservation" => "always"},
+               environment
+             )
+  end
+
+  test "wake_on_lan defaults to true" do
+    environment = %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}
+
+    assert {:ok, %{wake_on_lan: true}} =
+             Opnsense.parse_config(%{"url" => "https://opnsense"}, environment)
+
+    assert {:ok, %{wake_on_lan: false}} =
+             Opnsense.parse_config(
+               %{"url" => "https://opnsense", "wake_on_lan" => false},
+               environment
+             )
+  end
+
+  test "the wake-on-LAN interface is the one whose IPv4 network holds the address" do
+    interfaces = OpnsenseClient.interfaces()
+
+    assert {:ok, "lan"} = Opnsense.WakeOnLan.interface_identifier(interfaces, "10.0.0.42")
+    # Interface aliases count too.
+    assert {:ok, "lan"} = Opnsense.WakeOnLan.interface_identifier(interfaces, "10.0.7.5")
+    # Unassigned interfaces have no identifier to wake through.
+    assert {:error, {:no_interface_for, "10.0.5.9"}} =
+             Opnsense.WakeOnLan.interface_identifier(interfaces, "10.0.5.9")
+  end
+
+  test "the wake-on-LAN answer tells success from failure" do
+    assert :ok == Opnsense.WakeOnLan.result(%{"status" => "OK"})
+
+    assert {:error, {:wake_failed, "Incorrect IPv4 configuration on interface"}} ==
+             Opnsense.WakeOnLan.result(%{
+               "status" => "error",
+               "error_msg" => "Incorrect IPv4 configuration on interface"
+             })
+
+    assert {:error, {:wake_failed, %{}}} == Opnsense.WakeOnLan.result(%{})
+  end
 end

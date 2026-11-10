@@ -29,7 +29,10 @@ holds settings that are not about providers. Every key is optional:
   interface network), then pings the device this often until it answers or the
   timeout elapses; a notice tells either way, on whatever page is open. Broadcasts
   do not cross routers: Belgo must be on the device's network (host networking in a
-  container) unless the router forwards directed broadcasts.
+  container) unless the router forwards directed broadcasts. With an OPNsense
+  provider, the router sends the packet instead (`os-wol` plugin, OPNsense option
+  `wake_on_lan`, `true` by default; `false` hides the *Wake* button), so it works
+  from any network, a Kubernetes pod included.
 * `port_scan.cache_duration` (`1h`) / `port_scan.timeout` (`1s`): a device page
   lists the TCP ports of its addresses that accept connections, among about forty
   common ones (SSH, HTTP(S), SMB, Proxmox, Home Assistant, Plex…). Each check is a
@@ -69,7 +72,7 @@ addresses) are listed apart, in *Out of DHCP*.
 
 | Provider | Reads | Writes | Secrets |
 | --- | --- | --- | --- |
-| OPNsense | Kea DHCPv4 subnets and reservations, Unbound host overrides | Kea reservations, Unbound host overrides | `BELGO_OPNSENSE_API_KEY`, `BELGO_OPNSENSE_API_SECRET` |
+| OPNsense | Kea DHCPv4 subnets and reservations, Unbound host overrides | Kea reservations, Unbound host overrides; wakes devices (`os-wol`) | `BELGO_OPNSENSE_API_KEY`, `BELGO_OPNSENSE_API_SECRET` |
 | AdGuard Home | Persistent and automatic clients (joined by MAC / IP), DNS rewrites | Persistent clients | `BELGO_ADGUARD_USERNAME`, `BELGO_ADGUARD_PASSWORD` |
 | Omada (Open API) | Devices (gateway, switches, APs and their uplink), connected clients (AP / switch port, Wi-Fi, Lock to AP) | Client names | `BELGO_OMADA_CLIENT_ID`, `BELGO_OMADA_CLIENT_SECRET` |
 | Home Assistant | Floors and areas (suggested as locations) | Nothing (read only) | `BELGO_HOME_ASSISTANT_TOKEN` |
@@ -102,9 +105,16 @@ on failure.
 ### Pushing
 
 Saving a device (or its *Push* button) pushes its DHCP reservations and DNS names to
-the providers in `write` mode: missing entries are created, differing ones updated,
-**nothing is ever deleted** and other devices are left untouched. The last push of
-each provider is shown in *Discovery*.
+the providers in `write` mode: missing entries are created, differing ones updated
+and other devices are left untouched. The last push of each provider is shown in
+*Discovery*.
+
+The only deletion is opt-in: with `delete_reservation: interface_deletion` in the
+OPNsense options (default `never`), when a device is deleted, or loses an interface
+or a MAC address, the Kea reservations of the MAC addresses the inventory no longer
+has are deleted from OPNsense (`write` mode only; a MAC address moved to another
+device meanwhile is kept). Unbound host overrides, AdGuard Home clients and Omada names are never
+deleted.
 
 DNS names belong to an interface address: a short name gets the network domain
 (`plex` → `plex.home.lan`), a name with a dot is used as is. The device hostname only
@@ -114,9 +124,10 @@ are shown in *Overview* and never written until fixed in OPNsense.
 ## Logical ranges
 
 A network can name parts of itself (`.1`–`.5` routing, `.10`–`.20` servers, `.70`–`.110`
-IoT…) in its form. A range tied to a device kind suggests addresses: choosing that
-kind for a device (or adding an interface to it) fills its interfaces without
-address, or outside the range, with the first address of the range nothing uses
+IoT…) in its form. A range tied to device kinds (one or several, e.g. *Media* and
+*Gaming*) suggests addresses: choosing one of those kinds for a device (or adding an
+interface to it) fills its interfaces without address, or outside the range (a new
+device without interface gets one), with the first address of the range nothing uses
 (inventory, virtual IPs, gateways, and every address providers report). The hint
 under the field tells where it comes from; edit it freely.
 
@@ -220,7 +231,8 @@ docker run -d --name belgo --restart unless-stopped \
   device shows as not answering. Recent Docker versions (20.10+) already set it,
   stating it keeps older engines and other runtimes working.
 * Wake-on-LAN broadcasts do not leave a bridged container: use `--network host`
-  (then `-p` is ignored and Belgo listens on `PORT`) if you need it.
+  (then `-p` is ignored and Belgo listens on `PORT`), or let OPNsense send them
+  (`wake_on_lan` option of the provider).
 * Provider secrets are environment variables (`-e BELGO_OPNSENSE_API_KEY=…`), or
   files with the `_FILE` suffix (Docker secrets).
 * `-e BELGO_AUTHENTICATION=static` skips Authelia to try Belgo out: anyone reaching
@@ -294,7 +306,8 @@ What the chart does, and why:
   `annotations`, templated) for any controller, or a Gateway API `HTTPRoute`
   (`httpRoute.parentRefs`), both off by default. `extraObjects` renders any other
   manifest with the release (a Traefik `Middleware`, a `NetworkPolicy`…).
-  `hostNetwork: true` lets Wake-on-LAN broadcasts reach the LAN.
+  `hostNetwork: true` lets Wake-on-LAN broadcasts reach the LAN (not needed when
+  OPNsense sends them, see its `wake_on_lan` option).
 * `values.schema.json` rejects unknown keys and invalid values at install time.
 
 Traefik with Authelia (`charts/belgo/ci/traefik-authelia-values.yaml`): the

@@ -15,6 +15,13 @@ providers:
     interval: 5m
     url: https://opnsense.home.lan
     verify_tls: true
+    # never (default) | interface_deletion: delete the Kea reservations of deleted
+    # devices / interfaces (and of changed MACs), in write mode only.
+    delete_reservation: never
+    # Wake devices through the os-wol plugin (packet sent by the router, on the right
+    # interface; privileges "Services: Wake on LAN" and "Status: Interfaces").
+    # false hides the Wake button.
+    wake_on_lan: true
   adguard:
     mode: read
     url: https://adguard.home.lan

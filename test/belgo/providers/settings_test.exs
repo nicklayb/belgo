@@ -95,7 +95,9 @@ defmodule Belgo.Providers.SettingsTest do
              )
 
     assert {:error,
-            ["providers.yaml (opnsense): unknown options: dry_run (expected url, verify_tls)"]} ==
+            [
+              "providers.yaml (opnsense): unknown options: dry_run (expected url, verify_tls, delete_reservation, wake_on_lan)"
+            ]} ==
              Settings.parse(
                put_in(document, ["providers", "opnsense", "dry_run"], true),
                @environment

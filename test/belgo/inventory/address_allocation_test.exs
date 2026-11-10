@@ -6,7 +6,7 @@ defmodule Belgo.Inventory.AddressAllocationTest do
   alias Belgo.Inventory.AddressRange
   alias Belgo.Inventory.Codec
 
-  @iot_range %AddressRange{name: "IoT", start: "10.0.0.20", end: "10.0.0.30", kind: :iot}
+  @iot_range %AddressRange{name: "IoT", start: "10.0.0.20", end: "10.0.0.30", kinds: [:iot]}
 
   setup do
     snapshot = Fixtures.snapshot()
@@ -53,7 +53,7 @@ defmodule Belgo.Inventory.AddressAllocationTest do
     used = MapSet.new(Enum.map(20..30, &"10.0.0.#{&1}"))
     assert nil == AddressAllocation.suggest(snapshot, :iot, used)
 
-    edge = %AddressRange{name: "Edge", start: "10.0.0.255", end: "10.0.0.255", kind: :iot}
+    edge = %AddressRange{name: "Edge", start: "10.0.0.255", end: "10.0.0.255", kinds: [:iot]}
     snapshot = %{snapshot | networks: Enum.map(snapshot.networks, &%{&1 | ranges: [edge]})}
     assert nil == AddressAllocation.suggest(snapshot, :iot, MapSet.new())
   end
@@ -124,6 +124,58 @@ defmodule Belgo.Inventory.AddressAllocationTest do
       assert %{1 => %{ip: "10.0.0.22"}} = suggestions
     end
 
+    test "a range serves each of its kinds", %{snapshot: snapshot} do
+      media_range = %AddressRange{
+        name: "Living room",
+        start: "10.0.0.40",
+        end: "10.0.0.49",
+        kinds: [:media, :gaming]
+      }
+
+      snapshot = %{
+        snapshot
+        | networks: Enum.map(snapshot.networks, &%{&1 | ranges: [media_range]})
+      }
+
+      assert %{ip: "10.0.0.40"} = AddressAllocation.suggest(snapshot, :media, MapSet.new())
+      assert %{ip: "10.0.0.40"} = AddressAllocation.suggest(snapshot, :gaming, MapSet.new())
+      assert nil == AddressAllocation.suggest(snapshot, :server, MapSet.new())
+    end
+
+    test "a new device without interface gets one holding the suggestion", %{
+      snapshot: snapshot
+    } do
+      params = %{"name" => "Itchy", "kind" => "iot", "interfaces_drop" => [""]}
+
+      {params, suggestions} =
+        AddressAllocation.suggest_params(params, :other, snapshot, MapSet.new(["10.0.0.20"]),
+          add_interface: true
+        )
+
+      assert ["0"] == params["interfaces_sort"]
+      assert %{"ip" => "10.0.0.21", "network_id" => "springfield"} = params["interfaces"]["0"]
+      assert %{0 => %{ip: "10.0.0.21"}} = suggestions
+
+      # Editing never adds an interface by itself.
+      assert {%{"interfaces" => %{}}, %{}} =
+               AddressAllocation.suggest_params(
+                 %{"kind" => "iot", "interfaces" => %{}},
+                 :other,
+                 snapshot,
+                 MapSet.new()
+               )
+
+      # Kinds without range add nothing.
+      assert {%{"kind" => "server"}, %{}} =
+               AddressAllocation.suggest_params(
+                 %{"kind" => "server"},
+                 :other,
+                 snapshot,
+                 MapSet.new(),
+                 add_interface: true
+               )
+    end
+
     test "nothing changes without a new kind or a new interface", %{snapshot: snapshot} do
       params = %{"kind" => "iot", "interfaces" => %{"0" => %{"ip" => ""}}}
 
@@ -161,12 +213,35 @@ defmodule Belgo.Inventory.AddressAllocationTest do
 
       assert %{
                "ranges" => [
-                 %{"name" => "IoT", "start" => "10.0.0.20", "end" => "10.0.0.30", "kind" => "iot"}
+                 %{
+                   "name" => "IoT",
+                   "start" => "10.0.0.20",
+                   "end" => "10.0.0.30",
+                   "kinds" => ["iot"]
+                 }
                ]
              } =
                Codec.encode(network)
 
       assert {:ok, %{ranges: [@iot_range]}} = Codec.decode(:networks, Codec.encode(network))
+    end
+
+    test "files with a single kind are read as kinds" do
+      assert {:ok, %{ranges: [%{kinds: [:iot]}, %{kinds: []}]}} =
+               Codec.decode(:networks, %{
+                 "id" => "springfield",
+                 "name" => "Springfield",
+                 "cidr" => "10.0.0.0/24",
+                 "ranges" => [
+                   %{
+                     "name" => "IoT",
+                     "start" => "10.0.0.20",
+                     "end" => "10.0.0.30",
+                     "kind" => "iot"
+                   },
+                   %{"name" => "Servers", "start" => "10.0.0.10", "end" => "10.0.0.19"}
+                 ]
+               })
     end
   end
 end

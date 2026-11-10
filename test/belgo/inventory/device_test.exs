@@ -147,4 +147,24 @@ defmodule Belgo.Inventory.DeviceTest do
 
     assert %{metadata: ["each label can only be used once"]} = errors(duplicated)
   end
+
+  test "released MAC addresses are those of removed interfaces or of a deleted device" do
+    homer_computer = %Device{
+      id: "homer-computer",
+      name: "Homer's computer",
+      interfaces: [
+        %Belgo.Inventory.Interface{mac: "02:00:00:00:07:42"},
+        %Belgo.Inventory.Interface{mac: "02:00:00:00:07:43"},
+        %Belgo.Inventory.Interface{mac: nil}
+      ]
+    }
+
+    without_wifi = %{homer_computer | interfaces: Enum.take(homer_computer.interfaces, 1)}
+
+    assert ["02:00:00:00:07:43"] == Device.released_mac_addresses(homer_computer, without_wifi)
+    assert [] == Device.released_mac_addresses(homer_computer, homer_computer)
+
+    assert ["02:00:00:00:07:42", "02:00:00:00:07:43"] ==
+             Device.released_mac_addresses(homer_computer, nil)
+  end
 end

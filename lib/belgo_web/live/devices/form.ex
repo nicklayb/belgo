@@ -173,7 +173,9 @@ defmodule BelgoWeb.Devices.Live.Form do
 
     previous_kind = Ecto.Changeset.get_field(socket.assigns.form.source, :kind)
 
-    AddressAllocation.suggest_params(params, previous_kind, snapshot, used)
+    AddressAllocation.suggest_params(params, previous_kind, snapshot, used,
+      add_interface: socket.assigns.device == nil
+    )
   end
 
   # Reserved interfaces must not take an address a provider reserved for another MAC.

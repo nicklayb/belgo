@@ -246,4 +246,43 @@ defmodule Belgo.Providers.OpnsensePushTest do
            ] ==
              plan.skipped
   end
+
+  test "releasing MAC addresses deletes their Kea reservations only" do
+    plan = Push.plan_kea_release(["02:00:00:00:05:01", "02-00-00-00-00-11"], rows())
+
+    assert [
+             "delete reservation 02:00:00:00:00:11 → 10.0.0.99 (smithers)",
+             "delete reservation 02:00:00:00:05:01 → 10.0.0.50 (moe-pc)"
+           ] == summaries(plan)
+
+    assert ["/api/kea/dhcpv4/del_reservation/smithers", "/api/kea/dhcpv4/del_reservation/moe"] ==
+             Enum.map(plan.operations, & &1.path)
+  end
+
+  test "release/2 deletes nothing by default" do
+    assert {:ok, %PushReport{operations: [], skipped: [_kept]}} =
+             Opnsense.release(config([]), ["02:00:00:00:05:01"])
+
+    refute_received {:opnsense_post, _path, _body}
+  end
+
+  test "release/2 deletes the reservations then reconfigures Kea when enabled" do
+    assert {:ok, %PushReport{operations: [%{action: :delete}]}} =
+             Opnsense.release(config(delete_reservation: :interface_deletion), [
+               "02:00:00:00:05:01"
+             ])
+
+    assert_received {:opnsense_post, "/api/kea/dhcpv4/del_reservation/moe", %{}}
+    assert_received {:opnsense_post, "/api/kea/service/reconfigure", %{}}
+    refute_received {:opnsense_post, "/api/unbound/" <> _rest, _body}
+  end
+
+  test "release/2 writes nothing when no reservation holds the MAC addresses" do
+    assert {:ok, %PushReport{operations: [], skipped: []}} =
+             Opnsense.release(config(delete_reservation: :interface_deletion), [
+               "02:00:00:00:0b:0b"
+             ])
+
+    refute_received {:opnsense_post, _path, _body}
+  end
 end

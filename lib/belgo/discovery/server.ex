@@ -1,7 +1,8 @@
 defmodule Belgo.Discovery.Server do
   @moduledoc """
-  Orchestrates the providers: pulls what they know (discovery) and pushes device
-  records to the providers in `write` mode. Nothing is persisted: a restart triggers a new pull.
+  Orchestrates the providers: pulls what they know (discovery), pushes device
+  records to the providers in `write` mode and releases (deletes) what they hold for
+  MAC addresses removed from the inventory. Nothing is persisted: a restart triggers a new pull.
 
   Every run re-reads `providers.yaml` (an invalid file is logged and shown, never
   fatal: the inventory stays usable) and runs providers concurrently. Runs log
@@ -28,6 +29,7 @@ defmodule Belgo.Discovery.Server do
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.State
   alias Belgo.Inventory
+  alias Belgo.Inventory.Device
   alias Belgo.Providers.Settings
   alias Belgo.Reachability
   alias Belgo.Providers.Settings.Configured
@@ -82,6 +84,9 @@ defmodule Belgo.Discovery.Server do
     do: {:noreply, with_settings(state, &start_pulls(state, &1, [provider_key]))}
 
   def handle_cast({:push, {_collection, _id} = owner}, state), do: {:noreply, push(state, owner)}
+
+  def handle_cast({:release, {_collection, _id} = owner, mac_addresses}, state),
+    do: {:noreply, release(state, owner, mac_addresses)}
 
   @impl GenServer
   def handle_info(:refresh, state), do: {:noreply, refresh(state)}
@@ -158,6 +163,40 @@ defmodule Belgo.Discovery.Server do
       end)
     end)
   end
+
+  defp release(state, owner, mac_addresses) do
+    case unknown_mac_addresses(state.inventory, mac_addresses) do
+      [] -> state
+      released -> with_settings(state, &start_releases(state, &1, owner, released))
+    end
+  end
+
+  # A MAC address given back to the inventory meanwhile (moved to another device) is kept.
+  defp unknown_mac_addresses(inventory, mac_addresses) do
+    known =
+      inventory
+      |> Inventory.snapshot()
+      |> Map.fetch!(:devices)
+      |> Enum.flat_map(&Device.mac_addresses/1)
+
+    Enum.uniq(mac_addresses) -- known
+  end
+
+  defp start_releases(state, settings, {_collection, record_id}, mac_addresses) do
+    state = Map.update!(state, :public, &State.configure(&1, settings))
+
+    settings
+    |> Settings.writable()
+    |> Enum.filter(&releases?(&1.module))
+    |> Enum.reduce(state, fn %Configured{module: module, config: config}, accumulator ->
+      start_task(accumulator, module, {:push, record_id}, fn ->
+        module.release(config, mac_addresses)
+      end)
+    end)
+  end
+
+  defp releases?(module),
+    do: Code.ensure_loaded?(module) and function_exported?(module, :release, 2)
 
   defp with_settings(state, function) do
     case Settings.load(state.directory, state.environment) do
