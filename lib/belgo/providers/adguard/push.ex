@@ -35,7 +35,8 @@ defmodule Belgo.Providers.Adguard.Push do
     tablet: "device_tablet",
     media: "device_tv",
     gaming: "device_gameconsole",
-    printer: "device_printer"
+    printer: "device_printer",
+    camera: "device_camera"
   }
   @default_device_tag "device_other"
 

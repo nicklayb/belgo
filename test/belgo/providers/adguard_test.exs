@@ -193,6 +193,28 @@ defmodule Belgo.Providers.AdguardTest do
     assert [%Push.Operation{body: %{"tags" => ["device_gameconsole"]}}] = plan.operations
   end
 
+  test "cameras are tagged as cameras" do
+    snapshot =
+      Snapshot.put(
+        Fixtures.snapshot(),
+        :devices,
+        Fixtures.device(
+          id: "springfield-nuclear-cam",
+          name: "Springfield Nuclear Cam",
+          kind: :camera,
+          interfaces: [Fixtures.interface()]
+        )
+      )
+
+    plan =
+      snapshot
+      |> DesiredState.build()
+      |> DesiredState.for_device("springfield-nuclear-cam")
+      |> Push.plan(AdguardClient.clients())
+
+    assert [%Push.Operation{body: %{"tags" => ["device_camera"]}}] = plan.operations
+  end
+
   test "push/2 writes the clients of a device" do
     desired_state =
       DesiredState.for_device(DesiredState.build(Fixtures.snapshot()), "lisa-laptop")

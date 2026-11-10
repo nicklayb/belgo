@@ -25,7 +25,7 @@ defmodule Belgo.Inventory.Device do
   alias Belgo.Inventory.SortParams
   alias Belgo.Inventory.MetadataEntry
 
-  @kinds ~w(server workstation laptop phone tablet media gaming iot network printer appliance other)a
+  @kinds ~w(server workstation laptop phone tablet media gaming iot network printer camera appliance other)a
   @platforms ~w(proxmox docker kubernetes)a
   @virtualizations ~w(virtual_machine lxc container)a
   @placements ~w(location host portable unplaced)a

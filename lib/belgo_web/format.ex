@@ -17,6 +17,7 @@ defmodule BelgoWeb.Format do
     iot: "hero-cpu-chip",
     network: "hero-wifi",
     printer: "hero-printer",
+    camera: "hero-video-camera",
     appliance: "hero-cube",
     other: "hero-question-mark-circle"
   }

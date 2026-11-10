@@ -68,7 +68,7 @@ defmodule Belgo.Fixtures.AdguardClient do
         %{"ip" => "10.0.0.67", "name" => "", "source" => "ARP"}
       ],
       "supported_tags" =>
-        ~w(device_gameconsole device_laptop device_other device_pc device_phone device_tv os_linux user_child)
+        ~w(device_camera device_gameconsole device_laptop device_other device_pc device_phone device_tv os_linux user_child)
     }
   end
 end

@@ -30,6 +30,9 @@ msgstr ""
 msgid "Printer"
 msgstr ""
 
+msgid "Camera"
+msgstr ""
+
 msgid "Appliance"
 msgstr ""
 
