@@ -91,6 +91,10 @@
   color: var(--color-accent);
 }
 
+.plan3d-label[data-dimmed] {
+  opacity: 0.35;
+}
+
 .plan3d-label[data-on-path] {
   outline: 2px solid var(--color-accent);
 }

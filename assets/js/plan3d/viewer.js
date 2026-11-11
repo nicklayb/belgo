@@ -1,11 +1,12 @@
 // Renders a plan scene (see Belgo.Plans.Scene) with three.js: floors, walls with
 // their lintels and ghost doors, room names printed on their floors, the exterior
 // at ground level and labelled devices
-// (a box when they have a shape). The facade (exterior walls) can be hidden and the
+// (a box when they have a shape). The facade (exterior walls), the device bubbles and
+// the device boxes can be hidden and the
 // camera read / restored, so the page can remember it. A click on a device (marker,
 // box or label) is reported; a network path (see Belgo.Plans.NetworkPath) is drawn
 // as tubes between the placed devices, seen through walls (dashed when wireless or
-// when hops not on the plan lie between).
+// when hops not on the plan lie between); the devices off that path are dimmed.
 // Plan centimetres become metres; the plan's y axis is three's z axis.
 import {
   AmbientLight, BoxGeometry, CanvasTexture, CylinderGeometry, DirectionalLight, Group, HemisphereLight, Mesh,
@@ -22,6 +23,8 @@ const DOOR_THICKNESS = 0.04
 const DEVICE_RADIUS = 0.12
 const DOOR_OPACITY = 0.18
 const DEVICE_BOX_OPACITY = 0.45
+const DIMMED_MARKER_OPACITY = 0.2
+const DIMMED_BOX_OPACITY = 0.12
 const EXTERIOR_KEY = "exterior"
 const PATH_RADIUS = 0.03
 const PATH_DASH = 0.25
@@ -63,6 +66,10 @@ export function createViewer(container) {
   let roomNames = []
   let roomNamesVisible = true
   let markers = new Map()
+  let markersVisible = true
+  let boxes = []
+  let boxesVisible = true
+  let deviceMeshes = new Map()
   let labelElements = new Map()
   let pickables = []
   let networkPath = null
@@ -213,14 +220,42 @@ export function createViewer(container) {
     const group = groupFor(device.level_id || EXTERIOR_KEY)
     // Filtered out devices stay positioned (for network paths) but are not shown.
     marker.visible = !device.hidden
+    // The material only: the label, a child of the marker, stays.
+    marker.material.visible = markersVisible
     group.add(marker)
+    const meshes = [{mesh: marker, opacity: 1, dimmedOpacity: DIMMED_MARKER_OPACITY}]
     if (device.box) {
       const boxMesh = deviceBox(device)
       boxMesh.userData.deviceId = device.device_id
       boxMesh.visible = !device.hidden
+      boxMesh.material.visible = boxesVisible
+      boxes.push(boxMesh)
       pickables.push(boxMesh)
       group.add(boxMesh)
+      meshes.push({mesh: boxMesh, opacity: DEVICE_BOX_OPACITY, dimmedOpacity: DIMMED_BOX_OPACITY})
     }
+    deviceMeshes.set(device.device_id, meshes)
+  }
+
+  const setOpacity = (material, opacity) => {
+    material.transparent = opacity < 1
+    material.opacity = opacity
+    material.depthWrite = opacity >= 1
+    material.needsUpdate = true
+  }
+
+  // While a path is shown, devices that are neither the selected one nor a hop of
+  // its path fade out.
+  const dimOthers = focusedIds => {
+    deviceMeshes.forEach((meshes, deviceId) => {
+      const dimmed = focusedIds !== null && !focusedIds.has(deviceId)
+      meshes.forEach(({mesh, opacity, dimmedOpacity}) => {
+        setOpacity(mesh.material, dimmed ? dimmedOpacity : opacity)
+      })
+      const label = labelElements.get(deviceId)
+      if (dimmed) label.dataset.dimmed = ""
+      else delete label.dataset.dimmed
+    })
   }
 
   const deviceBox = ({box: shape, elevation, known}) => {
@@ -248,6 +283,8 @@ export function createViewer(container) {
     facades = []
     roomNames = []
     markers = new Map()
+    boxes = []
+    deviceMeshes = new Map()
     labelElements = new Map()
     pickables = []
   }
@@ -288,9 +325,12 @@ export function createViewer(container) {
       delete label.dataset.selected
       delete label.dataset.onPath
     })
-    if (!networkPath) return
+    if (!networkPath) return dimOthers(null)
 
+    const focusedIds = new Set([networkPath.device_id])
     for (const {from, to, kind} of networkPath.segments) {
+      focusedIds.add(from)
+      focusedIds.add(to)
       const fromMarker = markers.get(from)
       const toMarker = markers.get(to)
       if (!fromMarker || !toMarker) continue
@@ -300,6 +340,7 @@ export function createViewer(container) {
     }
     const selected = labelElements.get(networkPath.device_id)
     if (selected) selected.dataset.selected = ""
+    dimOthers(focusedIds)
   }
 
   const shown = object => {
@@ -319,7 +360,8 @@ export function createViewer(container) {
       ((event.clientX - left) / width) * 2 - 1, -((event.clientY - top) / height) * 2 + 1
     )
     raycaster.setFromCamera(pointer, camera)
-    const hit = raycaster.intersectObjects(pickables, false).find(({object}) => shown(object))
+    const hit = raycaster.intersectObjects(pickables, false)
+      .find(({object}) => shown(object) && object.material.visible)
     return hit ? hit.object.userData.deviceId : null
   }
 
@@ -398,6 +440,17 @@ export function createViewer(container) {
     // Device labels; those of the shown network path stay (see app.css).
     showDeviceLabels(visible) {
       labels.domElement.classList.toggle("plan3d-labels-hidden", !visible)
+    },
+
+    // Device bubbles (their labels stay).
+    showMarkers(visible) {
+      markersVisible = visible
+      markers.forEach(marker => { marker.material.visible = visible })
+    },
+
+    showBoxes(visible) {
+      boxesVisible = visible
+      boxes.forEach(mesh => { mesh.material.visible = visible })
     },
 
     showFacade(visible) {

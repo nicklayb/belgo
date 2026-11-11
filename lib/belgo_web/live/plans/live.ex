@@ -10,6 +10,13 @@ defmodule BelgoWeb.Plans.Live do
   path (`Belgo.Topology.Routing.path/3`, live uplinks included): lines between the
   hops placed on the plan (`Belgo.Plans.NetworkPath`) and the whole path in a panel.
 
+  The selected device also gets a *Placement* panel under its path: its anchor,
+  height, offset in its room and box (`Belgo.Plans.PlacementForm`), saved to
+  `plans.yaml` on each change (`Belgo.Plans.Editing.update_placement/3`).
+
+  The 3D view can use the whole width of the page (`set-wide` from the `Plan3D`
+  hook, which remembers the choice per plan).
+
   The 3D view filters its devices by kind like the device list (`?kinds=a,b`,
   `Belgo.Inventory.DeviceFilter`); the hops of the shown network path stay visible.
   """
@@ -19,16 +26,21 @@ defmodule BelgoWeb.Plans.Live do
 
   use BelgoWeb, :live_view
 
+  alias Belgo.Inventory
+  alias Belgo.Inventory.Codec
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.DeviceFilter
   alias Belgo.Inventory.Snapshot
   alias Belgo.Plans.Analysis
+  alias Belgo.Plans.Editing
   alias Belgo.Plans.NetworkPath
+  alias Belgo.Plans.PlacementForm
   alias Belgo.Plans.Scene
   alias Belgo.Plans.Zone
   alias Belgo.Topology.Routing
   alias BelgoWeb.Components.PlanDrawing
   alias BelgoWeb.Components.Routing, as: RoutingComponents
+  alias BelgoWeb.Live.Mutation
 
   @exterior "exterior"
 
@@ -41,6 +53,8 @@ defmodule BelgoWeb.Plans.Live do
      |> assign(:level_id, nil)
      |> assign(:view, :model)
      |> assign(:selected_device_id, nil)
+     |> assign(:placement_input, nil)
+     |> assign(:wide?, false)
      |> assign(:filter, DeviceFilter.new())
      |> assign_inventory()}
   end
@@ -130,10 +144,75 @@ defmodule BelgoWeb.Plans.Live do
   def handle_event("select-device", _params, socket),
     do: {:noreply, select_device(socket, nil)}
 
+  def handle_event("set-wide", %{"wide" => wide?}, socket) when is_boolean(wide?),
+    do: {:noreply, assign(socket, :wide?, wide?)}
+
+  def handle_event("update-placement", %{"placement" => params}, socket) do
+    %{plan: plan, selected_device_id: device_id} = socket.assigns
+    attributes = if plan && device_id, do: PlacementForm.attributes(plan, device_id, params)
+
+    {:noreply, update_placement(socket, attributes, params)}
+  end
+
   defp select_device(socket, device_id) do
     socket
     |> assign(:selected_device_id, device_id)
+    |> assign(:placement_input, nil)
     |> assign_network_path()
+  end
+
+  defp update_placement(socket, nil, _params), do: socket
+
+  defp update_placement(socket, attributes, params) do
+    %{plan: plan, selected_device_id: device_id} = socket.assigns
+
+    with {:ok, updated} <- Editing.update_placement(plan, device_id, attributes),
+         {:ok, _plan} <-
+           save_plan(socket, updated, attributes) do
+      # The inventory broadcast follows; until then the form reads the saved plan.
+      assign(socket,
+        plan: updated,
+        placement_input: %{
+          device_id: device_id,
+          params: params,
+          values: PlacementForm.values(updated, device_id)
+        }
+      )
+    else
+      {:error, message} when is_binary(message) ->
+        put_flash(socket, :error, message)
+
+      {:error, :record, %Ecto.Changeset{} = changeset, _changes} ->
+        put_flash(socket, :error, changeset_message(changeset))
+
+      error ->
+        put_flash(socket, :error, Mutation.describe_error(error))
+    end
+  end
+
+  # A box being typed changes nothing: no write.
+  defp save_plan(socket, updated, attributes) when map_size(attributes) > 0,
+    do: Inventory.update(:plans, updated.id, Codec.encode(updated), Mutation.options(socket))
+
+  defp save_plan(_socket, updated, _attributes), do: {:ok, updated}
+
+  defp changeset_message(changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(fn {message, _options} -> message end)
+    |> Enum.map_join(", ", fn {field, messages} -> "#{field}: #{inspect(messages)}" end)
+  end
+
+  # The fields as typed while they still lead to the stored placement (a box being
+  # typed is not applied, re-rendering from the plan would empty its fields), else
+  # the stored placement.
+  defp placement_fields(%{plan: nil}), do: nil
+  defp placement_fields(%{selected_device_id: nil}), do: nil
+
+  defp placement_fields(%{plan: plan, selected_device_id: device_id} = assigns) do
+    case {PlacementForm.values(plan, device_id), assigns.placement_input} do
+      {values, %{device_id: ^device_id, values: values, params: params}} -> params
+      {values, _input} -> values
+    end
   end
 
   # The path of the selected device, if it is still on the plan.
@@ -269,6 +348,134 @@ defmodule BelgoWeb.Plans.Live do
     """
   end
 
+  attr(:plan, :any, required: true)
+  attr(:device_id, :string, required: true)
+  attr(:input, :map, default: nil)
+
+  # Resizes the box of the selected device and changes its anchor and offset; each
+  # change is saved (`update-placement`).
+  defp placement_panel(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :fields,
+        placement_fields(%{
+          plan: assigns.plan,
+          selected_device_id: assigns.device_id,
+          placement_input: assigns.input
+        })
+      )
+
+    ~H"""
+    <div
+      :if={@fields}
+      id="plan-placement"
+      class="pointer-events-auto w-72 max-w-full space-y-2 rounded-md bg-surface/95 px-3 py-2 shadow-sm ring-1 ring-border ring-inset"
+    >
+      <p class="text-xs text-muted">{gettext("Placement")}</p>
+      <.form
+        for={%{}}
+        as={:placement}
+        id="plan-placement-form"
+        phx-change="update-placement"
+        class="grid grid-cols-2 gap-2 text-sm"
+      >
+        <label>
+          {gettext("Anchored")}
+          <select name="placement[anchor]" class={field_class()}>
+            {Phoenix.HTML.Form.options_for_select(
+              [
+                {pgettext("plan anchor", "Floor"), "floor"},
+                {gettext("Wall"), "wall"},
+                {gettext("Floating"), "float"}
+              ],
+              @fields["anchor"]
+            )}
+          </select>
+        </label>
+        <label>
+          {gettext("From the floor (cm)")}
+          <input
+            type="number"
+            name="placement[height]"
+            value={@fields["height"]}
+            min="0"
+            disabled={@fields["anchor"] == "floor"}
+            phx-debounce="400"
+            class={[field_class(), "disabled:opacity-50"]}
+          />
+        </label>
+        <fieldset class="col-span-2">
+          <legend class="mb-1">{gettext("Offset in the room (cm)")}</legend>
+          <div class="grid grid-cols-2 gap-2">
+            <input
+              :for={{key, label} <- [{"offset_x", "x"}, {"offset_y", "y"}]}
+              type="number"
+              name={"placement[#{key}]"}
+              value={@fields[key]}
+              placeholder={label}
+              aria-label={label}
+              phx-debounce="400"
+              class={field_class()}
+            />
+          </div>
+          <p class="mt-1 text-xs text-muted">
+            {gettext(
+              "From the room's top left corner on the 2D plan; a wall device snaps onto the nearest wall."
+            )}
+          </p>
+        </fieldset>
+        <fieldset class="col-span-2">
+          <legend class="mb-1">{gettext("Box (cm, empty = a point)")}</legend>
+          <div class="grid grid-cols-3 gap-2">
+            <input
+              :for={
+                {dimension, label} <- [
+                  {"width", gettext("Width")},
+                  {"depth", gettext("Depth")},
+                  {"height", gettext("Height")}
+                ]
+              }
+              type="number"
+              name={"placement[shape][#{dimension}]"}
+              value={(@fields["shape"] || %{})[dimension]}
+              placeholder={label}
+              aria-label={label}
+              min="1"
+              phx-debounce="400"
+              class={field_class()}
+            />
+          </div>
+        </fieldset>
+      </.form>
+    </div>
+    """
+  end
+
+  defp field_class,
+    do: "mt-1 block w-full rounded-md border-0 bg-surface px-2 py-1 ring-1 ring-border ring-inset"
+
+  attr(:key, :string, required: true)
+  attr(:label, :string, required: true)
+
+  # A checkbox-like show / hide entry of a toggle menu, handled by the Plan3D hook.
+  defp menu_toggle(assigns) do
+    ~H"""
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      data-toggle={@key}
+      aria-pressed="true"
+      class="group flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent-soft"
+    >
+      <span class="inline-flex size-4 items-center justify-center rounded ring-1 ring-border ring-inset group-aria-pressed:bg-accent group-aria-pressed:text-accent-foreground group-aria-pressed:ring-accent">
+        <.icon name="hero-check-micro" class="hidden size-3.5 group-aria-pressed:inline" />
+      </span>
+      {@label}
+    </button>
+    """
+  end
+
   defp elevation_label(nil), do: ""
 
   defp elevation_label(centimetres),
@@ -282,6 +489,7 @@ defmodule BelgoWeb.Plans.Live do
       current_user={@current_user}
       current_path={@current_path}
       navigation_badges={@navigation_badges}
+      wide={@wide? and @view == :model}
     >
       <.page_header title={(@plan && @plan.name) || gettext("Plan")}>
         <:subtitle>{gettext("Where devices physically are, level by level.")}</:subtitle>
@@ -374,30 +582,41 @@ defmodule BelgoWeb.Plans.Live do
         <.card :if={@view == :model} padded={false} class="relative">
           <div
             :if={@network_path}
-            id="plan-network-path"
-            class="absolute top-3 left-3 z-20 max-w-[min(32rem,calc(100%-22rem))] space-y-1 rounded-md bg-surface/95 px-3 py-2 shadow-sm ring-1 ring-border ring-inset"
+            class="absolute top-3 bottom-3 left-3 z-20 flex w-[min(32rem,calc(100%-22rem))] flex-col items-start gap-2 overflow-y-auto pointer-events-none"
           >
-            <div class="flex items-center justify-between gap-3 text-xs text-muted">
-              <span>{gettext("Network path")}</span>
-              <button
-                type="button"
-                phx-click="select-device"
-                title={gettext("Hide the path")}
-                class="hover:text-foreground"
-              >
-                <.icon name="hero-x-mark-micro" class="size-4" />
-              </button>
+            <div
+              id="plan-network-path"
+              class="pointer-events-auto max-w-full space-y-1 rounded-md bg-surface/95 px-3 py-2 shadow-sm ring-1 ring-border ring-inset"
+            >
+              <div class="flex items-center justify-between gap-3 text-xs text-muted">
+                <span>{gettext("Network path")}</span>
+                <button
+                  type="button"
+                  phx-click="select-device"
+                  title={gettext("Hide the path")}
+                  class="hover:text-foreground"
+                >
+                  <.icon name="hero-x-mark-micro" class="size-4" />
+                </button>
+              </div>
+              <RoutingComponents.network_path hops={@network_hops} dimmed_ids={@unplaced_device_ids} />
+              <p :if={length(@network_hops) < 2} class="text-xs text-muted">
+                {gettext("No known uplink for this device.")}
+              </p>
+              <p :if={length(@network_hops) > 1} class="text-xs text-muted">
+                {gettext(
+                  "Solid: wired · dashed: Wi-Fi · grey dashed: through devices not on the plan"
+                )}
+                <span :if={MapSet.size(@unplaced_device_ids) > 0}>
+                  {gettext("(greyed out above).")}
+                </span>
+              </p>
             </div>
-            <RoutingComponents.network_path hops={@network_hops} dimmed_ids={@unplaced_device_ids} />
-            <p :if={length(@network_hops) < 2} class="text-xs text-muted">
-              {gettext("No known uplink for this device.")}
-            </p>
-            <p :if={length(@network_hops) > 1} class="text-xs text-muted">
-              {gettext("Solid: wired · dashed: Wi-Fi · grey dashed: through devices not on the plan")}
-              <span :if={MapSet.size(@unplaced_device_ids) > 0}>
-                {gettext("(greyed out above).")}
-              </span>
-            </p>
+            <.placement_panel
+              plan={@plan}
+              device_id={@selected_device_id}
+              input={@placement_input}
+            />
           </div>
           <div
             id="plan-3d"
@@ -423,7 +642,34 @@ defmodule BelgoWeb.Plans.Live do
                 label={label}
                 title={title}
               />
+              <details data-toggle-menu class="relative">
+                <summary
+                  title={gettext("Show or hide the device bubbles and boxes")}
+                  class="inline-flex cursor-pointer list-none items-center gap-1.5 rounded-md bg-surface/90 px-2.5 py-1.5 text-sm ring-1 ring-border ring-inset hover:text-accent [&::-webkit-details-marker]:hidden"
+                >
+                  {gettext("Bubbles")}
+                  <.icon name="hero-chevron-down-mini" class="size-4" />
+                </summary>
+                <div class="absolute right-0 mt-1 w-36 space-y-0.5 rounded-md bg-surface p-1 shadow-sm ring-1 ring-border ring-inset">
+                  <.menu_toggle key="markers" label={gettext("Bubbles")} />
+                  <.menu_toggle key="boxes" label={gettext("Boxes")} />
+                </div>
+              </details>
             </div>
+            <button
+              type="button"
+              data-wide-toggle
+              aria-pressed="false"
+              title={gettext("Use the whole width of the page")}
+              aria-label={gettext("Full width")}
+              class="group absolute right-3 bottom-3 z-10 inline-flex items-center rounded-md bg-surface/90 p-1.5 text-muted ring-1 ring-border ring-inset hover:text-accent aria-pressed:text-foreground"
+            >
+              <.icon name="hero-arrows-pointing-out-mini" class="size-4 group-aria-pressed:hidden" />
+              <.icon
+                name="hero-arrows-pointing-in-mini"
+                class="hidden size-4 group-aria-pressed:inline"
+              />
+            </button>
           </div>
         </.card>
 

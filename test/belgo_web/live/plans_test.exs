@@ -112,7 +112,7 @@ defmodule BelgoWeb.PlansTest do
 
     assert has_element?(view, ~s(#plan-3d[phx-hook="Plan3D"][data-visible-up-to=""]))
 
-    for key <- ~w(labels names facade),
+    for key <- ~w(labels names facade markers boxes),
         do: assert(has_element?(view, ~s(#plan-3d button[data-toggle="#{key}"])))
 
     scene = scene_of(render(element(view, "#plan-3d")))
@@ -161,6 +161,62 @@ defmodule BelgoWeb.PlansTest do
     render_hook(element(view, "#plan-3d"), "select-device", %{"device_id" => ""})
     refute has_element?(view, "#plan-network-path")
     refute render(element(view, "#plan-3d")) =~ "data-network-path"
+  end
+
+  test "a selected device's box and position are edited from the 3D view", %{conn: conn} do
+    {:ok, _plan} = Inventory.create(:plans, @evergreen_terrace, user: :system)
+    {:ok, view, _html} = live(conn, ~p"/plan")
+    refute has_element?(view, "#plan-placement")
+
+    render_hook(element(view, "#plan-3d"), "select-device", %{"device_id" => "burns-node"})
+    assert has_element?(view, ~s(#plan-placement input[name="placement[offset_x]"][value="100"]))
+
+    view
+    |> form("#plan-placement-form", %{"placement" => %{"anchor" => "float"}})
+    |> render_change()
+
+    view
+    |> form("#plan-placement-form", %{
+      "placement" => %{
+        "height" => "80",
+        "offset_x" => "150",
+        "offset_y" => "120",
+        "shape" => %{"width" => "60", "depth" => "40", "height" => "180"}
+      }
+    })
+    |> render_change()
+
+    {:ok, plan} =
+      Belgo.Inventory.Snapshot.fetch(Inventory.snapshot(), :plans, "evergreen-terrace")
+
+    assert %{
+             anchor: :float,
+             height: 80,
+             x: 150,
+             y: 120,
+             shape: %{width: 60, depth: 40, height: 180}
+           } = Enum.find(plan.placements, &(&1.device_id == "burns-node"))
+
+    assert has_element?(
+             view,
+             ~s(#plan-placement input[name="placement[shape][width]"][value="60"])
+           )
+
+    render_hook(element(view, "#plan-3d"), "select-device", %{"device_id" => ""})
+    refute has_element?(view, "#plan-placement")
+  end
+
+  test "the 3D view can use the whole width of the page", %{conn: conn} do
+    {:ok, _plan} = Inventory.create(:plans, @evergreen_terrace, user: :system)
+    {:ok, view, _html} = live(conn, ~p"/plan")
+    assert has_element?(view, "#plan-3d button[data-wide-toggle]")
+    refute render(view) =~ "lg:px-6 lg:py-4"
+
+    render_hook(element(view, "#plan-3d"), "set-wide", %{"wide" => true})
+    assert render(view) =~ "lg:px-6 lg:py-4"
+
+    render_hook(element(view, "#plan-3d"), "set-wide", %{"wide" => false})
+    refute render(view) =~ "lg:px-6 lg:py-4"
   end
 
   test "the 3D view filters devices by kind, keeping the shown path", %{conn: conn} do

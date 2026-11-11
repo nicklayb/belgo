@@ -11,7 +11,7 @@
 msgid ""
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1662
+#: lib/belgo_web/live/plans/editor.ex:1639
 #, elixir-autogen, elixir-format
 msgid "%{id} (deleted device)"
 msgstr ""
@@ -51,7 +51,7 @@ msgstr ""
 msgid "%{name} is awake (answered after %{seconds} s)."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:299
+#: lib/belgo_web/live/plans/editor.ex:290
 #, elixir-autogen, elixir-format
 msgid "%{name} moved to its room's location."
 msgstr ""
@@ -72,12 +72,12 @@ msgstr ""
 msgid "%{runs_as} on %{hosts}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:990
+#: lib/belgo_web/live/plans/editor.ex:967
 #, elixir-autogen, elixir-format
 msgid "%{side} wall"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:989
+#: lib/belgo_web/live/plans/editor.ex:966
 #, elixir-autogen, elixir-format
 msgid "%{side} wall (rectangle %{number})"
 msgstr ""
@@ -102,7 +102,7 @@ msgstr ""
 msgid "%{used}/%{total} ports"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:398
+#: lib/belgo_web/live/plans/live.ex:611
 #, elixir-autogen, elixir-format
 msgid "(greyed out above)."
 msgstr ""
@@ -164,17 +164,17 @@ msgid_plural "%{count} selected"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/belgo_web/live/plans/live.ex:353
+#: lib/belgo_web/live/plans/live.ex:561
 #, elixir-autogen, elixir-format
 msgid "2D"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:353
+#: lib/belgo_web/live/plans/live.ex:561
 #, elixir-autogen, elixir-format
 msgid "3D"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:209
+#: lib/belgo_web/live/plans/editor.ex:208
 #, elixir-autogen, elixir-format
 msgid "A hosted device is where its host is."
 msgstr ""
@@ -232,7 +232,7 @@ msgstr ""
 msgid "Add its MAC addresses to the denylist"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2036
+#: lib/belgo_web/live/plans/editor.ex:2013
 #, elixir-autogen, elixir-format
 msgid "Add level"
 msgstr ""
@@ -275,22 +275,22 @@ msgstr ""
 msgid "Adds its MAC and IP addresses as new interfaces of that device, instead of creating a new one."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1843
+#: lib/belgo_web/live/plans/editor.ex:1820
 #, elixir-autogen, elixir-format
 msgid "Against"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2127
+#: lib/belgo_web/live/plans/editor.ex:2104
 #, elixir-autogen, elixir-format
 msgid "Against the %{side} wall of %{parent}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2159
+#: lib/belgo_web/live/plans/editor.ex:2136
 #, elixir-autogen, elixir-format
 msgid "Aligned"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:329
+#: lib/belgo_web/live/plans/live.ex:537
 #, elixir-autogen, elixir-format
 msgid "All"
 msgstr ""
@@ -320,19 +320,20 @@ msgstr ""
 msgid "An address that is not a machine: a load balancer (MetalLB, kube-vip) or a floating address (keepalived)."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1606
-#: lib/belgo_web/live/plans/editor.ex:1861
-#: lib/belgo_web/live/plans/editor.ex:2125
+#: lib/belgo_web/live/plans/editor.ex:1583
+#: lib/belgo_web/live/plans/editor.ex:1838
+#: lib/belgo_web/live/plans/editor.ex:2102
 #, elixir-autogen, elixir-format
 msgid "Anchor"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1673
+#: lib/belgo_web/live/plans/editor.ex:1650
+#: lib/belgo_web/live/plans/live.ex:384
 #, elixir-autogen, elixir-format
 msgid "Anchored"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:425
+#: lib/belgo_web/live/plans/editor.ex:416
 #, elixir-autogen, elixir-format
 msgid "Anchored rooms follow their parent: edit their offset."
 msgstr ""
@@ -352,7 +353,7 @@ msgstr ""
 msgid "Applied"
 msgstr ""
 
-#: lib/belgo_web/format.ex:123
+#: lib/belgo_web/format.ex:124
 #, elixir-autogen, elixir-format
 msgid "Area"
 msgstr ""
@@ -378,13 +379,13 @@ msgstr ""
 msgid "Attaching…"
 msgstr ""
 
-#: lib/belgo_web/format.ex:118
+#: lib/belgo_web/format.ex:119
 #, elixir-autogen, elixir-format
 msgid "Auto client"
 msgstr ""
 
 #: lib/belgo_web/components/core.ex:46
-#: lib/belgo_web/live/plans/editor.ex:1380
+#: lib/belgo_web/live/plans/editor.ex:1357
 #, elixir-autogen, elixir-format
 msgid "Back"
 msgstr ""
@@ -394,7 +395,8 @@ msgstr ""
 msgid "Best match: %{name} (%{score}%)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1701
+#: lib/belgo_web/live/plans/editor.ex:1678
+#: lib/belgo_web/live/plans/live.ex:429
 #, elixir-autogen, elixir-format
 msgid "Box (cm, empty = a point)"
 msgstr ""
@@ -414,7 +416,7 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1002
+#: lib/belgo_web/live/plans/editor.ex:979
 #, elixir-autogen, elixir-format
 msgid "Centred"
 msgstr ""
@@ -436,7 +438,7 @@ msgid "Checking ports…"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:299
-#: lib/belgo_web/live/plans/editor.ex:1638
+#: lib/belgo_web/live/plans/editor.ex:1615
 #, elixir-autogen, elixir-format
 msgid "Choose a device"
 msgstr ""
@@ -451,7 +453,7 @@ msgstr ""
 msgid "Choose a device or a virtual IP"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1109
+#: lib/belgo_web/live/plans/editor.ex:1086
 #, elixir-autogen, elixir-format
 msgid "Choose a device, then click in a room: near a wall it hangs on it, elsewhere it stands on the floor."
 msgstr ""
@@ -472,7 +474,7 @@ msgstr ""
 msgid "Choose how it runs"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:223
+#: lib/belgo_web/live/plans/editor.ex:222
 #, elixir-autogen, elixir-format
 msgid "Choose the device to place first."
 msgstr ""
@@ -517,22 +519,22 @@ msgstr ""
 msgid "Clear"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1091
+#: lib/belgo_web/live/plans/editor.ex:1068
 #, elixir-autogen, elixir-format
 msgid "Click a room to select it, drag a root room to move it with the rooms anchored to it (Shift: the whole room), drag a corner to resize, + on a free side adds an anchored room."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1102
+#: lib/belgo_web/live/plans/editor.ex:1079
 #, elixir-autogen, elixir-format
 msgid "Click in a room to split it in two along the chosen direction."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1104
+#: lib/belgo_web/live/plans/editor.ex:1081
 #, elixir-autogen, elixir-format
 msgid "Click on a wall to add a door."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1105
+#: lib/belgo_web/live/plans/editor.ex:1082
 #, elixir-autogen, elixir-format
 msgid "Click on a wall to add an opening (no door)."
 msgstr ""
@@ -543,7 +545,7 @@ msgstr ""
 msgid "Click to ping again."
 msgstr ""
 
-#: lib/belgo_web/format.ex:121
+#: lib/belgo_web/format.ex:122
 #: lib/belgo_web/live/devices/show.ex:485
 #, elixir-autogen, elixir-format
 msgid "Client"
@@ -574,12 +576,12 @@ msgstr ""
 msgid "Connected to"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1350
+#: lib/belgo_web/live/plans/editor.ex:1327
 #, elixir-autogen, elixir-format
 msgid "Create"
 msgstr ""
 
-#: lib/belgo_web/format.ex:109
+#: lib/belgo_web/format.ex:110
 #, elixir-autogen, elixir-format
 msgid "DHCP"
 msgstr ""
@@ -600,7 +602,7 @@ msgstr ""
 msgid "DHCP range start"
 msgstr ""
 
-#: lib/belgo_web/format.ex:107
+#: lib/belgo_web/format.ex:108
 #, elixir-autogen, elixir-format
 msgid "DHCP reservation"
 msgstr ""
@@ -630,7 +632,7 @@ msgstr ""
 msgid "DNS records"
 msgstr ""
 
-#: lib/belgo_web/format.ex:116
+#: lib/belgo_web/format.ex:117
 #, elixir-autogen, elixir-format
 msgid "DNS rewrite"
 msgstr ""
@@ -640,12 +642,12 @@ msgstr ""
 msgid "Declare a platform on a device, or host a device on another one."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2058
+#: lib/belgo_web/live/plans/editor.ex:2035
 #, elixir-autogen, elixir-format
 msgid "Default level height (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2069
+#: lib/belgo_web/live/plans/editor.ex:2046
 #, elixir-autogen, elixir-format
 msgid "Default wall height (cm)"
 msgstr ""
@@ -654,16 +656,16 @@ msgstr ""
 #: lib/belgo_web/live/locations/index.ex:129
 #: lib/belgo_web/live/locations/show.ex:128
 #: lib/belgo_web/live/networks/show.ex:96
-#: lib/belgo_web/live/plans/editor.ex:1873
-#: lib/belgo_web/live/plans/editor.ex:1916
-#: lib/belgo_web/live/plans/editor.ex:1991
+#: lib/belgo_web/live/plans/editor.ex:1850
+#: lib/belgo_web/live/plans/editor.ex:1893
+#: lib/belgo_web/live/plans/editor.ex:1968
 #: lib/belgo_web/live/virtual_ips/index.ex:143
 #: lib/belgo_web/live/virtual_ips/show.ex:167
 #, elixir-autogen, elixir-format
 msgid "Delete"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1988
+#: lib/belgo_web/live/plans/editor.ex:1965
 #, elixir-autogen, elixir-format
 msgid "Delete %{name} and its rooms?"
 msgstr ""
@@ -672,15 +674,16 @@ msgstr ""
 #: lib/belgo_web/live/locations/index.ex:128
 #: lib/belgo_web/live/locations/show.ex:126
 #: lib/belgo_web/live/networks/show.ex:94
-#: lib/belgo_web/live/plans/editor.ex:1871
+#: lib/belgo_web/live/plans/editor.ex:1848
 #: lib/belgo_web/live/virtual_ips/index.ex:140
 #: lib/belgo_web/live/virtual_ips/show.ex:165
 #, elixir-autogen, elixir-format
 msgid "Delete %{name}?"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1707
-#: lib/belgo_web/live/plans/editor.ex:1785
+#: lib/belgo_web/live/plans/editor.ex:1684
+#: lib/belgo_web/live/plans/editor.ex:1762
+#: lib/belgo_web/live/plans/live.ex:435
 #, elixir-autogen, elixir-format
 msgid "Depth"
 msgstr ""
@@ -690,7 +693,7 @@ msgstr ""
 msgid "Description"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2141
+#: lib/belgo_web/live/plans/editor.ex:2118
 #, elixir-autogen, elixir-format
 msgid "Detach"
 msgstr ""
@@ -707,7 +710,7 @@ msgstr ""
 #: lib/belgo_web/live/discovery/section.ex:436
 #: lib/belgo_web/live/locations/show.ex:159
 #: lib/belgo_web/live/networks/show.ex:208
-#: lib/belgo_web/live/plans/editor.ex:1652
+#: lib/belgo_web/live/plans/editor.ex:1629
 #, elixir-autogen, elixir-format
 msgid "Device"
 msgstr ""
@@ -732,7 +735,7 @@ msgstr ""
 msgid "Devices placed here or in a sub-location are listed here."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1763
+#: lib/belgo_web/live/plans/editor.ex:1740
 #, elixir-autogen, elixir-format
 msgid "Dimensions (cm)"
 msgstr ""
@@ -777,38 +780,38 @@ msgstr ""
 msgid "Domain"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1388
+#: lib/belgo_web/live/plans/editor.ex:1365
 #, elixir-autogen, elixir-format
 msgid "Done"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1119
-#: lib/belgo_web/live/plans/editor.ex:1885
+#: lib/belgo_web/live/plans/editor.ex:1096
+#: lib/belgo_web/live/plans/editor.ex:1862
 #, elixir-autogen, elixir-format
 msgid "Door"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1878
+#: lib/belgo_web/live/plans/editor.ex:1855
 #, elixir-autogen, elixir-format
 msgid "Door or opening"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1096
+#: lib/belgo_web/live/plans/editor.ex:1073
 #, elixir-autogen, elixir-format
 msgid "Drag on the grid to draw a room (an exterior zone on the Exterior tab)."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1099
+#: lib/belgo_web/live/plans/editor.ex:1076
 #, elixir-autogen, elixir-format
 msgid "Drag to add a rectangle to the selected room, touching it (L-shaped rooms)."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:958
+#: lib/belgo_web/live/plans/editor.ex:935
 #, elixir-autogen, elixir-format
 msgid "Draw the terrain on the Exterior tab (Room tool) to see it in 3D."
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:313
+#: lib/belgo_web/live/plans/live.ex:521
 #, elixir-autogen, elixir-format
 msgid "Draw your home level by level, then place your devices in it."
 msgstr ""
@@ -828,7 +831,7 @@ msgstr ""
 msgid "Each entry is set on every device: it replaces the value of the same label, other entries are kept."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:995
+#: lib/belgo_web/live/plans/editor.ex:972
 #, elixir-autogen, elixir-format
 msgid "East"
 msgstr ""
@@ -838,7 +841,7 @@ msgstr ""
 #: lib/belgo_web/live/locations/index.ex:119
 #: lib/belgo_web/live/locations/show.ex:121
 #: lib/belgo_web/live/networks/show.ex:89
-#: lib/belgo_web/live/plans/live.ex:303
+#: lib/belgo_web/live/plans/live.ex:511
 #: lib/belgo_web/live/virtual_ips/index.ex:133
 #: lib/belgo_web/live/virtual_ips/show.ex:160
 #, elixir-autogen, elixir-format
@@ -848,8 +851,8 @@ msgstr ""
 #: lib/belgo_web/live/devices/form.ex:265
 #: lib/belgo_web/live/locations/form.ex:56
 #: lib/belgo_web/live/networks/form.ex:46
-#: lib/belgo_web/live/plans/editor.ex:85
-#: lib/belgo_web/live/plans/editor.ex:152
+#: lib/belgo_web/live/plans/editor.ex:84
+#: lib/belgo_web/live/plans/editor.ex:151
 #: lib/belgo_web/live/virtual_ips/form.ex:50
 #, elixir-autogen, elixir-format
 msgid "Edit %{name}"
@@ -860,12 +863,12 @@ msgstr ""
 msgid "Edit devices"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1231
+#: lib/belgo_web/live/plans/editor.ex:1208
 #, elixir-autogen, elixir-format
 msgid "Edited level"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1395
+#: lib/belgo_web/live/plans/editor.ex:1372
 #, elixir-autogen, elixir-format
 msgid "Elements"
 msgstr ""
@@ -885,30 +888,30 @@ msgstr ""
 msgid "Every machine and peripheral of the network."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1117
+#: lib/belgo_web/live/plans/editor.ex:1094
 #, elixir-autogen, elixir-format
 msgid "Extend"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1007
-#: lib/belgo_web/live/plans/editor.ex:1073
-#: lib/belgo_web/live/plans/editor.ex:1195
-#: lib/belgo_web/live/plans/live.ex:219
+#: lib/belgo_web/live/plans/editor.ex:984
+#: lib/belgo_web/live/plans/editor.ex:1050
+#: lib/belgo_web/live/plans/editor.ex:1172
+#: lib/belgo_web/live/plans/live.ex:298
 #, elixir-autogen, elixir-format
 msgid "Exterior"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:831
+#: lib/belgo_web/live/plans/editor.ex:822
 #, elixir-autogen, elixir-format
 msgid "Exterior %{number}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:419
+#: lib/belgo_web/live/plans/live.ex:638
 #, elixir-autogen, elixir-format
 msgid "Exterior walls"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:465
+#: lib/belgo_web/live/plans/editor.ex:456
 #, elixir-autogen, elixir-format
 msgid "Exterior zones have no walls."
 msgstr ""
@@ -929,27 +932,28 @@ msgstr ""
 msgid "First free address of %{range} (%{start} – %{end})."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1517
+#: lib/belgo_web/live/plans/editor.ex:1494
 #, elixir-autogen, elixir-format
 msgid "Fit"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1514
+#: lib/belgo_web/live/plans/editor.ex:1491
 #, elixir-autogen, elixir-format
 msgid "Fit (F)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:636
+#: lib/belgo_web/live/plans/editor.ex:627
 #, elixir-autogen, elixir-format
 msgid "Fix the plan before leaving: it is not saved."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1682
+#: lib/belgo_web/live/plans/editor.ex:1659
+#: lib/belgo_web/live/plans/live.ex:390
 #, elixir-autogen, elixir-format
 msgid "Floating"
 msgstr ""
 
-#: lib/belgo_web/format.ex:122
+#: lib/belgo_web/format.ex:123
 #: lib/belgo_web/live/discovery/section.ex:253
 #, elixir-autogen, elixir-format
 msgid "Floor"
@@ -965,23 +969,24 @@ msgstr ""
 msgid "Found from the address"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1001
+#: lib/belgo_web/live/plans/editor.ex:978
 #, elixir-autogen, elixir-format
 msgid "From the end (right)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1689
+#: lib/belgo_web/live/plans/editor.ex:1666
+#: lib/belgo_web/live/plans/live.ex:397
 #, elixir-autogen, elixir-format
 msgid "From the floor (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1000
+#: lib/belgo_web/live/plans/editor.ex:977
 #, elixir-autogen, elixir-format
 msgid "From the start (left)"
 msgstr ""
 
 #: lib/belgo_web/components/discovery.ex:68
-#: lib/belgo_web/format.ex:119
+#: lib/belgo_web/format.ex:120
 #: lib/belgo_web/live/discovery/section.ex:221
 #: lib/belgo_web/live/networks/form.ex:76
 #: lib/belgo_web/live/networks/index.ex:106
@@ -1011,22 +1016,22 @@ msgstr ""
 msgid "Give network devices a role (gateway, switch, access point), or claim them from Discovery."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:146
+#: lib/belgo_web/live/plans/editor.ex:145
 #, elixir-autogen, elixir-format
 msgid "Give the home a name."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1525
+#: lib/belgo_web/live/plans/editor.ex:1502
 #, elixir-autogen, elixir-format
 msgid "Grid"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:947
+#: lib/belgo_web/live/plans/editor.ex:924
 #, elixir-autogen, elixir-format
 msgid "Ground at %{height} m, %{percent} % up %{level}."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2082
+#: lib/belgo_web/live/plans/editor.ex:2059
 #, elixir-autogen, elixir-format
 msgid "Ground on"
 msgstr ""
@@ -1036,12 +1041,13 @@ msgstr ""
 msgid "Guests"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1708
+#: lib/belgo_web/live/plans/editor.ex:1685
+#: lib/belgo_web/live/plans/live.ex:436
 #, elixir-autogen, elixir-format
 msgid "Height"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1957
+#: lib/belgo_web/live/plans/editor.ex:1934
 #, elixir-autogen, elixir-format
 msgid "Height (cm)"
 msgstr ""
@@ -1051,13 +1057,13 @@ msgstr ""
 msgid "Here"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:385
+#: lib/belgo_web/live/plans/live.ex:596
 #, elixir-autogen, elixir-format
 msgid "Hide the path"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1340
-#: lib/belgo_web/live/plans/editor.ex:2041
+#: lib/belgo_web/live/plans/editor.ex:1317
+#: lib/belgo_web/live/plans/editor.ex:2018
 #, elixir-autogen, elixir-format
 msgid "Home"
 msgstr ""
@@ -1068,12 +1074,12 @@ msgstr ""
 msgid "Home Assistant"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:289
+#: lib/belgo_web/live/plans/live.ex:497
 #, elixir-autogen, elixir-format
 msgid "Homes"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1458
+#: lib/belgo_web/live/plans/editor.ex:1435
 #, elixir-autogen, elixir-format
 msgid "Horizontal"
 msgstr ""
@@ -1197,12 +1203,12 @@ msgstr ""
 msgid "It was claimed, or no provider reports it anymore."
 msgstr ""
 
-#: lib/belgo_web/format.ex:114
+#: lib/belgo_web/format.ex:115
 #, elixir-autogen, elixir-format
 msgid "Kea reservation"
 msgstr ""
 
-#: lib/belgo_web/format.ex:113
+#: lib/belgo_web/format.ex:114
 #, elixir-autogen, elixir-format
 msgid "Kea subnet"
 msgstr ""
@@ -1213,7 +1219,7 @@ msgstr ""
 msgid "Keep current"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2139
+#: lib/belgo_web/live/plans/editor.ex:2116
 #, elixir-autogen, elixir-format
 msgid "Keep the room where it is, no longer following its parent"
 msgstr ""
@@ -1238,7 +1244,7 @@ msgstr ""
 msgid "Label"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:417
+#: lib/belgo_web/live/plans/live.ex:636
 #, elixir-autogen, elixir-format
 msgid "Labels"
 msgstr ""
@@ -1253,13 +1259,13 @@ msgstr ""
 msgid "Last push: %{device}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:576
+#: lib/belgo_web/live/plans/editor.ex:567
 #, elixir-autogen, elixir-format
 msgid "Level"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1921
-#: lib/belgo_web/live/plans/live.ex:319
+#: lib/belgo_web/live/plans/editor.ex:1898
+#: lib/belgo_web/live/plans/live.ex:527
 #, elixir-autogen, elixir-format
 msgid "Levels"
 msgstr ""
@@ -1276,7 +1282,7 @@ msgstr ""
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:181
 #: lib/belgo_web/live/devices/form.ex:474
-#: lib/belgo_web/live/plans/editor.ex:1746
+#: lib/belgo_web/live/plans/editor.ex:1723
 #, elixir-autogen, elixir-format
 msgid "Location"
 msgstr ""
@@ -1344,7 +1350,7 @@ msgstr ""
 #: lib/belgo_web/live/networks/form.ex:64
 #: lib/belgo_web/live/networks/form.ex:127
 #: lib/belgo_web/live/networks/index.ex:76
-#: lib/belgo_web/live/plans/editor.ex:1734
+#: lib/belgo_web/live/plans/editor.ex:1711
 #: lib/belgo_web/live/sync/live.ex:52
 #: lib/belgo_web/live/sync/live.ex:104
 #: lib/belgo_web/live/virtual_ips/form.ex:88
@@ -1363,7 +1369,7 @@ msgstr ""
 msgid "Name, MAC, IP, DNS name, serial number…"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:418
+#: lib/belgo_web/live/plans/live.ex:637
 #, elixir-autogen, elixir-format
 msgid "Names"
 msgstr ""
@@ -1373,7 +1379,7 @@ msgstr ""
 msgid "Names resolving to the address of a known device, without belonging to it in Belgo: claim them as DNS names of an interface."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1858
+#: lib/belgo_web/live/plans/editor.ex:1835
 #, elixir-autogen, elixir-format
 msgid "Nearest wall"
 msgstr ""
@@ -1387,12 +1393,12 @@ msgstr ""
 msgid "Network"
 msgstr ""
 
-#: lib/belgo_web/format.ex:120
+#: lib/belgo_web/format.ex:121
 #, elixir-autogen, elixir-format
 msgid "Network device"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:381
+#: lib/belgo_web/live/plans/live.ex:592
 #, elixir-autogen, elixir-format
 msgid "Network path"
 msgstr ""
@@ -1410,7 +1416,7 @@ msgstr ""
 msgid "New device"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2005
+#: lib/belgo_web/live/plans/editor.ex:1982
 #, elixir-autogen, elixir-format
 msgid "New level"
 msgstr ""
@@ -1437,9 +1443,9 @@ msgstr ""
 msgid "New networks"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:78
-#: lib/belgo_web/live/plans/editor.ex:1335
-#: lib/belgo_web/live/plans/live.ex:306
+#: lib/belgo_web/live/plans/editor.ex:77
+#: lib/belgo_web/live/plans/editor.ex:1312
+#: lib/belgo_web/live/plans/live.ex:514
 #, elixir-autogen, elixir-format
 msgid "New plan"
 msgstr ""
@@ -1490,7 +1496,7 @@ msgstr ""
 msgid "No device matches"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1410
+#: lib/belgo_web/live/plans/editor.ex:1387
 #, elixir-autogen, elixir-format
 msgid "No device on the plan yet: use Place device (P)."
 msgstr ""
@@ -1515,13 +1521,13 @@ msgstr ""
 msgid "No interface yet. Interfaces carry the MAC and IP addresses synchronised to the network services."
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:393
+#: lib/belgo_web/live/plans/live.ex:604
 #, elixir-autogen, elixir-format
 msgid "No known uplink for this device."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1045
-#: lib/belgo_web/live/plans/editor.ex:2053
+#: lib/belgo_web/live/plans/editor.ex:1022
+#: lib/belgo_web/live/plans/editor.ex:2030
 #, elixir-autogen, elixir-format
 msgid "No location"
 msgstr ""
@@ -1556,7 +1562,7 @@ msgstr ""
 msgid "No open port"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:312
+#: lib/belgo_web/live/plans/live.ex:520
 #, elixir-autogen, elixir-format
 msgid "No plan yet"
 msgstr ""
@@ -1579,7 +1585,7 @@ msgstr ""
 #: lib/belgo_web/live/devices/form.ex:356
 #: lib/belgo_web/live/devices/form.ex:574
 #: lib/belgo_web/live/devices/form.ex:581
-#: lib/belgo_web/live/plans/editor.ex:1753
+#: lib/belgo_web/live/plans/editor.ex:1730
 #: lib/belgo_web/live/virtual_ips/form.ex:113
 #, elixir-autogen, elixir-format
 msgid "None"
@@ -1590,27 +1596,27 @@ msgstr ""
 msgid "None of the %{count} checked ports accepts connections."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:993
+#: lib/belgo_web/live/plans/editor.ex:970
 #, elixir-autogen, elixir-format
 msgid "North"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1824
+#: lib/belgo_web/live/plans/editor.ex:1801
 #, elixir-autogen, elixir-format
 msgid "Not anchored: this room does not follow the others."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2209
+#: lib/belgo_web/live/plans/editor.ex:2186
 #, elixir-autogen, elixir-format
 msgid "Not saved: %{reasons}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2087
+#: lib/belgo_web/live/plans/editor.ex:2064
 #, elixir-autogen, elixir-format
 msgid "Not set"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:938
+#: lib/belgo_web/live/plans/editor.ex:915
 #, elixir-autogen, elixir-format
 msgid "Not set: pick the level the outside ground is on and how high on it (0 % = its floor, 100 % = one level higher). The 3D view then shows the exterior zones at that height."
 msgstr ""
@@ -1659,12 +1665,12 @@ msgstr ""
 msgid "Number of ports"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2168
+#: lib/belgo_web/live/plans/editor.ex:2145
 #, elixir-autogen, elixir-format
 msgid "Offset (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1902
+#: lib/belgo_web/live/plans/editor.ex:1879
 #, elixir-autogen, elixir-format
 msgid "On the %{side} wall of %{room}"
 msgstr ""
@@ -1685,8 +1691,8 @@ msgstr ""
 msgid "Open ports"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1120
-#: lib/belgo_web/live/plans/editor.ex:1885
+#: lib/belgo_web/live/plans/editor.ex:1097
+#: lib/belgo_web/live/plans/editor.ex:1862
 #, elixir-autogen, elixir-format
 msgid "Opening"
 msgstr ""
@@ -1731,12 +1737,12 @@ msgstr ""
 msgid "Path"
 msgstr ""
 
-#: lib/belgo_web/format.ex:117
+#: lib/belgo_web/format.ex:118
 #, elixir-autogen, elixir-format
 msgid "Persistent client"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:535
+#: lib/belgo_web/live/plans/editor.ex:526
 #, elixir-autogen, elixir-format
 msgid "Pick a wall of each room."
 msgstr ""
@@ -1747,17 +1753,17 @@ msgstr ""
 msgid "Pinging…"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1631
+#: lib/belgo_web/live/plans/editor.ex:1608
 #, elixir-autogen, elixir-format
 msgid "Place a device"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1121
+#: lib/belgo_web/live/plans/editor.ex:1098
 #, elixir-autogen, elixir-format
 msgid "Place device"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1408
+#: lib/belgo_web/live/plans/editor.ex:1385
 #, elixir-autogen, elixir-format
 msgid "Placed devices"
 msgstr ""
@@ -1766,13 +1772,14 @@ msgstr ""
 #: lib/belgo_web/live/devices/form.ex:456
 #: lib/belgo_web/live/devices/index.ex:261
 #: lib/belgo_web/live/devices/show.ex:342
+#: lib/belgo_web/live/plans/live.ex:375
 #, elixir-autogen, elixir-format
 msgid "Placement"
 msgstr ""
 
 #: lib/belgo_web/components/plan_drawing.ex:116
-#: lib/belgo_web/live/plans/live.ex:39
-#: lib/belgo_web/live/plans/live.ex:286
+#: lib/belgo_web/live/plans/live.ex:51
+#: lib/belgo_web/live/plans/live.ex:494
 #: lib/belgo_web/navigation.ex:62
 #, elixir-autogen, elixir-format
 msgid "Plan"
@@ -1871,14 +1878,14 @@ msgstr ""
 msgid "Read only"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1488
+#: lib/belgo_web/live/plans/editor.ex:1465
 #, elixir-autogen, elixir-format
 msgid "Redo (Ctrl+Shift+Z)"
 msgstr ""
 
 #: lib/belgo_web/components/discovery.ex:51
-#: lib/belgo_web/live/plans/editor.ex:1942
-#: lib/belgo_web/live/plans/editor.ex:2013
+#: lib/belgo_web/live/plans/editor.ex:1919
+#: lib/belgo_web/live/plans/editor.ex:1990
 #, elixir-autogen, elixir-format
 msgid "Reference"
 msgstr ""
@@ -1904,13 +1911,13 @@ msgstr ""
 msgid "Remove"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1623
-#: lib/belgo_web/live/plans/editor.ex:1725
+#: lib/belgo_web/live/plans/editor.ex:1600
+#: lib/belgo_web/live/plans/editor.ex:1702
 #, elixir-autogen, elixir-format
 msgid "Remove from plan"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1809
+#: lib/belgo_web/live/plans/editor.ex:1786
 #, elixir-autogen, elixir-format
 msgid "Remove this rectangle"
 msgstr ""
@@ -1938,13 +1945,13 @@ msgstr ""
 msgid "Role in the network"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1116
-#: lib/belgo_web/live/plans/editor.ex:1730
+#: lib/belgo_web/live/plans/editor.ex:1093
+#: lib/belgo_web/live/plans/editor.ex:1707
 #, elixir-autogen, elixir-format
 msgid "Room"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:830
+#: lib/belgo_web/live/plans/editor.ex:821
 #, elixir-autogen, elixir-format
 msgid "Room %{number}"
 msgstr ""
@@ -1975,12 +1982,12 @@ msgstr ""
 msgid "Save"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2204
+#: lib/belgo_web/live/plans/editor.ex:2181
 #, elixir-autogen, elixir-format
 msgid "Save now"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2198
+#: lib/belgo_web/live/plans/editor.ex:2175
 #, elixir-autogen, elixir-format
 msgid "Saved"
 msgstr ""
@@ -1990,7 +1997,7 @@ msgstr ""
 msgid "Saved as"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2197
+#: lib/belgo_web/live/plans/editor.ex:2174
 #, elixir-autogen, elixir-format
 msgid "Saved at %{time}"
 msgstr ""
@@ -2026,7 +2033,7 @@ msgstr ""
 msgid "Seen in"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1115
+#: lib/belgo_web/live/plans/editor.ex:1092
 #, elixir-autogen, elixir-format
 msgid "Select"
 msgstr ""
@@ -2036,7 +2043,7 @@ msgstr ""
 msgid "Select %{name}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:392
+#: lib/belgo_web/live/plans/editor.ex:383
 #, elixir-autogen, elixir-format
 msgid "Select a room first."
 msgstr ""
@@ -2061,44 +2068,44 @@ msgstr ""
 msgid "Service"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1615
+#: lib/belgo_web/live/plans/editor.ex:1592
 #, elixir-autogen, elixir-format
 msgid "Set location"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1613
+#: lib/belgo_web/live/plans/editor.ex:1590
 #, elixir-autogen, elixir-format
 msgid "Set the device location to the room's location"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1258
-#: lib/belgo_web/live/plans/editor.ex:1276
-#: lib/belgo_web/live/plans/editor.ex:1295
+#: lib/belgo_web/live/plans/editor.ex:1235
+#: lib/belgo_web/live/plans/editor.ex:1253
+#: lib/belgo_web/live/plans/editor.ex:1272
 #, elixir-autogen, elixir-format
 msgid "Show or hide"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:417
+#: lib/belgo_web/live/plans/live.ex:636
 #, elixir-autogen, elixir-format
 msgid "Show or hide the device labels"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:419
+#: lib/belgo_web/live/plans/live.ex:638
 #, elixir-autogen, elixir-format
 msgid "Show or hide the exterior walls"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:418
+#: lib/belgo_web/live/plans/live.ex:637
 #, elixir-autogen, elixir-format
 msgid "Show or hide the room names on the floors"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1232
+#: lib/belgo_web/live/plans/editor.ex:1209
 #, elixir-autogen, elixir-format
 msgid "Show under the edited level"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:396
+#: lib/belgo_web/live/plans/live.ex:607
 #, elixir-autogen, elixir-format
 msgid "Solid: wired · dashed: Wi-Fi · grey dashed: through devices not on the plan"
 msgstr ""
@@ -2108,17 +2115,17 @@ msgstr ""
 msgid "Source"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:994
+#: lib/belgo_web/live/plans/editor.ex:971
 #, elixir-autogen, elixir-format
 msgid "South"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1118
+#: lib/belgo_web/live/plans/editor.ex:1095
 #, elixir-autogen, elixir-format
 msgid "Split"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2033
+#: lib/belgo_web/live/plans/editor.ex:2010
 #, elixir-autogen, elixir-format
 msgid "Stacked: copy the base level's footprint"
 msgstr ""
@@ -2128,12 +2135,12 @@ msgstr ""
 msgid "Start with your home, then add rooms inside it."
 msgstr ""
 
-#: lib/belgo_web/format.ex:108
+#: lib/belgo_web/format.ex:109
 #, elixir-autogen, elixir-format
 msgid "Static"
 msgstr ""
 
-#: lib/belgo_web/format.ex:135
+#: lib/belgo_web/format.ex:136
 #, elixir-autogen, elixir-format
 msgid "Still used by: %{names}"
 msgstr ""
@@ -2197,7 +2204,7 @@ msgstr ""
 msgid "The files are invalid, nothing changed:"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1646
+#: lib/belgo_web/live/plans/editor.ex:1623
 #, elixir-autogen, elixir-format
 msgid "Then click in a room. Devices already on the plan are listed under Elements: drag them to move them."
 msgstr ""
@@ -2233,7 +2240,7 @@ msgstr ""
 msgid "This network no longer exists."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:92
+#: lib/belgo_web/live/plans/editor.ex:91
 #, elixir-autogen, elixir-format
 msgid "This plan no longer exists."
 msgstr ""
@@ -2244,12 +2251,12 @@ msgstr ""
 msgid "This record no longer exists."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:306
+#: lib/belgo_web/live/plans/editor.ex:297
 #, elixir-autogen, elixir-format
 msgid "This room has no location."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1834
+#: lib/belgo_web/live/plans/editor.ex:1811
 #, elixir-autogen, elixir-format
 msgid "This room's wall"
 msgstr ""
@@ -2269,12 +2276,12 @@ msgstr ""
 msgid "Unable to write the inventory files: %{reason}"
 msgstr ""
 
-#: lib/belgo_web/format.ex:115
+#: lib/belgo_web/format.ex:116
 #, elixir-autogen, elixir-format
 msgid "Unbound override"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1478
+#: lib/belgo_web/live/plans/editor.ex:1455
 #, elixir-autogen, elixir-format
 msgid "Undo (Ctrl+Z)"
 msgstr ""
@@ -2303,7 +2310,7 @@ msgstr ""
 msgid "Unplaced"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2202
+#: lib/belgo_web/live/plans/editor.ex:2179
 #, elixir-autogen, elixir-format
 msgid "Unsaved changes…"
 msgstr ""
@@ -2351,12 +2358,12 @@ msgstr ""
 msgid "Value"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1458
+#: lib/belgo_web/live/plans/editor.ex:1435
 #, elixir-autogen, elixir-format
 msgid "Vertical"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:350
+#: lib/belgo_web/live/plans/live.ex:558
 #, elixir-autogen, elixir-format
 msgid "View"
 msgstr ""
@@ -2383,23 +2390,24 @@ msgstr ""
 msgid "Wake"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1681
+#: lib/belgo_web/live/plans/editor.ex:1658
+#: lib/belgo_web/live/plans/live.ex:389
 #, elixir-autogen, elixir-format
 msgid "Wall"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1969
+#: lib/belgo_web/live/plans/editor.ex:1946
 #, elixir-autogen, elixir-format
 msgid "Walls (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1585
-#: lib/belgo_web/live/plans/live.ex:445
+#: lib/belgo_web/live/plans/editor.ex:1562
+#: lib/belgo_web/live/plans/live.ex:691
 #, elixir-autogen, elixir-format
 msgid "Warnings"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:996
+#: lib/belgo_web/live/plans/editor.ex:973
 #, elixir-autogen, elixir-format
 msgid "West"
 msgstr ""
@@ -2414,7 +2422,7 @@ msgstr ""
 msgid "What your providers know and Belgo does not. Nothing is saved until you claim it."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1555
+#: lib/belgo_web/live/plans/editor.ex:1532
 #, elixir-autogen, elixir-format
 msgid "Wheel: zoom · Space + drag: pan"
 msgstr ""
@@ -2424,7 +2432,7 @@ msgstr ""
 msgid "Where"
 msgstr ""
 
-#: lib/belgo_web/live/plans/live.ex:287
+#: lib/belgo_web/live/plans/live.ex:495
 #, elixir-autogen, elixir-format
 msgid "Where devices physically are, level by level."
 msgstr ""
@@ -2444,13 +2452,14 @@ msgstr ""
 msgid "Wi-Fi"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1706
-#: lib/belgo_web/live/plans/editor.ex:1784
+#: lib/belgo_web/live/plans/editor.ex:1683
+#: lib/belgo_web/live/plans/editor.ex:1761
+#: lib/belgo_web/live/plans/live.ex:434
 #, elixir-autogen, elixir-format
 msgid "Width"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1890
+#: lib/belgo_web/live/plans/editor.ex:1867
 #, elixir-autogen, elixir-format
 msgid "Width (cm)"
 msgstr ""
@@ -2475,12 +2484,12 @@ msgstr ""
 msgid "Your homelab at a glance."
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1498
+#: lib/belgo_web/live/plans/editor.ex:1475
 #, elixir-autogen, elixir-format
 msgid "Zoom in (+)"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1506
+#: lib/belgo_web/live/plans/editor.ex:1483
 #, elixir-autogen, elixir-format
 msgid "Zoom out (-)"
 msgstr ""
@@ -2495,7 +2504,7 @@ msgstr ""
 msgid "answers"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:2095
+#: lib/belgo_web/live/plans/editor.ex:2072
 #, elixir-autogen, elixir-format
 msgid "at (% of its height)"
 msgstr ""
@@ -2520,7 +2529,7 @@ msgstr ""
 msgid "on %{hosts}"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1303
+#: lib/belgo_web/live/plans/editor.ex:1280
 #, elixir-autogen, elixir-format
 msgid "on %{parent}"
 msgstr ""
@@ -2582,7 +2591,8 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: lib/belgo_web/live/plans/editor.ex:1680
+#: lib/belgo_web/live/plans/editor.ex:1657
+#: lib/belgo_web/live/plans/live.ex:388
 #, elixir-autogen, elixir-format
 msgctxt "plan anchor"
 msgid "Floor"
@@ -2773,4 +2783,40 @@ msgstr ""
 #: lib/belgo_web/live/devices/show.ex:401
 #, elixir-autogen, elixir-format
 msgid "Wake-on-LAN is turned off in providers.yaml."
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:423
+#, elixir-autogen, elixir-format
+msgid "From the room's top left corner on the 2D plan; a wall device snaps onto the nearest wall."
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:409
+#, elixir-autogen, elixir-format
+msgid "Offset in the room (cm)"
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:664
+#, elixir-autogen, elixir-format
+msgid "Full width"
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:663
+#, elixir-autogen, elixir-format
+msgid "Use the whole width of the page"
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:655
+#, elixir-autogen, elixir-format
+msgid "Boxes"
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:650
+#: lib/belgo_web/live/plans/live.ex:654
+#, elixir-autogen, elixir-format
+msgid "Bubbles"
+msgstr ""
+
+#: lib/belgo_web/live/plans/live.ex:647
+#, elixir-autogen, elixir-format
+msgid "Show or hide the device bubbles and boxes"
 msgstr ""

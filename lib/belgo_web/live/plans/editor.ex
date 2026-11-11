@@ -28,9 +28,8 @@ defmodule BelgoWeb.Plans.Editor do
   alias Belgo.Plans.Editing
   alias Belgo.Plans.Ground
   alias Belgo.Plans.Opening
-  alias Belgo.Plans.Placement
+  alias Belgo.Plans.PlacementForm
   alias Belgo.Plans.Plan
-  alias Belgo.Plans.Shape
   alias Belgo.Plans.WallPosition
   alias Belgo.Plans.Zone
   alias Belgo.Topology.Physical
@@ -255,15 +254,7 @@ defmodule BelgoWeb.Plans.Editor do
         %{"placement" => params},
         %{assigns: %{selected: {:placement, device_id}}} = socket
       ) do
-    attributes =
-      %{}
-      |> put_present(
-        :anchor,
-        Enum.find(Placement.anchors(), &(Atom.to_string(&1) == params["anchor"]))
-      )
-      |> put_present(:height, parse_integer(params["height"]))
-      |> put_shape(params["shape"])
-
+    attributes = PlacementForm.attributes(socket.assigns.draft, device_id, params)
     socket = change(socket, Editing.update_placement(socket.assigns.draft, device_id, attributes))
     {:noreply, remember_shape_input(socket, device_id, params["shape"])}
   end
@@ -845,20 +836,6 @@ defmodule BelgoWeb.Plans.Editor do
   defp blank_to_nil(value), do: String.trim(value)
 
   defp blank_to_default(value, default), do: blank_to_nil(value) || default
-
-  # A box once its three dimensions are typed, a point once they are all cleared,
-  # unchanged while it is being typed.
-  defp put_shape(attributes, %{} = params) do
-    dimensions = Map.new(~w(width depth height)a, &{&1, parse_positive(params[to_string(&1)])})
-
-    cond do
-      Enum.all?(Map.values(dimensions), &is_nil/1) -> Map.put(attributes, :shape, nil)
-      Enum.any?(Map.values(dimensions), &is_nil/1) -> attributes
-      true -> Map.put(attributes, :shape, struct(Shape, dimensions))
-    end
-  end
-
-  defp put_shape(attributes, _params), do: attributes
 
   # The box fields as typed: a box being typed (not all three dimensions yet) is not
   # applied, so re-rendering from the placement would empty the fields already

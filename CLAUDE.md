@@ -634,6 +634,19 @@ first addressed interface only, other interfaces are named through their
   window). Editor box fields: a partial box is not applied, so the typed values are
   kept in `shape_input` (shown while the placement's shape is unchanged), else the
   re-render emptied the fields already filled (owner report).
+- 3D bubbles / boxes (owner): a "Bubbles" `<details data-toggle-menu>` next to the
+  toggles holds `menu_toggle`s `markers` and `boxes` (same `[data-toggle]` storage);
+  the viewer hides their `material` only (labels stay, hidden ones not pickable).
+- 3D full width (owner): bottom-right `[data-wide-toggle]` in `#plan-3d`, handled by
+  the hook (stored as `wide` in `belgo:plan3d:<id>`) → `set-wide` → `Layouts.app wide`.
+- 3D selection (owner): while a path is shown, devices other than the selected one
+  and the path hops fade (`dimOthers` in the viewer, labels `[data-dimmed]`). A
+  *Placement* panel (`#plan-placement`) sits under *Network path*: anchor, height,
+  offset in the room (from the corner of its rectangles = top left in 2D, whatever
+  the stored frame) and box, via `Plans.PlacementForm` (pure, also parses the
+  editor's form) and `Editing.update_placement/3`, saved to `plans.yaml` on each
+  change (no draft); typed fields are kept while they still lead to the stored
+  placement (partial box).
 - Plan kind filter (owner): the 3D view has the device list's kind boxes
   (`Components.Inventory.kind_filter/1` + `kind_facets/2`, shared with Devices;
   `DeviceFilter` with `kinds` only, `?kinds=a,b`, kept by level / view links).

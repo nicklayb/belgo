@@ -5,14 +5,18 @@
 // A click on a device sends `select-device` (an empty id for a click elsewhere); the
 // server answers with its network path in `data-network-path`, drawn in the view.
 // The camera and the toggles (`[data-toggle]`: facade = exterior walls, labels =
-// device labels, names = room names on the floors) are kept per plan
-// (`data-plan-id`) in localStorage, so the view comes back as it was left.
+// device labels, names = room names on the floors, markers / boxes = device bubbles
+// and boxes, grouped in the `[data-toggle-menu]` menu) are kept per plan
+// (`data-plan-id`) in localStorage, so the view comes back as it was left; so is
+// the full width choice (`[data-wide-toggle]`, sent to the server as `set-wide`).
 const STORAGE_PREFIX = "belgo:plan3d:"
 const SAVE_DELAY_MILLISECONDS = 300
 const TOGGLES = {
   facade: (viewer, visible) => viewer.showFacade(visible),
   labels: (viewer, visible) => viewer.showDeviceLabels(visible),
-  names: (viewer, visible) => viewer.showRoomNames(visible)
+  names: (viewer, visible) => viewer.showRoomNames(visible),
+  markers: (viewer, visible) => viewer.showMarkers(visible),
+  boxes: (viewer, visible) => viewer.showBoxes(visible)
 }
 
 export default {
@@ -24,6 +28,14 @@ export default {
       button.addEventListener("click", () => this.toggle(button.dataset.toggle))
     })
     this.applyToggles()
+    this.toggleMenus = [...this.el.querySelectorAll("[data-toggle-menu]")]
+    this.closeMenus = event => {
+      this.toggleMenus.forEach(menu => { if (!menu.contains(event.target)) menu.open = false })
+    }
+    document.addEventListener("pointerdown", this.closeMenus, true)
+    this.wideToggle = this.el.querySelector("[data-wide-toggle]")
+    this.wideToggle?.addEventListener("click", () => this.setWide(!this.stored.wide))
+    if (this.stored.wide === true) this.setWide(true)
 
     import("../plan3d/viewer").then(({createViewer}) => {
       if (!this.el.isConnected) return
@@ -43,6 +55,7 @@ export default {
   },
 
   destroyed() {
+    document.removeEventListener("pointerdown", this.closeMenus, true)
     clearTimeout(this.saveTimer)
     this.save()
     this.viewer?.dispose()
@@ -66,6 +79,14 @@ export default {
     this.stored.hidden = {...this.stored.hidden, [key]: hidden}
     if (this.viewer) TOGGLES[key](this.viewer, !hidden)
     this.applyToggles()
+    this.save()
+  },
+
+  // The canvas follows through the viewer's ResizeObserver.
+  setWide(wide) {
+    this.stored.wide = wide
+    this.wideToggle?.setAttribute("aria-pressed", String(wide))
+    this.pushEvent("set-wide", {wide})
     this.save()
   },
 
