@@ -54,6 +54,30 @@ defmodule Belgo.Providers.OpnsenseTest do
              Translate.reservations([%{row | "subnet" => "10.0.0.0/24"}], [])
   end
 
+  test "translates active leases only, resolving their subnet by address" do
+    assert [moe, barney] = Translate.leases(OpnsenseClient.leases(), OpnsenseClient.subnets())
+
+    assert %Observation{
+             source: :kea_lease,
+             mac: "02:00:00:00:05:01",
+             ip: "10.0.0.50",
+             hostname: "moe-pc",
+             cidr: "10.0.0.0/24"
+           } = moe
+
+    assert %Observation{hostname: "barney-laptop", cidr: "10.0.5.0/24"} = barney
+  end
+
+  test "a lease without known subnet or with a blank hostname is still a device" do
+    assert [%Observation{ip: "192.168.1.20", cidr: nil, hostname: nil}] =
+             Translate.leases(
+               [
+                 %{"address" => "192.168.1.20", "hwaddr" => "02:00:00:00:08:01", "hostname" => ""}
+               ],
+               OpnsenseClient.subnets()
+             )
+  end
+
   test "keeps only address host overrides" do
     observations = Translate.host_overrides(OpnsenseClient.host_overrides())
 
@@ -71,7 +95,13 @@ defmodule Belgo.Providers.OpnsenseTest do
   test "discover/1 reports every observation" do
     assert {:ok, %Report{provider: :opnsense, counts: counts}} = Opnsense.discover(config())
 
-    assert %{kea_subnet: 2, kea_reservation: 4, unbound_host_override: 4, opnsense_gateway: 2} ==
+    assert %{
+             kea_subnet: 2,
+             kea_reservation: 4,
+             kea_lease: 2,
+             unbound_host_override: 4,
+             opnsense_gateway: 2
+           } ==
              counts
   end
 

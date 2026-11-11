@@ -8,6 +8,8 @@ defmodule Belgo.Providers.Opnsense.Translate do
 
   @provider :opnsense
   @address_record_types ["A", "AAAA"]
+  # Kea lease states: 0 default (active), 1 declined, 2 expired-reclaimed.
+  @active_lease_state 0
 
   @doc """
   Kea subnets become network observations. The first pool (`start - end`) gives the
@@ -97,6 +99,56 @@ defmodule Belgo.Providers.Opnsense.Translate do
         description: blank_to_nil(row["description"])
       }
     end)
+  end
+
+  @doc """
+  Active Kea leases (`/api/kea/leases4/search`) become device observations, so a
+  device without reservation still shows up. Rows give `address`, `hwaddr`,
+  `hostname` and `state` (Kea's, only `0` = active is kept, verified in
+  `get_kea_leases.py`); the subnet is the Kea subnet holding the address.
+  """
+  @spec leases([map()], [map()]) :: [Observation.t()]
+  def leases(rows, subnet_rows) do
+    cidrs =
+      subnet_rows
+      |> Enum.map(&normalize_cidr(&1["subnet"]))
+      |> Enum.reject(&is_nil/1)
+
+    rows
+    |> Enum.filter(&(active_lease?(&1) and normalize_ip(&1["address"]) != nil))
+    |> Enum.map(fn row ->
+      address = normalize_ip(row["address"])
+
+      %Observation{
+        provider: @provider,
+        source: :kea_lease,
+        kind: :device,
+        reference: address,
+        mac: normalize_mac(row["hwaddr"]),
+        ip: address,
+        hostname:
+          row["hostname"]
+          |> blank_to_nil()
+          |> downcase(),
+        cidr: Enum.find(cidrs, &cidr_contains?(&1, address))
+      }
+    end)
+  end
+
+  defp active_lease?(%{"state" => state}) when is_integer(state), do: state == @active_lease_state
+
+  defp active_lease?(%{"state" => state}) when is_binary(state),
+    do: String.trim(state) == Integer.to_string(@active_lease_state)
+
+  defp active_lease?(_row), do: true
+
+  defp cidr_contains?(cidr, address) do
+    with {:ok, parsed_cidr} <- Cidr.parse(cidr),
+         {:ok, parsed_address} <- IpAddress.parse(address) do
+      Cidr.contains?(parsed_cidr, parsed_address)
+    else
+      _invalid -> false
+    end
   end
 
   @doc """

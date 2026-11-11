@@ -16,6 +16,7 @@ defmodule Belgo.Fixtures.OpnsenseClient do
 
   def search(_config, "/api/kea/dhcpv4/search_subnet"), do: {:ok, subnets()}
   def search(_config, "/api/kea/dhcpv4/search_reservation"), do: {:ok, reservations()}
+  def search(_config, "/api/kea/leases4/search"), do: {:ok, leases()}
   def search(_config, "/api/unbound/settings/search_host_override"), do: {:ok, host_overrides()}
   def search(_config, "/api/interfaces/overview/interfaces_info"), do: {:ok, interfaces()}
 
@@ -80,6 +81,18 @@ defmodule Belgo.Fixtures.OpnsenseClient do
     ]
   end
 
+  @doc """
+  Kea leases: Moe (his reservation), Barney (dynamic, unknown, Shelbyville) and an
+  expired-reclaimed lease of Duffman (state 2, dropped).
+  """
+  def leases do
+    [
+      lease("10.0.0.50", "02:00:00:00:05:01", "moe-pc", 0),
+      lease("10.0.5.150", "02:00:00:00:07:01", "Barney-Laptop", 0),
+      lease("10.0.5.151", "02:00:00:00:07:02", "duffman", 2)
+    ]
+  end
+
   @doc "Unbound host overrides joining reservations by IP address."
   def host_overrides do
     [
@@ -100,6 +113,17 @@ defmodule Belgo.Fixtures.OpnsenseClient do
       "ip_address" => ip,
       "hostname" => hostname,
       "description" => description
+    }
+  end
+
+  defp lease(address, mac, hostname, state) do
+    %{
+      "address" => address,
+      "hwaddr" => mac,
+      "hostname" => hostname,
+      "state" => state,
+      "lease_type" => "dynamic",
+      "if_descr" => "LAN"
     }
   end
 

@@ -353,7 +353,7 @@ msgstr "Ajouté aux noms d'hôte dans les enregistrements DNS."
 msgid "Applied"
 msgstr "Appliqué"
 
-#: lib/belgo_web/format.ex:124
+#: lib/belgo_web/format.ex:125
 #, elixir-autogen, elixir-format
 msgid "Area"
 msgstr "Zone"
@@ -379,7 +379,7 @@ msgstr "Rattacher à un appareil existant"
 msgid "Attaching…"
 msgstr "Rattachement…"
 
-#: lib/belgo_web/format.ex:119
+#: lib/belgo_web/format.ex:120
 #, elixir-autogen, elixir-format
 msgid "Auto client"
 msgstr "Client automatique"
@@ -545,7 +545,7 @@ msgstr "Cliquez sur un mur pour ajouter une ouverture (sans porte)."
 msgid "Click to ping again."
 msgstr "Cliquez pour relancer le ping."
 
-#: lib/belgo_web/format.ex:122
+#: lib/belgo_web/format.ex:123
 #: lib/belgo_web/live/devices/show.ex:485
 #, elixir-autogen, elixir-format
 msgid "Client"
@@ -632,7 +632,7 @@ msgstr "Noms DNS"
 msgid "DNS records"
 msgstr "Enregistrements DNS"
 
-#: lib/belgo_web/format.ex:117
+#: lib/belgo_web/format.ex:118
 #, elixir-autogen, elixir-format
 msgid "DNS rewrite"
 msgstr "Réécriture DNS"
@@ -953,7 +953,7 @@ msgstr "Corrigez le plan avant de quitter : il n'est pas enregistré."
 msgid "Floating"
 msgstr "Flottant"
 
-#: lib/belgo_web/format.ex:123
+#: lib/belgo_web/format.ex:124
 #: lib/belgo_web/live/discovery/section.ex:253
 #, elixir-autogen, elixir-format
 msgid "Floor"
@@ -986,7 +986,7 @@ msgid "From the start (left)"
 msgstr "Depuis le début (gauche)"
 
 #: lib/belgo_web/components/discovery.ex:68
-#: lib/belgo_web/format.ex:120
+#: lib/belgo_web/format.ex:121
 #: lib/belgo_web/live/discovery/section.ex:221
 #: lib/belgo_web/live/networks/form.ex:76
 #: lib/belgo_web/live/networks/index.ex:106
@@ -1393,7 +1393,7 @@ msgstr "Mur le plus proche"
 msgid "Network"
 msgstr "Réseau"
 
-#: lib/belgo_web/format.ex:121
+#: lib/belgo_web/format.ex:122
 #, elixir-autogen, elixir-format
 msgid "Network device"
 msgstr "Appareil réseau"
@@ -1737,7 +1737,7 @@ msgstr "Échec partiel"
 msgid "Path"
 msgstr "Chemin"
 
-#: lib/belgo_web/format.ex:118
+#: lib/belgo_web/format.ex:119
 #, elixir-autogen, elixir-format
 msgid "Persistent client"
 msgstr "Client persistant"
@@ -2140,7 +2140,7 @@ msgstr "Commencez par votre maison, puis ajoutez-y des pièces."
 msgid "Static"
 msgstr "Statique"
 
-#: lib/belgo_web/format.ex:136
+#: lib/belgo_web/format.ex:137
 #, elixir-autogen, elixir-format
 msgid "Still used by: %{names}"
 msgstr "Encore utilisé par : %{names}"
@@ -2276,7 +2276,7 @@ msgstr "Impossible d'envoyer le paquet magique : %{reason}"
 msgid "Unable to write the inventory files: %{reason}"
 msgstr "Impossible d'écrire les fichiers d'inventaire : %{reason}"
 
-#: lib/belgo_web/format.ex:116
+#: lib/belgo_web/format.ex:117
 #, elixir-autogen, elixir-format
 msgid "Unbound override"
 msgstr "Host override Unbound"
@@ -2820,3 +2820,8 @@ msgstr "Bulles"
 #, elixir-autogen, elixir-format
 msgid "Show or hide the device bubbles and boxes"
 msgstr "Afficher ou masquer les bulles et les boîtes des appareils"
+
+#: lib/belgo_web/format.ex:116
+#, elixir-autogen, elixir-format
+msgid "Kea lease"
+msgstr "Bail Kea"

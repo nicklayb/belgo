@@ -197,6 +197,16 @@ claim forms (`/devices/new?discovered=…`, `/networks/new?discovered=…`).
   duplicates instead of updating (cleanup is manual, Belgo never deletes). Unbound aliases
   appear as `_children` of host rows (shape not verified, parsed defensively).
   The pull was validated against the owner's real instance (read-only token).
+- Kea leases (owner: a wired device without reservation nor DNS query was invisible):
+  `POST /api/kea/leases4/search` (`Leases4Controller`, same ACL "Services: DHCP:
+  Kea(v4)" as `dhcpv4`; rows from `get_kea_leases.py`: `address`, `hwaddr`,
+  `hostname`, `state` 0 active / 1 declined / 2 expired-reclaimed, `lease_type`).
+  `Translate.leases/2` keeps active ones as `:kea_lease` (cidr = the Kea subnet
+  holding the address); part of the Kea pull (a failure fails Kea). Reservations are
+  still read (divergences, pushes). A lease is a live source (`@live_address_sources`)
+  for the stale address divergence, skipped when the lease is in another subnet than
+  the interface IP (lease left on a former VLAN). Verified in the sources (master),
+  **not on the owner's instance**.
 
 ## Pushing
 

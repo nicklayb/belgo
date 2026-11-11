@@ -70,14 +70,14 @@ defmodule Belgo.Discovery.ServerTest do
         Discovery.refresh(server)
         state = await_pull()
 
-        assert ["moe-pc", "nelson-iphone"] ==
+        assert ["barney-laptop", "moe-pc", "nelson-iphone"] ==
                  Enum.map(state.correlation.unknown_devices, & &1.hostname)
       end)
 
     assert log =~ "[debug] [discovery] [opnsense] started"
 
     assert log =~
-             ~r/\[info\] \[discovery\] \[opnsense\] completed in \d+ms: 4 kea_reservation, 2 kea_subnet, 2 opnsense_gateway, 4 unbound_host_override/
+             ~r/\[info\] \[discovery\] \[opnsense\] completed in \d+ms: 2 kea_lease, 4 kea_reservation, 2 kea_subnet, 2 opnsense_gateway, 4 unbound_host_override/
   end
 
   test "pings the unknown devices after a pull", context do

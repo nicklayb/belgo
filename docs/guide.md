@@ -72,7 +72,7 @@ addresses) are listed apart, in *Out of DHCP*.
 
 | Provider | Reads | Writes | Secrets |
 | --- | --- | --- | --- |
-| OPNsense | Kea DHCPv4 subnets and reservations, Unbound host overrides | Kea reservations, Unbound host overrides; wakes devices (`os-wol`) | `BELGO_OPNSENSE_API_KEY`, `BELGO_OPNSENSE_API_SECRET` |
+| OPNsense | Kea DHCPv4 subnets, reservations and active leases, Unbound host overrides | Kea reservations, Unbound host overrides; wakes devices (`os-wol`) | `BELGO_OPNSENSE_API_KEY`, `BELGO_OPNSENSE_API_SECRET` |
 | AdGuard Home | Persistent and automatic clients (joined by MAC / IP), DNS rewrites | Persistent clients | `BELGO_ADGUARD_USERNAME`, `BELGO_ADGUARD_PASSWORD` |
 | Omada (Open API) | Devices (gateway, switches, APs and their uplink), connected clients (AP / switch port, Wi-Fi, Lock to AP) | Client names | `BELGO_OMADA_CLIENT_ID`, `BELGO_OMADA_CLIENT_SECRET` |
 | Home Assistant | Floors and areas (suggested as locations) | Nothing (read only) | `BELGO_HOME_ASSISTANT_TOKEN` |

@@ -33,6 +33,7 @@ defmodule Belgo.Discovery.Correlation do
   alias Belgo.Inventory.Network
   alias Belgo.Inventory.Snapshot
   alias Belgo.Inventory.VirtualIp
+  alias Belgo.Network.Cidr
   alias Belgo.Network.IpAddress
   alias Belgo.Sync.DesiredState
   alias Belgo.Sync.DesiredState.DnsRecord
@@ -500,25 +501,24 @@ defmodule Belgo.Discovery.Correlation do
     name_divergences ++ stale_address_divergences(observation, context)
   end
 
+  defp observation_divergences(%Observation{source: :kea_lease} = observation, _devices, context),
+    do: stale_address_divergences(observation, context)
+
   defp observation_divergences(_observation, _devices, _context), do: []
 
-  @live_address_sources [:omada_client]
+  @live_address_sources [:omada_client, :kea_lease]
 
-  # A client seen right now (Omada) at another address than the one Belgo assigns to
-  # its interface: the device still holds its old lease, a restart (or lease renewal)
-  # makes it take the new one. Dynamic interfaces have no assigned address.
+  # A client seen right now (Omada client, active Kea lease) at another address than
+  # the one Belgo assigns to its interface: the device still holds its old lease, a
+  # restart (or lease renewal) makes it take the new one. Dynamic interfaces have no
+  # assigned address. An observation in another subnet (a lease left on a former
+  # VLAN) says nothing about this interface.
   defp stale_address_divergences(%Observation{source: source} = observation, context)
        when source in @live_address_sources and is_binary(observation.ip) do
     case Map.fetch(context.interface_by_mac, observation.mac) do
       {:ok, {device, %{assignment: assignment, ip: ip} = interface}}
       when assignment in [:reserved, :static] and is_binary(ip) and ip != observation.ip ->
-        [
-          divergence(
-            device,
-            observation,
-            "#{Device.interface_label(device, interface)} is seen at #{observation.ip}, Belgo assigns #{ip}: restart it (or renew its DHCP lease) to take the new address"
-          )
-        ]
+        stale_address_divergence(observation, device, interface)
 
       _same_or_unknown ->
         []
@@ -526,6 +526,31 @@ defmodule Belgo.Discovery.Correlation do
   end
 
   defp stale_address_divergences(_observation, _context), do: []
+
+  defp stale_address_divergence(observation, device, %{ip: ip} = interface) do
+    if same_subnet?(observation.cidr, ip) do
+      [
+        divergence(
+          device,
+          observation,
+          "#{Device.interface_label(device, interface)} is seen at #{observation.ip}, Belgo assigns #{ip}: restart it (or renew its DHCP lease) to take the new address"
+        )
+      ]
+    else
+      []
+    end
+  end
+
+  defp same_subnet?(nil, _ip), do: true
+
+  defp same_subnet?(cidr, ip) do
+    with {:ok, parsed_cidr} <- Cidr.parse(cidr),
+         {:ok, address} <- IpAddress.parse(ip) do
+      Cidr.contains?(parsed_cidr, address)
+    else
+      _invalid -> true
+    end
+  end
 
   defp fallback([], devices), do: devices
   defp fallback(owners, _devices), do: owners

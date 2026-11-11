@@ -1,7 +1,7 @@
 defmodule Belgo.Providers.Opnsense do
   @moduledoc """
-  OPNsense provider: Kea DHCPv4 subnets (networks) and reservations (devices), and
-  Unbound host overrides (DNS names). Pushes write reservations and host overrides,
+  OPNsense provider: Kea DHCPv4 subnets (networks), reservations and active leases
+  (devices), and Unbound host overrides (DNS names). Pushes write reservations and host overrides,
   then reconfigure the touched services. Releases delete the Kea reservations of MAC
   addresses removed from the inventory, when `delete_reservation` allows it.
 
@@ -42,6 +42,7 @@ defmodule Belgo.Providers.Opnsense do
   @api_secret_secret "BELGO_OPNSENSE_API_SECRET"
   @subnets_path "/api/kea/dhcpv4/search_subnet"
   @reservations_path "/api/kea/dhcpv4/search_reservation"
+  @leases_path "/api/kea/leases4/search"
   @host_overrides_path "/api/unbound/settings/search_host_override"
   @interfaces_path "/api/interfaces/overview/interfaces_info"
   @wake_path "/api/wol/wol/set"
@@ -123,11 +124,13 @@ defmodule Belgo.Providers.Opnsense do
 
   defp discover_kea(%Config{client: client} = config) do
     with {:ok, subnet_rows} <- client.search(config, @subnets_path),
-         {:ok, reservation_rows} <- client.search(config, @reservations_path) do
+         {:ok, reservation_rows} <- client.search(config, @reservations_path),
+         {:ok, lease_rows} <- client.search(config, @leases_path) do
       {:ok,
        Translate.subnets(subnet_rows) ++
          Translate.gateway(subnet_rows) ++
-         Translate.reservations(reservation_rows, subnet_rows)}
+         Translate.reservations(reservation_rows, subnet_rows) ++
+         Translate.leases(lease_rows, subnet_rows)}
     end
   end
 

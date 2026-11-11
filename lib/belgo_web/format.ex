@@ -113,6 +113,7 @@ defmodule BelgoWeb.Format do
   @spec source(atom()) :: String.t()
   def source(:kea_subnet), do: gettext("Kea subnet")
   def source(:kea_reservation), do: gettext("Kea reservation")
+  def source(:kea_lease), do: gettext("Kea lease")
   def source(:unbound_host_override), do: gettext("Unbound override")
   def source(:adguard_rewrite), do: gettext("DNS rewrite")
   def source(:adguard_client), do: gettext("Persistent client")

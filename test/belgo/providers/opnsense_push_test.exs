@@ -221,7 +221,9 @@ defmodule Belgo.Providers.OpnsensePushTest do
   test "discovery keeps Kea when Unbound cannot be read" do
     assert {:ok, report} = Opnsense.discover(config(url: "https://kea-only.example"))
     assert [unbound: {:http_status, _path, 403}] = report.failures
-    assert %{kea_subnet: 2, kea_reservation: 4, opnsense_gateway: 2} == report.counts
+
+    assert %{kea_subnet: 2, kea_reservation: 4, kea_lease: 2, opnsense_gateway: 2} ==
+             report.counts
   end
 
   test "a name duplicated in Unbound is reported, never written" do

@@ -28,13 +28,15 @@ defmodule Belgo.Discovery.CorrelationTest do
   } do
     correlation = Correlation.build(Fixtures.snapshot(), observations)
 
-    assert ["moe-pc", "nelson-iphone"] == Enum.map(correlation.unknown_devices, & &1.hostname)
-    [moe | _nelson] = correlation.unknown_devices
+    assert ["barney-laptop", "moe-pc", "nelson-iphone"] ==
+             Enum.map(correlation.unknown_devices, & &1.hostname)
+
+    [_barney, moe | _nelson] = correlation.unknown_devices
 
     assert "mac-02-00-00-00-05-01" == moe.id
     assert ["10.0.0.50"] == moe.ips
 
-    assert [:kea_reservation, :unbound_host_override, :unbound_host_override] ==
+    assert [:kea_lease, :kea_reservation, :unbound_host_override, :unbound_host_override] ==
              Enum.map(moe.observations, & &1.source)
   end
 
@@ -80,7 +82,7 @@ defmodule Belgo.Discovery.CorrelationTest do
 
     correlation = Correlation.build(snapshot, observations)
 
-    assert ["moe-pc"] == Enum.map(correlation.unknown_devices, & &1.hostname)
+    assert ["barney-laptop", "moe-pc"] == Enum.map(correlation.unknown_devices, & &1.hostname)
     assert ["nelson-iphone"] == Enum.map(correlation.ignored_devices, & &1.hostname)
   end
 
@@ -101,7 +103,8 @@ defmodule Belgo.Discovery.CorrelationTest do
       |> Snapshot.put(:devices, device)
       |> Correlation.build(observations)
 
-    assert ["nelson-iphone"] == Enum.map(correlation.unknown_devices, & &1.hostname)
+    assert ["barney-laptop", "nelson-iphone"] ==
+             Enum.map(correlation.unknown_devices, & &1.hostname)
 
     assert ["reservation description is Moe's PC, Belgo has moe-pc"] ==
              Enum.map(Correlation.divergences_for(correlation, :devices, "moe-pc"), & &1.message)
@@ -149,7 +152,10 @@ defmodule Belgo.Discovery.CorrelationTest do
     correlation = Correlation.build(snapshot, observations)
 
     assert ["moe-pc"] == Enum.map(correlation.out_of_dhcp_devices, & &1.hostname)
-    assert ["nelson-iphone"] == Enum.map(correlation.unknown_devices, & &1.hostname)
+
+    assert ["barney-laptop", "nelson-iphone"] ==
+             Enum.map(correlation.unknown_devices, & &1.hostname)
+
     assert {:ok, _moe} = Correlation.fetch_device(correlation, "mac-02-00-00-00-05-01")
   end
 
@@ -325,6 +331,37 @@ defmodule Belgo.Discovery.CorrelationTest do
 
       assert [] == Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
     end
+
+    test "is a divergence when its active Kea lease holds another address of its subnet" do
+      correlation =
+        Correlation.build(Fixtures.snapshot(), [kea_lease("10.0.0.143", "10.0.0.0/24")])
+
+      assert [
+               %Correlation.Divergence{
+                 provider: :opnsense,
+                 message:
+                   "Burns Node (eth0) is seen at 10.0.0.143, Belgo assigns 10.0.0.10" <> _rest
+               }
+             ] = Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
+    end
+
+    test "ignores a lease left in another subnet" do
+      correlation =
+        Correlation.build(Fixtures.snapshot(), [kea_lease("10.0.5.143", "10.0.5.0/24")])
+
+      assert [] == Enum.filter(correlation.divergences, &(&1.id == "burns-node"))
+    end
+  end
+
+  defp kea_lease(ip, cidr) do
+    %Belgo.Discovery.Observation{
+      provider: :opnsense,
+      source: :kea_lease,
+      kind: :device,
+      mac: "02:00:00:00:00:10",
+      ip: ip,
+      cidr: cidr
+    }
   end
 
   defp omada_client(ip) do
