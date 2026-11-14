@@ -197,6 +197,13 @@ defmodule Belgo.Inventory.Device do
   def released_mac_addresses(%__MODULE__{} = previous, %__MODULE__{} = current),
     do: mac_addresses(previous) -- mac_addresses(current)
 
+  @doc "Value of the metadata entry labelled `label` (case insensitive), `nil` without one."
+  @spec metadata_value(t(), String.t()) :: String.t() | nil
+  def metadata_value(%__MODULE__{metadata: metadata}, label) do
+    expected = String.downcase(label)
+    Enum.find_value(metadata, &(String.downcase(&1.label || "") == expected && &1.value))
+  end
+
   @doc "Returns the IP addresses of the device's interfaces."
   @spec ip_addresses(t()) :: [String.t()]
   def ip_addresses(%__MODULE__{interfaces: interfaces}) do

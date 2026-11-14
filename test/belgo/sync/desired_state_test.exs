@@ -35,8 +35,13 @@ defmodule Belgo.Sync.DesiredStateTest do
     assert %DesiredState.ClientName{
              mac: "02:00:00:00:00:30",
              name: "Lisa Laptop",
-             device_id: "lisa-laptop"
+             device_id: "lisa-laptop",
+             kind: :laptop
            } in desired_state.client_names
+
+    # Brand / Model metadata become the client vendor and model (labels case insensitive).
+    assert %DesiredState.ClientName{kind: :server, vendor: "Excellent Computers", model: nil} =
+             Enum.find(desired_state.client_names, &(&1.device_id == "burns-node"))
   end
 
   test "every interface shares the hostname, DNS records only come from DNS names" do

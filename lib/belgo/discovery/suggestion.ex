@@ -11,8 +11,13 @@ defmodule Belgo.Discovery.Suggestion do
   alias Belgo.Inventory.Snapshot
 
   @root_location_kinds [:site, :building]
+  @brand_label "Brand"
+  @model_label "Model"
 
-  @doc "Device params: hostname, notes, DNS aliases and one interface per MAC address."
+  @doc """
+  Device params: hostname, notes, DNS aliases, one interface per MAC address, and the
+  kind, brand and model a provider recognised.
+  """
   @spec device_params(DiscoveredDevice.t(), Snapshot.t()) :: map()
   def device_params(%DiscoveredDevice{} = discovered, %Snapshot{} = snapshot) do
     name = discovered.hostname || discovered.description || discovered.id
@@ -25,7 +30,9 @@ defmodule Belgo.Discovery.Suggestion do
       "interfaces" => interfaces(discovered, snapshot)
     }
 
-    Map.merge(params, network_params_of(discovered))
+    params
+    |> Map.merge(recognised_params(discovered))
+    |> Map.merge(network_params_of(discovered))
   end
 
   @doc "Interface params (a list) of a discovered device, as added to an existing device."
@@ -91,6 +98,24 @@ defmodule Belgo.Discovery.Suggestion do
 
   defp root_place?(%Location{parent_id: nil, kind: kind}), do: kind in @root_location_kinds
   defp root_place?(_location), do: false
+
+  # What a provider recognised (Omada clients): the kind, and Brand / Model metadata.
+  defp recognised_params(discovered) do
+    kind = first_observed(discovered, :device_kind)
+
+    metadata =
+      for {label, field} <- [{@brand_label, :vendor}, {@model_label, :model}],
+          value = first_observed(discovered, field),
+          value != nil,
+          do: %{"label" => label, "value" => value}
+
+    %{}
+    |> then(&if(kind, do: Map.put(&1, "kind", Atom.to_string(kind)), else: &1))
+    |> then(&if(metadata != [], do: Map.put(&1, "metadata", metadata), else: &1))
+  end
+
+  defp first_observed(discovered, field),
+    do: Enum.find_value(discovered.observations, &Map.get(&1, field))
 
   defp network_params_of(%DiscoveredDevice{role: nil}), do: %{}
 

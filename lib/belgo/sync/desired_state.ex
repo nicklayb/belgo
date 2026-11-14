@@ -64,10 +64,20 @@ defmodule Belgo.Sync.DesiredState do
   end
 
   defmodule ClientName do
-    @moduledoc "The name a network client is displayed with."
-    defstruct [:mac, :name, :device_id]
+    @moduledoc """
+    How a network client is displayed (Omada): the device name, kind, and its
+    `Brand` / `Model` metadata as vendor and model.
+    """
+    defstruct [:mac, :name, :device_id, :kind, :vendor, :model]
 
-    @type t :: %__MODULE__{mac: String.t(), name: String.t(), device_id: String.t()}
+    @type t :: %__MODULE__{
+            mac: String.t(),
+            name: String.t(),
+            device_id: String.t(),
+            kind: atom() | nil,
+            vendor: String.t() | nil,
+            model: String.t() | nil
+          }
   end
 
   defmodule Client do
@@ -86,6 +96,9 @@ defmodule Belgo.Sync.DesiredState do
             tags: [String.t()]
           }
   end
+
+  @brand_label "Brand"
+  @model_label "Model"
 
   defstruct dns_records: [], dhcp_reservations: [], client_names: [], clients: []
 
@@ -187,8 +200,19 @@ defmodule Belgo.Sync.DesiredState do
       client_names:
         device.interfaces
         |> Enum.filter(& &1.mac)
-        |> Enum.map(&%ClientName{mac: &1.mac, name: device.name, device_id: device.id}),
+        |> Enum.map(&client_name(device, &1)),
       clients: client(device)
+    }
+  end
+
+  defp client_name(device, interface) do
+    %ClientName{
+      mac: interface.mac,
+      name: device.name,
+      device_id: device.id,
+      kind: device.kind,
+      vendor: Device.metadata_value(device, @brand_label),
+      model: Device.metadata_value(device, @model_label)
     }
   end
 

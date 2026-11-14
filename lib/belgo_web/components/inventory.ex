@@ -55,12 +55,13 @@ defmodule BelgoWeb.Components.Inventory do
 
   attr(:status, Status, default: nil)
   attr(:clickable, :boolean, default: false, doc: "sends the `ping` event when clicked")
+  attr(:ping_id, :string, default: nil, doc: "sent as the `id` value of the `ping` event")
   attr(:id, :string, default: nil)
 
   @doc """
   Ping indicator of a device: green when it answers, red when it does not, yellow
   while checking, nothing before the first ping or without address. A clickable
-  indicator sends the `ping` event (pings again now).
+  indicator sends the `ping` event (pings again now), with `ping_id` as `id` value.
   """
   def reachability_indicator(%{status: %Status{state: state}, clickable: true} = assigns)
       when state in @shown_reachability_states do
@@ -69,10 +70,12 @@ defmodule BelgoWeb.Components.Inventory do
       type="button"
       id={@id}
       phx-click="ping"
+      phx-value-id={@ping_id}
       disabled={@status.state == :pending}
       title={reachability_title(@status, @clickable)}
       aria-label={reachability_title(@status, @clickable)}
       data-state={@status.state}
+      data-reachability
       class="inline-flex shrink-0 items-center rounded-full p-1.5 hover:bg-surface-muted disabled:cursor-wait"
     >
       <.reachability_dot state={@status.state} />

@@ -17,4 +17,17 @@ defmodule Belgo.Providers.Omada.Client do
   @doc "Renames a client, `mac` being the address as written by the controller."
   @callback rename_client(session(), mac :: String.t(), name :: String.t()) ::
               {:ok, any()} | {:error, any()}
+
+  @doc "Returns the client types the controller offers (`typeList` of `correction-list`)."
+  @callback correction_types(session()) :: {:ok, [map()]} | {:error, any()}
+
+  @doc "Logs into the controller's web API with the configured account."
+  @callback open_web(Config.t(), session()) :: {:ok, session()} | {:error, any()}
+
+  @doc "Updates a client through the web API (`name`, `clientInfoCorrection`)."
+  @callback correct_client(session(), mac :: String.t(), body :: map()) ::
+              {:ok, any()} | {:error, any()}
+
+  @doc "Reconnects a wireless client, `mac` being the address as written by the controller."
+  @callback reconnect_client(session(), mac :: String.t()) :: {:ok, any()} | {:error, any()}
 end

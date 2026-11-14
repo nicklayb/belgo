@@ -7,13 +7,16 @@ defmodule Belgo.Providers.Omada.Translate do
   `uplinkDevicePort`; clients have `mac`, `name`, `hostName`, `ip`, `wireless`, then
   `apMac`/`apName`/`ssid` (Wi-Fi), `switchMac`/`switchName`/`port` (wired on a
   switch) or `gatewayMac`/`gatewayName`/`port` (wired on the gateway), and
-  `clientLockToApSetting.enable`. MAC addresses look like `AA-BB-CC-DD-EE-FF`.
+  `clientLockToApSetting.enable`, and what Omada recognised: `deviceType`,
+  `deviceCategory`, `vendor`, `model` (mapped to a Belgo kind by
+  `Omada.DeviceTypes`). MAC addresses look like `AA-BB-CC-DD-EE-FF`.
   """
 
   alias Belgo.Discovery.Observation
   alias Belgo.Inventory.Interface
   alias Belgo.Network.IpAddress
   alias Belgo.Network.MacAddress
+  alias Belgo.Providers.Omada.DeviceTypes
 
   @provider :omada
   @role_by_type %{"gateway" => :gateway, "switch" => :switch, "ap" => :access_point}
@@ -89,7 +92,11 @@ defmodule Belgo.Providers.Omada.Translate do
       uplink_name: blank_to_nil(uplink_name),
       uplink_port: if(wireless, do: nil, else: port(client["port"])),
       ssid: blank_to_nil(client["ssid"]),
-      locked_to_ap: locked_to_ap(client)
+      locked_to_ap: locked_to_ap(client),
+      device_type: blank_to_nil(client["deviceType"]),
+      device_kind: DeviceTypes.to_kind([client["deviceType"], client["deviceCategory"]]),
+      vendor: blank_to_nil(client["vendor"]),
+      model: blank_to_nil(client["model"])
     }
   end
 

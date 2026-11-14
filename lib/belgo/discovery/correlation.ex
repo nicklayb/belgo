@@ -17,6 +17,10 @@ defmodule Belgo.Discovery.Correlation do
       listed apart as out of DHCP. A network without range in the inventory uses the
       range reported by a provider (OPNsense Kea pool), without writing it.
 
+  Loopback addresses (`127.0.0.1`, `::1`, reported by AdGuard Home for its own
+  queries) never describe a machine of the network: they are dropped from device
+  observations, and observations left without MAC, IP nor identity are ignored.
+
   Location observations (Home Assistant floors and areas) are handled by
   `Belgo.Discovery.Locations`. DNS names resolving to an inventory address without
   belonging to Belgo are `dns_names` (`Belgo.Discovery.DnsNames`), to claim.
@@ -143,6 +147,7 @@ defmodule Belgo.Discovery.Correlation do
     device_observations =
       observations_by_kind
       |> Map.get(:device, [])
+      |> Enum.flat_map(&drop_loopback_address/1)
       |> Enum.map(&release_floating_mac(&1, context))
 
     network_observations = Map.get(observations_by_kind, :network, [])
@@ -374,6 +379,15 @@ defmodule Belgo.Discovery.Correlation do
   end
 
   @floating_mac_sources [:adguard_client, :adguard_auto_client, :omada_client]
+
+  defp drop_loopback_address(%Observation{ip: ip} = observation) do
+    if IpAddress.loopback?(ip) do
+      observation = %Observation{observation | ip: nil}
+      if observation.mac || observation.identity, do: [observation], else: []
+    else
+      [observation]
+    end
+  end
 
   defp release_floating_mac(%Observation{source: source, ip: ip} = observation, context)
        when source in @floating_mac_sources and is_map_key(context.virtual_ip_by_ip, ip),

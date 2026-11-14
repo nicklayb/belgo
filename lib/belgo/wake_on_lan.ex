@@ -71,15 +71,7 @@ defmodule Belgo.WakeOnLan do
   """
   @spec method(Keyword.t()) :: method()
   def method(options \\ []) do
-    discovery = Application.get_env(:belgo, Belgo.Discovery, [])
-    directory = Keyword.get_lazy(options, :directory, fn -> discovery[:directory] end)
-
-    environment =
-      Keyword.get_lazy(options, :environment, fn ->
-        Keyword.get_lazy(discovery, :environment, &System.get_env/0)
-      end)
-
-    case Settings.load(directory, environment) do
+    case Settings.current(options) do
       {:ok, settings} -> settings_method(settings)
       {:error, _messages} -> :broadcast
     end

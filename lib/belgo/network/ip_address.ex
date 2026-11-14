@@ -11,6 +11,9 @@ defmodule Belgo.Network.IpAddress do
   @ipv4_segment_bit_size 8
   @ipv6_segment_bit_size 16
   @unsortable_key {@ipv6_bit_size + 1, 0}
+  @ipv4_loopback_first_octet 127
+  @ipv6_loopback {0, 0, 0, 0, 0, 0, 0, 1}
+  @ipv4_mapped_marker 0xFFFF
 
   @doc "Parses a string into an address tuple."
   @spec parse(any()) :: {:ok, t()} | :error
@@ -37,6 +40,26 @@ defmodule Belgo.Network.IpAddress do
   @doc "Returns `true` when the address is IPv4."
   @spec ipv4?(t()) :: boolean()
   def ipv4?(address), do: tuple_size(address) == @ipv4_tuple_size
+
+  @doc """
+  Returns `true` for loopback addresses (`127.0.0.0/8`, `::1` and IPv4-mapped
+  `::ffff:127.x.y.z`). Accepts strings or tuples; unparsable strings are not loopback.
+  """
+  @spec loopback?(String.t() | t() | nil) :: boolean()
+  def loopback?(address) when is_binary(address) do
+    case parse(address) do
+      {:ok, parsed} -> loopback?(parsed)
+      :error -> false
+    end
+  end
+
+  def loopback?({@ipv4_loopback_first_octet, _second, _third, _fourth}), do: true
+  def loopback?(@ipv6_loopback), do: true
+
+  def loopback?({0, 0, 0, 0, 0, @ipv4_mapped_marker, high, _low}),
+    do: high >>> @ipv4_segment_bit_size == @ipv4_loopback_first_octet
+
+  def loopback?(_address), do: false
 
   @doc "Returns the number of bits of the address family."
   @spec family_bit_size(t()) :: pos_integer()

@@ -101,6 +101,23 @@ defmodule Belgo.Providers.Settings do
   def parse(_document, _environment),
     do: {:error, ["#{@file_name}: expected `version: #{@format_version}`"]}
 
+  @doc """
+  Reads `providers.yaml` where the discovery reads it (`config :belgo, Belgo.Discovery,
+  directory: …, environment: …`). Options `:directory` and `:environment` override them.
+  """
+  @spec current(Keyword.t()) :: {:ok, t()} | {:error, [String.t()]}
+  def current(options \\ []) do
+    discovery = Application.get_env(:belgo, Belgo.Discovery, [])
+    directory = Keyword.get_lazy(options, :directory, fn -> discovery[:directory] end)
+
+    environment =
+      Keyword.get_lazy(options, :environment, fn ->
+        Keyword.get_lazy(discovery, :environment, &System.get_env/0)
+      end)
+
+    load(directory, environment)
+  end
+
   @doc "Lists the providers in `write` mode."
   @spec writable(t()) :: [Configured.t()]
   def writable(%__MODULE__{configs: configs}), do: Enum.filter(configs, &(&1.mode == :write))

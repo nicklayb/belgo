@@ -9,6 +9,20 @@ defmodule Belgo.Providers.Omada.HttpClient do
     * `GET /openapi/v1/{omadacId}/sites`, `…/sites/{siteId}/devices` and
       `…/sites/{siteId}/clients` are paginated (`page`, `pageSize` ≤ 1000, `result.data`)
     * `PATCH …/sites/{siteId}/clients/{clientMac}/name` renames a client
+    * `POST …/sites/{siteId}/clients/{clientMac}/reconnect` (no body) reconnects a
+      wireless client (`-41025` "Unable to reconnect wired client")
+
+    * `GET /openapi/v1/{omadacId}/correction-list` lists the client types
+      (`result.typeList`)
+
+  Type, vendor and model of a client have no Open API endpoint: they go through the
+  controller's web API, as its interface does (captured on the owner's controller):
+  `PATCH /{omadacId}/api/v2/sites/{siteId}/clients/{clientMac}` with
+  `{"name", "clientInfoCorrection": {"type", "vendor", "model"}}`. Its login follows
+  `tplink-omada-client` 1.5.14 (used by Home Assistant): `POST
+  /{omadacId}/api/v2/login` `{username, password}` returns `result.token`, sent back
+  as `Csrf-Token` with the `TPOMADA_SESSIONID` cookie; both APIs share site ids. A
+  lost web session answers 200 with an HTML page.
 
   Every response wraps its payload as `{"errorCode": 0, "result": …}`. A token is
   requested for every session, so nothing is kept between pulls.
@@ -20,6 +34,8 @@ defmodule Belgo.Providers.Omada.HttpClient do
 
   @timeout_milliseconds 15_000
   @page_size 1000
+  @session_cookie "TPOMADA_SESSIONID"
+  @request_source "web-local"
 
   @impl Belgo.Providers.Omada.Client
   def open(%Config{} = config) do
@@ -48,6 +64,71 @@ defmodule Belgo.Providers.Omada.HttpClient do
         json: %{name: name}
       )
     )
+  end
+
+  @impl Belgo.Providers.Omada.Client
+  def reconnect_client(session, mac),
+    do: call(Req.post(session.request, url: site_path(session, "clients/#{mac}/reconnect")))
+
+  @impl Belgo.Providers.Omada.Client
+  def correction_types(session) do
+    with {:ok, result} <-
+           call(Req.get(session.request, url: "/openapi/v1/#{session.omadac_id}/correction-list")) do
+      {:ok, List.wrap(result["typeList"])}
+    end
+  end
+
+  @impl Belgo.Providers.Omada.Client
+  def open_web(%Config{} = config, session) do
+    base = base_request(config)
+
+    response =
+      Req.post(base,
+        url: "/#{session.omadac_id}/api/v2/login",
+        json: %{username: config.username, password: config.password}
+      )
+
+    with {:ok, result} <- call(response),
+         {:ok, token} <- fetch(result, "token"),
+         {:ok, cookie} <- session_cookie(response) do
+      request =
+        Req.merge(base,
+          headers: [
+            {"csrf-token", token},
+            {"cookie", cookie},
+            {"omada-request-source", @request_source},
+            {"referer", config.url <> "/"},
+            {"origin", config.url}
+          ]
+        )
+
+      {:ok, %{session | request: request}}
+    end
+  end
+
+  @impl Belgo.Providers.Omada.Client
+  def correct_client(web_session, mac, body) do
+    call(
+      Req.patch(web_session.request,
+        url: "/#{web_session.omadac_id}/api/v2/sites/#{web_session.site_id}/clients/#{mac}",
+        json: body
+      )
+    )
+  end
+
+  defp session_cookie({:ok, %Req.Response{} = response}) do
+    cookie =
+      response
+      |> Req.Response.get_header("set-cookie")
+      |> Enum.find_value(&matching_cookie/1)
+
+    if cookie, do: {:ok, cookie}, else: {:error, {:missing, @session_cookie}}
+  end
+
+  defp matching_cookie(header) do
+    [cookie | _attributes] = String.split(header, ";")
+    cookie = String.trim(cookie)
+    if String.starts_with?(cookie, @session_cookie <> "="), do: cookie
   end
 
   defp base_request(config) do
@@ -111,6 +192,7 @@ defmodule Belgo.Providers.Omada.HttpClient do
   defp call({:ok, %Req.Response{body: %{"errorCode" => code} = body}}),
     do: {:error, {:omada_error, code, body["msg"]}}
 
+  defp call({:ok, %Req.Response{status: 200}}), do: {:error, :not_logged_in}
   defp call({:ok, %Req.Response{status: status}}), do: {:error, {:http_status, status}}
   defp call({:error, exception}), do: {:error, {:request_failed, Exception.message(exception)}}
 

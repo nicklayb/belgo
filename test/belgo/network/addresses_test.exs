@@ -5,6 +5,24 @@ defmodule Belgo.Network.AddressesTest do
   alias Belgo.Network.IpAddress
   alias Belgo.Network.MacAddress
 
+  describe "IpAddress.loopback?/1" do
+    test "recognises IPv4, IPv6 and IPv4-mapped loopback addresses" do
+      assert IpAddress.loopback?("127.0.0.1")
+      assert IpAddress.loopback?("127.42.0.7")
+      assert IpAddress.loopback?("::1")
+      assert IpAddress.loopback?("::ffff:127.0.0.1")
+      assert IpAddress.loopback?({127, 0, 0, 1})
+    end
+
+    test "rejects other addresses and invalid values" do
+      refute IpAddress.loopback?("10.0.0.42")
+      refute IpAddress.loopback?("::")
+      refute IpAddress.loopback?("::ffff:10.0.0.42")
+      refute IpAddress.loopback?("springfield")
+      refute IpAddress.loopback?(nil)
+    end
+  end
+
   describe "IpAddress.parse/1" do
     test "parses IPv4 and IPv6 and rejects garbage" do
       assert {:ok, {10, 0, 0, 42}} = IpAddress.parse(" 10.0.0.42 ")

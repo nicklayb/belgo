@@ -74,12 +74,22 @@ addresses) are listed apart, in *Out of DHCP*.
 | --- | --- | --- | --- |
 | OPNsense | Kea DHCPv4 subnets, reservations and active leases, Unbound host overrides | Kea reservations, Unbound host overrides; wakes devices (`os-wol`) | `BELGO_OPNSENSE_API_KEY`, `BELGO_OPNSENSE_API_SECRET` |
 | AdGuard Home | Persistent and automatic clients (joined by MAC / IP), DNS rewrites | Persistent clients | `BELGO_ADGUARD_USERNAME`, `BELGO_ADGUARD_PASSWORD` |
-| Omada (Open API) | Devices (gateway, switches, APs and their uplink), connected clients (AP / switch port, Wi-Fi, Lock to AP) | Client names | `BELGO_OMADA_CLIENT_ID`, `BELGO_OMADA_CLIENT_SECRET` |
+| Omada (Open API) | Devices (gateway, switches, APs and their uplink), connected clients (AP / switch port, Wi-Fi, Lock to AP, type, vendor, model) | Client names; client type, vendor and model (web API); reconnects Wi-Fi clients | `BELGO_OMADA_CLIENT_ID`, `BELGO_OMADA_CLIENT_SECRET`; optional `BELGO_OMADA_USERNAME`, `BELGO_OMADA_PASSWORD` |
 | Home Assistant | Floors and areas (suggested as locations) | Nothing (read only) | `BELGO_HOME_ASSISTANT_TOKEN` |
 
 Omada uses its official Open API: create an application in client mode in the
 controller (Settings > Platform Integration > Open API) and give Belgo its client ID
 and secret, plus the Omada ID shown with it (`omada_id`).
+
+Pushes also set each client's type (from the device kind), vendor (`Brand`
+metadata) and model (`Model` metadata); a value Belgo does not have keeps Omada's.
+The Open API cannot change them, so Belgo logs into the controller's web API like
+its interface does: give it a controller account with `BELGO_OMADA_USERNAME` and
+`BELGO_OMADA_PASSWORD`, otherwise these changes are reported as skipped. Claiming a
+client Omada recognised prefills its kind, brand and model.
+
+The device page shows how Omada sees the device (Wi-Fi or switch port, type,
+vendor, model). Wi-Fi clients have a *Reconnect* button (Omada in `write` mode).
 
 Home Assistant floors become `floor` locations and areas become `room` locations
 inside their floor. A claimed location keeps the link in `home_assistant_id`

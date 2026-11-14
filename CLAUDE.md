@@ -282,6 +282,34 @@ first addressed interface only, other interfaces are named through their
   MACs `AA-BB-…`. `omada_id` option is the Omada ID shown with the application
   (fallback `GET /api/info`, not in the official docs). Only clients are renamed.
   Owner's controller: 6.3.0.111.
+- Client controls (owner): the device page has one card per provider seeing the
+  device as a client (`Belgo.ClientControls.clients/2`, Omada clients by MAC).
+  *Reconnect* (wireless only, Omada answers `-41025` for wired) = `POST
+  …/clients/{clientMac}/reconnect`, no body (verified in the 6.3.0 spec, **not on the
+  owner's instance**), through the optional `Provider.reconnect_client/2`, write mode
+  only (button disabled otherwise), run with `start_async`. `Settings.current/1`
+  reads `providers.yaml` like the discovery (shared with `WakeOnLan.method/1`).
+  The Open API 6.3.0 reads client `deviceType` / `deviceCategory` / `vendor` /
+  `model` and `GET /{omadacId}/correction-list` (`typeList`, `vendorList`) but has
+  **no endpoint writing them**.
+- Omada type / vendor / model (owner): pushes set them through the controller's
+  **web API** (owner's capture: `PATCH /{omadacId}/api/v2/sites/{siteId}/clients/{mac}`
+  `{"name", "clientInfoCorrection": {"type", "vendor", "model"}}`, `errorCode 0`; the
+  returned client had `deviceType` / `vendor` / `model` set). Login from
+  `tplink-omada-client` 1.5.14 (not verified on the owner's instance): `POST
+  /{omadacId}/api/v2/login` `{username, password}` → `result.token` as `Csrf-Token`
+  + `TPOMADA_SESSIONID` cookie, same site ids as the Open API. Optional secrets
+  `BELGO_OMADA_USERNAME` / `BELGO_OMADA_PASSWORD` (`Secrets.fetch_optional/3`);
+  without them corrections are skipped and reported. `Omada.DeviceTypes`: candidates
+  per kind matched against the controller's `typeList` (unknown candidates never
+  sent; a current type of the same kind is kept), reverse mapping fills
+  `Observation.device_kind`; vendor = `Brand`, model = `Model` metadata
+  (`Device.metadata_value/2`), missing values keep Omada's. Claim suggestions
+  prefill kind and Brand / Model metadata (`Suggestion`, generic observation fields).
+- Loopback addresses (`127.0.0.0/8`, `::1`, AdGuard's own queries) are dropped from
+  device observations by `Correlation.build` (`IpAddress.loopback?/1`).
+- Discovery ping dots are clickable (`reachability_indicator` `ping_id`, `ping`
+  event of `Discovery.Section`, forced ping of the discovered device's IPs).
 - Every provider accepts `interval` (Settings, common like `mode`); the server keeps
   one timer per provider, rescheduled after each pull.
 - Discovery: a discovered device can be attached to an existing device

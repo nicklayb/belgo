@@ -1,7 +1,8 @@
 defmodule BelgoWeb.Devices.Live.Show do
   @moduledoc """
   Everything known about a device: placement, interfaces (with wake-on-LAN), open
-  ports, guests and synced records.
+  ports, controls of the controllers seeing it as a client (Omada reconnect), guests
+  and synced records.
   """
 
   @behaviour BelgoWeb.Hooks.Discovery
@@ -9,7 +10,9 @@ defmodule BelgoWeb.Devices.Live.Show do
 
   use BelgoWeb, :live_view
 
+  alias Belgo.ClientControls
   alias Belgo.Discovery.Correlation
+  alias Belgo.Discovery.State
   alias Belgo.Inventory
   alias Belgo.Inventory.Audit
   alias Belgo.Inventory.Device
@@ -82,6 +85,14 @@ defmodule BelgoWeb.Devices.Live.Show do
       Correlation.divergences_for(discovery.correlation, :devices, device_id)
     )
     |> assign(:link, Map.get(links, device_id))
+    |> assign(
+      :provider_clients,
+      ClientControls.clients(State.observations(discovery), socket.assigns.device)
+    )
+    |> assign(
+      :writable_providers,
+      for(%{mode: :write, key: key} <- discovery.providers, into: MapSet.new(), do: key)
+    )
     |> assign(:network_path, Routing.path(socket.assigns.snapshot, links, device_id))
   end
 
@@ -117,6 +128,20 @@ defmodule BelgoWeb.Devices.Live.Show do
     end
   end
 
+  def handle_event("reconnect-client", %{"provider" => provider, "mac" => mac}, socket) do
+    case Enum.find(
+           socket.assigns.provider_clients,
+           &(Atom.to_string(&1.provider) == provider and &1.mac == mac)
+         ) do
+      nil ->
+        {:noreply, put_flash(socket, :error, gettext("This client is no longer seen."))}
+
+      client ->
+        {:noreply,
+         start_async(socket, :reconnect_client, fn -> ClientControls.reconnect(client) end)}
+    end
+  end
+
   def handle_event("push", _params, socket) do
     Belgo.Discovery.push_device(socket.assigns.device.id)
 
@@ -136,6 +161,22 @@ defmodule BelgoWeb.Devices.Live.Show do
         {:noreply, put_flash(socket, :error, Mutation.describe_error(error))}
     end
   end
+
+  @impl Phoenix.LiveView
+  def handle_async(:reconnect_client, {:ok, :ok}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :info,
+       gettext("Reconnection of %{name} requested.", name: socket.assigns.device.name)
+     )}
+  end
+
+  def handle_async(:reconnect_client, {:ok, {:error, reason}}, socket),
+    do: {:noreply, put_flash(socket, :error, reconnect_error(reason))}
+
+  def handle_async(:reconnect_client, {:exit, reason}, socket),
+    do: {:noreply, put_flash(socket, :error, reconnect_error(reason))}
 
   @impl Phoenix.LiveView
   def render(%{device: _device} = assigns) do
@@ -274,6 +315,13 @@ defmodule BelgoWeb.Devices.Live.Show do
             </:actions>
             <.open_ports address_scans={@address_scans} addresses={Device.ip_addresses(@device)} />
           </.card>
+
+          <.provider_clients
+            :for={{provider, clients} <- Enum.group_by(@provider_clients, & &1.provider)}
+            provider={provider}
+            clients={clients}
+            writable?={MapSet.member?(@writable_providers, provider)}
+          />
 
           <.card :if={@link} title={gettext("Network")}>
             <.properties>
@@ -415,6 +463,83 @@ defmodule BelgoWeb.Devices.Live.Show do
       :error,
       gettext("Unable to send the magic packet: %{reason}", reason: inspect(reason))
     )
+  end
+
+  defp reconnect_error(:not_wireless),
+    do: gettext("Only wireless clients can be reconnected.")
+
+  defp reconnect_error(:not_writable),
+    do: gettext("Reconnecting needs the provider in write mode in providers.yaml.")
+
+  defp reconnect_error(reason),
+    do: gettext("Unable to reconnect: %{reason}", reason: inspect(reason))
+
+  attr(:provider, :atom, required: true)
+  attr(:clients, :list, required: true)
+  attr(:writable?, :boolean, required: true)
+
+  defp provider_clients(assigns) do
+    ~H"""
+    <.card id={"provider-clients-#{@provider}"} title={Format.label(@provider)} padded={false}>
+      <ul class="divide-y divide-border text-sm">
+        <li
+          :for={client <- @clients}
+          id={"provider-client-#{@provider}-#{client.reference}"}
+          class="flex flex-wrap items-center justify-between gap-3 px-5 py-2.5"
+        >
+          <div class="min-w-0">
+            <p class="font-medium">{client.description || client.hostname || client.mac}</p>
+            <p class="font-mono text-xs text-muted">
+              {client.mac}<span :if={client.ip}> · {client.ip}</span>
+            </p>
+            <p class="text-xs text-muted">{client_connection(client)}</p>
+            <p :if={client_recognition(client) != ""} class="text-xs text-muted">
+              {client_recognition(client)}
+            </p>
+          </div>
+          <Form.button
+            :if={ClientControls.reconnectable?(client)}
+            id={"reconnect-#{@provider}-#{client.reference}"}
+            size={:small}
+            variant={:ghost}
+            phx-click="reconnect-client"
+            phx-value-provider={@provider}
+            phx-value-mac={client.mac}
+            disabled={!@writable?}
+            title={
+              if @writable?,
+                do: gettext("Disconnect the client from Wi-Fi so it connects again"),
+                else: gettext("Reconnecting needs the provider in write mode in providers.yaml.")
+            }
+          >
+            <.icon name="hero-arrow-path-rounded-square-mini" class="size-4" /> {gettext("Reconnect")}
+          </Form.button>
+        </li>
+      </ul>
+    </.card>
+    """
+  end
+
+  defp client_recognition(client) do
+    [client.device_type, client.vendor, client.model]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
+  end
+
+  defp client_connection(client) do
+    port = client.uplink_port && gettext("Port %{port}", port: client.uplink_port)
+
+    parts =
+      if client.wireless,
+        do: [
+          Enum.join(Enum.reject([gettext("Wi-Fi"), client.ssid], &is_nil/1), " "),
+          client.uplink_name
+        ],
+        else: [gettext("Wired"), client.uplink_name, port]
+
+    parts
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" · ")
   end
 
   attr(:device, Device, required: true)

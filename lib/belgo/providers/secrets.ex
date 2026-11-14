@@ -27,6 +27,15 @@ defmodule Belgo.Providers.Secrets do
     end
   end
 
+  @doc "Like `fetch/3`, but `{:ok, nil}` when neither `NAME` nor `NAME_FILE` is set."
+  @spec fetch_optional(String.t(), environment(), file_reader()) ::
+          {:ok, String.t() | nil} | {:error, String.t()}
+  def fetch_optional(name, environment \\ System.get_env(), read_file \\ &File.read/1) do
+    if Enum.any?([name, name <> @file_suffix], &(Map.get(environment, &1) not in [nil, ""])),
+      do: fetch(name, environment, read_file),
+      else: {:ok, nil}
+  end
+
   defp read_secret_file(name, path, read_file) do
     case read_file.(path) do
       {:ok, content} -> {:ok, String.trim(content)}

@@ -4,6 +4,7 @@ defmodule Belgo.Discovery.CorrelationTest do
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.DnsNames
   alias Belgo.Discovery.DnsNames.DiscoveredDnsName
+  alias Belgo.Discovery.Observation
   alias Belgo.Discovery.Suggestion
   alias Belgo.Fixtures
   alias Belgo.Fixtures.OpnsenseClient
@@ -38,6 +39,35 @@ defmodule Belgo.Discovery.CorrelationTest do
 
     assert [:kea_lease, :kea_reservation, :unbound_host_override, :unbound_host_override] ==
              Enum.map(moe.observations, & &1.source)
+  end
+
+  test "loopback addresses are never suggested, a MAC reported with one is kept" do
+    loopbacks =
+      for ip <- ["127.0.0.1", "::1"] do
+        %Observation{
+          provider: :adguard,
+          source: :adguard_auto_client,
+          kind: :device,
+          reference: ip,
+          ip: ip,
+          hostname: "localhost"
+        }
+      end
+
+    flanders = %Observation{
+      provider: :adguard,
+      source: :adguard_client,
+      kind: :device,
+      reference: "Flanders PC",
+      mac: "02:00:00:00:09:01",
+      ip: "127.0.0.1",
+      description: "Flanders PC"
+    }
+
+    correlation = Correlation.build(Fixtures.snapshot(), [flanders | loopbacks])
+
+    assert [%{macs: ["02:00:00:00:09:01"], ips: []}] = correlation.unknown_devices
+    assert [] == correlation.out_of_dhcp_devices
   end
 
   test "suggests new networks only", %{observations: observations} do

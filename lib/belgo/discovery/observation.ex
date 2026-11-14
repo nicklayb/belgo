@@ -9,6 +9,8 @@ defmodule Belgo.Discovery.Observation do
   `identity` links observations of the same machine having neither MAC nor IP in
   common (e.g. the IP addresses of a gateway). `role` marks network devices; `uplink_*`
   tell where a device is connected right now (switch port or access point).
+  `device_kind` is the Belgo kind a provider's client type maps to, `vendor` and
+  `model` what the provider recognised (Omada clients).
   """
 
   @enforce_keys [:provider, :source, :kind]
@@ -36,7 +38,11 @@ defmodule Belgo.Discovery.Observation do
     :locked_to_ap,
     :name,
     :parent_reference,
-    :level
+    :level,
+    :device_type,
+    :device_kind,
+    :vendor,
+    :model
   ]
 
   @type t :: %__MODULE__{
@@ -63,7 +69,11 @@ defmodule Belgo.Discovery.Observation do
           locked_to_ap: boolean() | nil,
           name: String.t() | nil,
           parent_reference: String.t() | nil,
-          level: integer() | nil
+          level: integer() | nil,
+          device_type: String.t() | nil,
+          device_kind: atom() | nil,
+          vendor: String.t() | nil,
+          model: String.t() | nil
         }
 
   @dns_record_sources [:unbound_host_override, :adguard_rewrite]

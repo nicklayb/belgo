@@ -48,6 +48,19 @@ defmodule BelgoWeb.DiscoveryTest do
              end)
     end
 
+    test "the ping dot of a discovered device pings it again on click", %{conn: conn} do
+      Belgo.Reachability.subscribe()
+      {:ok, view, _html} = live(conn, ~p"/")
+      dot = "#unknown-devices-reachability-mac-02-00-00-00-05-01"
+
+      assert Enum.find_value(1..20, fn _attempt ->
+               has_element?(view, ~s(#{dot}[data-state="down"])) || (Process.sleep(50) && nil)
+             end)
+
+      render_click(element(view, dot))
+      assert_receive {:reachability_changed, [%{address: "10.0.0.50", result: :pending}]}, 1_000
+    end
+
     test "claiming a device prefills the form and saves it", %{conn: conn} do
       {:ok, view, html} = live(conn, ~p"/devices/new?discovered=mac-02-00-00-00-05-01")
 

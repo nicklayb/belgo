@@ -23,7 +23,7 @@ defmodule BelgoWeb.Discovery.Section do
   alias BelgoWeb.Live.Mutation
   alias BelgoWeb.Live.Reachability
 
-  @events ~w(refresh refresh-provider filter_out_of_dhcp sort_out_of_dhcp ignore stop-ignoring)
+  @events ~w(refresh refresh-provider filter_out_of_dhcp sort_out_of_dhcp ignore stop-ignoring ping)
 
   @doc "Events handled by `handle_event/3`."
   @spec events() :: [String.t()]
@@ -83,6 +83,13 @@ defmodule BelgoWeb.Discovery.Section do
 
       field ->
         patch_filter(socket, OutOfDhcpFilter.sort_by(socket.assigns.out_of_dhcp_filter, field))
+    end
+  end
+
+  def handle_event("ping", %{"id" => id}, socket) do
+    case Correlation.fetch_device(socket.assigns.discovery.correlation, id) do
+      {:ok, discovered} -> Reachability.check(socket, discovered.ips, force: true)
+      _missing -> socket
     end
   end
 
@@ -436,7 +443,12 @@ defmodule BelgoWeb.Discovery.Section do
       <:col :let={device} label={gettext("Device")} sort_field={:device}>
         <p class="flex items-center gap-2 font-medium">
           {device.hostname || device.description || "—"}
-          <.reachability_indicator status={Reachability.status(@address_statuses, device.ips)} />
+          <.reachability_indicator
+            id={"#{@id}-reachability-#{device.id}"}
+            clickable
+            ping_id={device.id}
+            status={Reachability.status(@address_statuses, device.ips)}
+          />
         </p>
         <p :if={device.hostname && device.description} class="text-xs text-muted">
           {device.description}

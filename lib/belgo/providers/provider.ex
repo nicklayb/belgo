@@ -48,5 +48,12 @@ defmodule Belgo.Providers.Provider do
   @doc "Wakes the device with `mac`, on the network holding `address`."
   @callback wake(config(), mac :: String.t(), address :: String.t()) :: :ok | {:error, any()}
 
-  @optional_callbacks push: 2, release: 2, wake_on_lan?: 1, wake: 3
+  @doc """
+  Asks the controller to reconnect a wireless client (`reference` being the client as
+  the provider identifies it, `Observation.reference`). Only called for providers in
+  `write` mode, on a user action.
+  """
+  @callback reconnect_client(config(), reference :: String.t()) :: :ok | {:error, any()}
+
+  @optional_callbacks push: 2, release: 2, wake_on_lan?: 1, wake: 3, reconnect_client: 2
 end

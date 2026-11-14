@@ -8,6 +8,7 @@ defmodule Belgo.Providers.OmadaTest do
   alias Belgo.Fixtures.OmadaClient
   alias Belgo.Inventory.Snapshot
   alias Belgo.Providers.Omada
+  alias Belgo.Providers.Omada.DeviceTypes
   alias Belgo.Providers.Omada.Push
   alias Belgo.Providers.Omada.Translate
   alias Belgo.Sync.DesiredState
@@ -161,6 +162,135 @@ defmodule Belgo.Providers.OmadaTest do
              Omada.push(config(), desired_state)
 
     assert_received {:omada_rename, "02-00-00-00-00-10", "Burns Node"}
+  end
+
+  test "Omada types map to Belgo kinds and back through the controller's list" do
+    {:ok, types} = OmadaClient.correction_types(%{})
+
+    assert :iot == DeviceTypes.to_kind(["Sensor", "Smart Home"])
+    assert :iot == DeviceTypes.to_kind(["Unknown", "smart home"])
+    assert nil == DeviceTypes.to_kind([nil, "Unknown"])
+    assert "Laptop" == DeviceTypes.to_omada(:laptop, types)
+    # Servers fall back to PC, a type the controller offers.
+    assert "PC" == DeviceTypes.to_omada(:server, types)
+    assert nil == DeviceTypes.to_omada(:printer, types)
+    assert nil == DeviceTypes.to_omada(:other, types)
+  end
+
+  test "clients carry what Omada recognised, claims prefill kind, brand and model" do
+    assert %Observation{device_type: "Sensor", device_kind: :iot, vendor: "Apple"} =
+             Enum.find(observations(), &(&1.mac == "02:00:00:00:00:77"))
+
+    correlation = Correlation.build(Fixtures.snapshot(), observations())
+    {:ok, homepod} = Correlation.fetch_device(correlation, "mac-02-00-00-00-00-77")
+
+    assert %{
+             "kind" => "iot",
+             "metadata" => [
+               %{"label" => "Brand", "value" => "Apple"},
+               %{"label" => "Model", "value" => "HomePod mini"}
+             ]
+           } = Suggestion.device_params(homepod, Fixtures.snapshot())
+  end
+
+  test "plans type, vendor and model corrections, kept values filled from the client" do
+    {:ok, clients} = OmadaClient.clients(%{})
+    {:ok, types} = OmadaClient.correction_types(%{})
+    snapshot = Snapshot.put(Fixtures.snapshot(), :devices, lisa_with_model())
+    desired_state = DesiredState.for_device(DesiredState.build(snapshot), "lisa-laptop")
+
+    assert %{operations: [_rename, correction]} =
+             Push.plan(desired_state, clients, types: types, web_access?: true)
+
+    assert %Push.Operation{
+             action: :correct,
+             client_mac: "02-00-00-00-00-30",
+             name: "Lisa Laptop",
+             correction: %{"type" => "Laptop", "vendor" => "Lisa Corp", "model" => "Saxophone 3"},
+             summary:
+               "correct client 02:00:00:00:00:30: — / — / — → Laptop / Lisa Corp / Saxophone 3"
+           } == correction
+
+    # Burns Node already matches: PC, Excellent Computers, no model on either side.
+    burns = DesiredState.for_device(DesiredState.build(snapshot), "burns-node")
+
+    assert %{operations: [%Push.Operation{action: :rename}]} =
+             Push.plan(burns, clients, types: types, web_access?: true)
+  end
+
+  test "a more precise current type of the same kind is kept" do
+    client = %{"mac" => "02-00-00-00-00-30", "name" => "Lisa Laptop", "deviceType" => "iPhone"}
+    {:ok, lisa} = Snapshot.fetch(Fixtures.snapshot(), :devices, "lisa-laptop")
+    snapshot = Snapshot.put(Fixtures.snapshot(), :devices, %{lisa | kind: :phone})
+    desired_state = DesiredState.for_device(DesiredState.build(snapshot), "lisa-laptop")
+    types = [%{"name" => "Android", "key" => "Android"}, %{"name" => "iPhone", "key" => "iPhone"}]
+
+    assert %{operations: []} =
+             Push.plan(desired_state, [client], types: types, web_access?: true)
+  end
+
+  test "corrections are skipped without web credentials" do
+    {:ok, clients} = OmadaClient.clients(%{})
+    snapshot = Snapshot.put(Fixtures.snapshot(), :devices, lisa_with_model())
+    desired_state = DesiredState.for_device(DesiredState.build(snapshot), "lisa-laptop")
+
+    assert %{operations: [%Push.Operation{action: :rename}], skipped: [skipped]} =
+             Push.plan(desired_state, clients, types: [])
+
+    assert skipped =~ "type, vendor and model not pushed"
+  end
+
+  test "push/2 sends corrections through the web API with the configured account" do
+    snapshot = Snapshot.put(Fixtures.snapshot(), :devices, lisa_with_model())
+    desired_state = DesiredState.for_device(DesiredState.build(snapshot), "lisa-laptop")
+    config = %{config() | username: "flanders", password: "okily"}
+
+    assert {:ok, %PushReport{operations: [_rename, _correction]}} =
+             Omada.push(config, desired_state)
+
+    assert_received {:omada_correct, "02-00-00-00-00-30",
+                     %{
+                       name: "Lisa Laptop",
+                       clientInfoCorrection: %{
+                         "type" => "Laptop",
+                         "vendor" => "Lisa Corp",
+                         "model" => "Saxophone 3"
+                       }
+                     }}
+
+    assert {:error, {:failed, "correct client" <> _summary, {:omada_error, -30_109, _message}}} =
+             Omada.push(%{config | username: "ned"}, desired_state)
+  end
+
+  test "web credentials are optional secrets" do
+    environment = %{
+      "BELGO_OMADA_CLIENT_ID" => "ned",
+      "BELGO_OMADA_CLIENT_SECRET" => "okilydokily"
+    }
+
+    assert {:ok, %Omada.Config{username: nil, password: nil}} =
+             Omada.parse_config(%{"url" => "https://omada"}, environment)
+
+    assert {:ok, %Omada.Config{username: "flanders", password: "okily"}} =
+             Omada.parse_config(
+               %{"url" => "https://omada"},
+               Map.merge(environment, %{
+                 "BELGO_OMADA_USERNAME" => "flanders",
+                 "BELGO_OMADA_PASSWORD" => "okily"
+               })
+             )
+  end
+
+  defp lisa_with_model do
+    {:ok, lisa} = Snapshot.fetch(Fixtures.snapshot(), :devices, "lisa-laptop")
+
+    %{
+      lisa
+      | metadata: [
+          %Belgo.Inventory.MetadataEntry{label: "brand", value: "Lisa Corp"},
+          %Belgo.Inventory.MetadataEntry{label: "Model", value: "Saxophone 3"}
+        ]
+    }
   end
 
   test "push/2 does nothing for a device without MAC address" do

@@ -506,6 +506,32 @@ defmodule BelgoWeb.PagesTest do
     refute has_element?(view, "#wake-0")
   end
 
+  test "a Wi-Fi client of Omada can be reconnected from its device page", %{conn: conn} do
+    enable_providers(
+      "version: 1\nproviders:\n  omada:\n    mode: write\n    url: https://omada.springfield.lan\n"
+    )
+
+    Phoenix.PubSub.subscribe(Belgo.PubSub, Belgo.Fixtures.OmadaClient.reconnect_topic())
+    {:ok, view, _html} = live(conn, ~p"/devices/lisa-laptop")
+
+    assert has_element?(view, "#provider-clients-omada", "Springfield")
+    render_click(element(view, "#reconnect-omada-02-00-00-00-00-30"))
+
+    assert_receive {:omada_reconnect, "02-00-00-00-00-30"}
+    assert eventually(fn -> render(view) =~ "Reconnection of Lisa Laptop requested." end)
+
+    {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
+    assert has_element?(view, "#provider-clients-omada", "Port 5")
+    refute has_element?(view, "#provider-clients-omada button")
+  end
+
+  test "reconnecting needs Omada in write mode", %{conn: conn} do
+    enable_providers("version: 1\nproviders:\n  omada:\n    url: https://omada.springfield.lan\n")
+    {:ok, view, _html} = live(conn, ~p"/devices/lisa-laptop")
+
+    assert has_element?(view, "#reconnect-omada-02-00-00-00-00-30[disabled]")
+  end
+
   test "the device list sorts by address and keeps the order in the URL", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/devices")
 
