@@ -94,7 +94,7 @@ defmodule Belgo.Plans.SceneTest do
     assert Enum.all?(scene.walls, &(&1.top == 300))
 
     assert [
-             %{name: "Living room", x: 0, width: 400, elevation: 0.0},
+             %{name: "Living room", x: 0, width: 400, elevation: +0.0},
              %{name: "Kitchen", x: 400, width: 300}
            ] = scene.room_labels
 

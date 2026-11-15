@@ -18,7 +18,7 @@ defmodule Belgo.Plans.PlanTest do
     assert %Plan{id: "maison", name: "Maison", level_height: 270} = plan
 
     assert {:ok,
-            %{"sous-sol" => 0.0, "garage" => 135.0, "rez-de-chaussee" => 270.0, "etage" => 405.0}} =
+            %{"sous-sol" => +0.0, "garage" => 135.0, "rez-de-chaussee" => 270.0, "etage" => 405.0}} =
              Levels.elevations(plan.levels, plan.level_height)
   end
 

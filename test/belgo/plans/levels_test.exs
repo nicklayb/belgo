@@ -30,7 +30,7 @@ defmodule Belgo.Plans.LevelsTest do
     ]
 
     assert {:ok,
-            %{"basement" => 0.0, "ground-floor" => 220.0, "attic" => 490.0, "garage" => 110.0}} =
+            %{"basement" => +0.0, "ground-floor" => 220.0, "attic" => 490.0, "garage" => 110.0}} =
              Levels.elevations(levels, 270)
   end
 end
