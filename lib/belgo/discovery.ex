@@ -32,6 +32,15 @@ defmodule Belgo.Discovery do
     do: GenServer.cast(server, {:push, {:devices, device_id}})
 
   @doc """
+  Pushes the records of every device and virtual IP (the whole desired state) to
+  the providers in `write` mode, in the background (one task per provider). Refused
+  while such a push is running.
+  """
+  @spec push_all(GenServer.server()) ::
+          :ok | {:error, :already_running | :no_writable_provider | :invalid_settings}
+  def push_all(server \\ Server), do: GenServer.call(server, :push_all)
+
+  @doc """
   Deletes, in the providers in write mode, what they hold for MAC addresses removed
   from the inventory (Kea reservations), in the background. `owner` is the changed
   `{collection, id}`, used in logs; addresses back in the inventory meanwhile are kept.

@@ -516,7 +516,9 @@ first addressed interface only, other interfaces are named through their
   index) is filled too; a **new** device without interface gets one when its kind
   changes to a kind with ranges (`add_interface: true`, before that choosing a kind
   on `/devices/new` suggested nothing). The form shows the range under the IP while it holds the
-  suggestion (`address_suggestions`). Editing never changes an address by itself
+  suggestion (`address_suggestions`). When every range of the kind is
+  full, `AddressAllocation.exhausted_interfaces/4` puts a warning under the IP
+  (`#range-exhausted-<i>`, owner). Editing never changes an address by itself
   (owner: a Media TV outside the Media range): `suggest_interfaces/4` offers the
   next free address under the IP (`range_suggestions`, `#range-suggestion-<i>`), the
   button fills the field through `JS.dispatch("belgo:set-value")` (listener in
@@ -685,6 +687,10 @@ first addressed interface only, other interfaces are named through their
   editor's form) and `Editing.update_placement/3`, saved to `plans.yaml` on each
   change (no draft); typed fields are kept while they still lead to the stored
   placement (partial box).
+- Plan level filter (owner): in 3D, level buttons toggle like the kind boxes
+  (`?levels=a,b`, `toggle-level` / `clear-levels`): only the selected levels are
+  shown (`data-visible-levels` JSON → `viewer.showLevels`), all when none; the
+  exterior is always shown. The 2D view keeps one drawn level (`?level=`).
 - Plan kind filter (owner): the 3D view has the device list's kind boxes
   (`Components.Inventory.kind_filter/1` + `kind_facets/2`, shared with Devices;
   `DeviceFilter` with `kinds` only, `?kinds=a,b`, kept by level / view links).
@@ -733,10 +739,16 @@ first addressed interface only, other interfaces are named through their
   Provider / audit messages built in core modules are still English.
 - Overview = former Overview + Discovery (owner): `Dashboard.Live` (`/`) shows the
   stats, the collapsible *Issues* card (`collapse_key="overview-issues"`: inventory
-  issues, divergences, provider duplicates), then `Discovery.Section` (a component
+  issues, divergences, provider duplicates; with nothing to fix it is collapsed under
+  its own key `overview-issues-none`, owner), then `Discovery.Section` (a component
   module, not a LiveView: `mount/1`, `handle_params/2`, `assign_inventory/1`,
   `assign_discovery/1`, `handle_event/3` for `events/0`, `section/1`); the former
-  Discovery *Divergences* card is gone (duplicate). The *Out of DHCP* filter lives in
+  Discovery *Divergences* card is gone (duplicate). Provider status cards
+  (`Components.Providers`) live on the Sync page (owner); the Overview keeps the
+  global *Refresh*. Sync's *Push all* (owner) = `Discovery.push_all/1` (call): the
+  whole `DesiredState` (devices and virtual IPs) pushed by one task per write
+  provider (`{:push, :all}`, logs `[push] [<provider>] [all]`, `last_push.device_id
+  = :all`), refused with `:already_running` while `State.pushing_all?`. The *Out of DHCP* filter lives in
   `/?…`; `/discovery` redirects there (301, query kept, `Redirect.Controller`).
   Menu (`Navigation.sections/0`): Overview, then Data (Devices, Virtual IPs,
   Locations, Networks), Visualization (Plan, Hosting, Routing), Providers

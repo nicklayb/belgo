@@ -3,7 +3,8 @@ defmodule BelgoWeb.Plans.Live do
   The plan of a home (`plans.yaml`), in 3D by default (`?view=2d` for the drawing),
   with the warnings of the plan. In 2D, one level at a time (`?level=<id>`,
   `exterior` for the outside) with its rooms, measures, doors and devices; in 3D,
-  `?level=<id>` shows the home up to that level (to look inside lower ones). Homes
+  levels are toggled like the device kinds (`?levels=a,b`): only the selected ones
+  are shown, every level when none is selected (exterior zones always are). Homes
   are selected by `/plan/<id>`; `/plan` shows the first one.
 
   Clicking a device in 3D (`select-device` from the `Plan3D` hook) shows its network
@@ -43,6 +44,7 @@ defmodule BelgoWeb.Plans.Live do
   alias BelgoWeb.Live.Mutation
 
   @exterior "exterior"
+  @levels_separator ","
 
   @impl Phoenix.LiveView
   def mount(params, _session, socket) do
@@ -51,6 +53,7 @@ defmodule BelgoWeb.Plans.Live do
      |> assign(:page_title, gettext("Plan"))
      |> assign(:plan_id, Map.get(params, "id"))
      |> assign(:level_id, nil)
+     |> assign(:requested_level_ids, [])
      |> assign(:view, :model)
      |> assign(:selected_device_id, nil)
      |> assign(:placement_input, nil)
@@ -65,6 +68,7 @@ defmodule BelgoWeb.Plans.Live do
      socket
      |> assign(:plan_id, Map.get(params, "id"))
      |> assign(:requested_level, Map.get(params, "level"))
+     |> assign(:requested_level_ids, requested_level_ids(params))
      |> assign(:view, if(Map.get(params, "view") == "2d", do: :drawing, else: :model))
      |> assign(:filter, DeviceFilter.new(Map.take(params, ["kinds"])))
      |> assign_inventory()}
@@ -85,8 +89,25 @@ defmodule BelgoWeb.Plans.Live do
   end
 
   defp patch_filter(socket, filter) do
-    %{plan: plan, view: view, level_id: level_id} = socket.assigns
-    push_patch(socket, to: level_path(plan, view, level_id, filter), replace: true)
+    %{plan: plan, view: view, level_id: level_id, level_ids: level_ids} = socket.assigns
+    level = if view == :model, do: level_ids, else: level_id
+    push_patch(socket, to: level_path(plan, view, level, filter), replace: true)
+  end
+
+  defp patch_levels(socket, level_ids) do
+    %{plan: plan, filter: filter} = socket.assigns
+    push_patch(socket, to: level_path(plan, :model, level_ids, filter), replace: true)
+  end
+
+  defp requested_level_ids(%{"levels" => levels}) when is_binary(levels),
+    do: String.split(levels, @levels_separator, trim: true)
+
+  defp requested_level_ids(_params), do: []
+
+  # Toggles a level of the 3D view, keeping the levels in their order.
+  defp toggle_level(levels, level_ids, key) do
+    selected = if key in level_ids, do: List.delete(level_ids, key), else: [key | level_ids]
+    for level <- levels, level.key in selected, do: level.key
   end
 
   # Kind boxes counted on the placed devices, and the scene the browser receives:
@@ -135,6 +156,17 @@ defmodule BelgoWeb.Plans.Live do
 
   def handle_event("clear-kinds", _params, socket),
     do: {:noreply, patch_filter(socket, %{socket.assigns.filter | kinds: []})}
+
+  def handle_event("toggle-level", %{"level" => key}, socket) do
+    %{levels: levels, level_ids: level_ids} = socket.assigns
+
+    if Enum.any?(levels, &(&1.key == key and key != @exterior)),
+      do: {:noreply, patch_levels(socket, toggle_level(levels, level_ids, key))},
+      else: {:noreply, socket}
+  end
+
+  def handle_event("clear-levels", _params, socket),
+    do: {:noreply, patch_levels(socket, [])}
 
   def handle_event("select-device", %{"device_id" => device_id}, socket)
       when is_binary(device_id) and device_id != "" do
@@ -256,7 +288,7 @@ defmodule BelgoWeb.Plans.Live do
       )
 
   defp assign_plan(socket, nil, _snapshot),
-    do: assign(socket, analysis: nil, levels: [], level_id: nil, scene: nil)
+    do: assign(socket, analysis: nil, levels: [], level_id: nil, level_ids: [], scene: nil)
 
   defp assign_plan(socket, plan, snapshot) do
     analysis = Analysis.build(plan, snapshot)
@@ -271,10 +303,13 @@ defmodule BelgoWeb.Plans.Live do
         {tab, _view} -> tab.key
       end
 
+    requested_ids = socket.assigns.requested_level_ids
+
     assign(socket,
       analysis: analysis,
       levels: levels,
       level_id: level_id,
+      level_ids: for(level <- levels, level.key in requested_ids, do: level.key),
       scene: Scene.build(plan, analysis, snapshot)
     )
   end
@@ -304,28 +339,31 @@ defmodule BelgoWeb.Plans.Live do
   defp drawn_level_id(@exterior), do: nil
   defp drawn_level_id(level_id), do: level_id
 
-  defp level_path(plan, view, key, filter) do
+  # `level` is the drawn level in 2D, the selected levels (a list) in 3D.
+  defp level_path(plan, view, level, filter) do
     params =
       view
       |> view_params()
       |> Map.merge(DeviceFilter.to_query_params(filter))
-      |> then(&if(key, do: Map.put(&1, :level, key), else: &1))
+      |> put_level_params(level)
 
     ~p"/plan/#{plan.id}?#{params}"
   end
 
+  defp put_level_params(params, nil), do: params
+  defp put_level_params(params, []), do: params
+
+  defp put_level_params(params, level_ids) when is_list(level_ids),
+    do: Map.put(params, :levels, Enum.join(level_ids, @levels_separator))
+
+  defp put_level_params(params, key), do: Map.put(params, :level, key)
+
   defp view_params(:drawing), do: %{view: "2d"}
   defp view_params(:model), do: %{}
 
-  # In 3D, the selected level and those below it are shown.
-  defp visible_up_to(_levels, nil), do: ""
-
-  defp visible_up_to(levels, level_id) do
-    case Enum.find(levels, &(&1.key == level_id)) do
-      %{elevation: elevation} when is_number(elevation) -> elevation
-      _exterior_or_unknown -> ""
-    end
-  end
+  # In 3D, the selected levels only; every level when none is selected.
+  defp visible_levels([]), do: ""
+  defp visible_levels(level_ids), do: Jason.encode!(level_ids)
 
   attr(:key, :string, required: true)
   attr(:label, :string, required: true)
@@ -524,21 +562,47 @@ defmodule BelgoWeb.Plans.Live do
 
       <div :if={@plan} class="space-y-6">
         <div class="flex flex-wrap items-center justify-between gap-3">
-          <nav id="plan-levels" class="flex flex-wrap gap-2" aria-label={gettext("Levels")}>
-            <.link
-              :if={@view == :model}
-              patch={level_path(@plan, @view, nil, @filter)}
+          <nav
+            :if={@view == :model}
+            id="plan-levels"
+            class="flex flex-wrap items-center gap-2"
+            aria-label={gettext("Levels")}
+          >
+            <button
+              :for={level <- @levels}
+              :if={level.key != "exterior"}
+              type="button"
+              phx-click="toggle-level"
+              phx-value-level={level.key}
+              aria-pressed={to_string(level.key in @level_ids)}
               class={[
                 "rounded-md px-3 py-1.5 text-sm ring-1 ring-inset",
-                is_nil(@level_id) && "bg-accent-soft font-medium text-accent ring-accent",
-                @level_id && "text-muted ring-border hover:text-foreground"
+                level.key in @level_ids && "bg-accent-soft font-medium text-accent ring-accent",
+                level.key not in @level_ids && "text-muted ring-border hover:text-foreground"
               ]}
             >
-              {gettext("All")}
-            </.link>
+              {level.name}
+              <span class="ml-1 text-xs tabular-nums opacity-70">
+                {elevation_label(level.elevation)}
+              </span>
+            </button>
+            <Form.button
+              :if={@level_ids != []}
+              size={:small}
+              variant={:ghost}
+              phx-click="clear-levels"
+            >
+              {gettext("All levels")}
+            </Form.button>
+          </nav>
+          <nav
+            :if={@view == :drawing}
+            id="plan-levels"
+            class="flex flex-wrap gap-2"
+            aria-label={gettext("Levels")}
+          >
             <.link
               :for={level <- @levels}
-              :if={@view == :drawing or level.key != "exterior"}
               patch={level_path(@plan, @view, level.key, @filter)}
               class={[
                 "rounded-md px-3 py-1.5 text-sm ring-1 ring-inset",
@@ -624,7 +688,7 @@ defmodule BelgoWeb.Plans.Live do
             phx-update="ignore"
             data-plan-id={@plan.id}
             data-scene={Jason.encode!(@shown_scene)}
-            data-visible-up-to={visible_up_to(@levels, @level_id)}
+            data-visible-levels={visible_levels(@level_ids)}
             data-network-path={@network_path && Jason.encode!(@network_path)}
             class="relative h-[70vh] w-full overflow-hidden rounded-xl"
           >

@@ -394,6 +394,18 @@ defmodule BelgoWeb.DiscoveryTest do
                      1_000
     end
 
+    test "every device can be pushed at once from the Sync page", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/sync")
+
+      assert render_click(element(view, "#push-all")) =~ "Push of every device started."
+
+      assert_receive {:discovery_changed,
+                      %{pushing_all?: false, providers: [%{last_push: %{device_id: :all}}]}},
+                     1_000
+
+      assert has_element?(view, "#providers", "Last push: everything")
+    end
+
     test "devices can be pushed manually", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/devices/burns-node")
 
@@ -410,7 +422,7 @@ defmodule BelgoWeb.DiscoveryTest do
       "version: 1\nproviders:\n  home_assistant:\n    url: https://broken.example\n"
     )
 
-    {:ok, view, html} = live(conn, ~p"/")
+    {:ok, view, html} = live(conn, ~p"/sync")
     assert html =~ "auth_invalid"
 
     assert has_element?(
@@ -430,7 +442,8 @@ defmodule BelgoWeb.DiscoveryTest do
   test "a working provider has no refresh button of its own", %{conn: conn} do
     enable_home_assistant()
 
-    {:ok, view, _html} = live(conn, ~p"/")
+    {:ok, view, _html} = live(conn, ~p"/sync")
+    assert has_element?(view, "#providers", "Home Assistant")
     refute has_element?(view, ~s(button[phx-click="refresh-provider"]))
   end
 

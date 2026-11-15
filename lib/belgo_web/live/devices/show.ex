@@ -146,7 +146,7 @@ defmodule BelgoWeb.Devices.Live.Show do
     Belgo.Discovery.push_device(socket.assigns.device.id)
 
     {:noreply,
-     put_flash(socket, :info, gettext("Push started, its result is shown in Discovery."))}
+     put_flash(socket, :info, gettext("Push started, its result is shown on the Sync page."))}
   end
 
   def handle_event("delete", _params, socket) do

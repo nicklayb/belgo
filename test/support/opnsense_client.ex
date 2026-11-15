@@ -3,13 +3,21 @@ defmodule Belgo.Fixtures.OpnsenseClient do
   OPNsense client returning Springfield fixture rows. Posts are sent to the calling
   process as `{:opnsense_post, path, body}` and succeed. The `broken.example` instance
   fails every call; `rejecting.example` rejects Kea writes; `kea-only.example` denies
-  Unbound (a token without its privileges).
+  Unbound (a token without its privileges); `slow.example` answers searches after
+  `@slow_delay_milliseconds` (runs still in progress).
   """
 
   @behaviour Belgo.Providers.Opnsense.Client
 
+  @slow_delay_milliseconds 200
+
   @impl Belgo.Providers.Opnsense.Client
   def search(%{url: "https://broken.example"}, path), do: {:error, {:http_status, path, 401}}
+
+  def search(%{url: "https://slow.example"} = config, path) do
+    Process.sleep(@slow_delay_milliseconds)
+    search(%{config | url: "https://opnsense.springfield.lan"}, path)
+  end
 
   def search(%{url: "https://kea-only.example"}, "/api/unbound/" <> _rest = path),
     do: {:error, {:http_status, path, 403}}

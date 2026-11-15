@@ -103,24 +103,52 @@ defmodule Belgo.Inventory.AddressAllocation do
   """
   @spec suggest_interfaces(Snapshot.t(), atom() | nil, [Interface.t()], MapSet.t(String.t())) ::
           %{non_neg_integer() => Suggestion.t()}
-  def suggest_interfaces(_snapshot, nil, _interfaces, _used), do: %{}
+  def suggest_interfaces(snapshot, kind, interfaces, used) do
+    {suggestions, _exhausted} = allocate_interfaces(snapshot, kind, interfaces, used)
+    suggestions
+  end
 
-  def suggest_interfaces(%Snapshot{} = snapshot, kind, interfaces, used) do
+  @doc """
+  The interfaces `suggest_interfaces/4` has no address for because every range of
+  the device kind (in the interface's network when set) is full, by position, with
+  those ranges.
+  """
+  @spec exhausted_interfaces(Snapshot.t(), atom() | nil, [Interface.t()], MapSet.t(String.t())) ::
+          %{non_neg_integer() => [AddressRange.t()]}
+  def exhausted_interfaces(snapshot, kind, interfaces, used) do
+    {_suggestions, exhausted} = allocate_interfaces(snapshot, kind, interfaces, used)
+    exhausted
+  end
+
+  defp allocate_interfaces(_snapshot, nil, _interfaces, _used), do: {%{}, %{}}
+
+  defp allocate_interfaces(%Snapshot{} = snapshot, kind, interfaces, used) do
     used = MapSet.union(used, MapSet.new(for %{ip: ip} <- interfaces, ip != nil, do: ip))
 
-    {suggestions, _used} =
+    {suggestions, exhausted, _used} =
       interfaces
       |> Enum.with_index()
       |> Enum.reject(fn {interface, _index} -> in_kind_range?(snapshot, kind, interface.ip) end)
-      |> Enum.reduce({%{}, used}, fn {interface, index}, {suggestions, used} ->
-        # Within the interface's network when it has one, any network otherwise.
-        case suggest(snapshot, kind, used, interface.network_id) do
-          nil -> {suggestions, used}
-          suggestion -> {Map.put(suggestions, index, suggestion), MapSet.put(used, suggestion.ip)}
-        end
+      |> Enum.reduce({%{}, %{}, used}, fn {interface, index}, accumulator ->
+        allocate_interface(snapshot, kind, interface, index, accumulator)
       end)
 
-    suggestions
+    {suggestions, exhausted}
+  end
+
+  # Within the interface's network when it has one, any network otherwise.
+  defp allocate_interface(snapshot, kind, interface, index, {suggestions, exhausted, used}) do
+    case suggest(snapshot, kind, used, interface.network_id) do
+      nil ->
+        ranges =
+          for {_network, range} <- ranges_for(snapshot, kind, interface.network_id), do: range
+
+        exhausted = if ranges == [], do: exhausted, else: Map.put(exhausted, index, ranges)
+        {suggestions, exhausted, used}
+
+      suggestion ->
+        {Map.put(suggestions, index, suggestion), exhausted, MapSet.put(used, suggestion.ip)}
+    end
   end
 
   @new_entry "new"

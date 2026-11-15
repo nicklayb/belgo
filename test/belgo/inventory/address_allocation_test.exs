@@ -86,6 +86,25 @@ defmodule Belgo.Inventory.AddressAllocationTest do
              AddressAllocation.suggest_interfaces(snapshot, :server, interfaces, MapSet.new())
   end
 
+  test "interfaces left without address because the kind's ranges are full are listed", %{
+    snapshot: snapshot
+  } do
+    full = MapSet.new(Enum.map(20..30, &"10.0.0.#{&1}"))
+
+    interfaces = [
+      %Belgo.Inventory.Interface{ip: nil},
+      %Belgo.Inventory.Interface{ip: "10.0.0.25"}
+    ]
+
+    assert %{0 => [@iot_range]} ==
+             AddressAllocation.exhausted_interfaces(snapshot, :iot, interfaces, full)
+
+    assert %{} == AddressAllocation.exhausted_interfaces(snapshot, :iot, interfaces, MapSet.new())
+
+    # No range for the kind: nothing is full.
+    assert %{} == AddressAllocation.exhausted_interfaces(snapshot, :server, interfaces, full)
+  end
+
   describe "form params" do
     test "choosing a kind fills interfaces without address or outside its range", %{
       snapshot: snapshot

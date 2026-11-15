@@ -396,11 +396,12 @@ export function createViewer(container) {
       }
     },
 
-    // Levels above `elevation` (centimetres) are hidden, to look inside lower ones.
-    showUpTo(elevation) {
+    // Only the levels whose id is in `levelIds` are shown (every level for null);
+    // the exterior is not a level, it stays visible.
+    showLevels(levelIds) {
       for (const level of levels) {
         const group = groups.get(level.id)
-        if (group) group.visible = elevation === null || level.elevation <= elevation
+        if (group) group.visible = levelIds === null || levelIds.includes(level.id)
       }
     },
 

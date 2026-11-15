@@ -9,7 +9,8 @@ defmodule Belgo.Discovery.Server do
   `debug` when they start, `info` when they succeed and `error` when they fail.
   Results are correlated again whenever the inventory changes, and broadcast as
   `{:discovery_changed, state}`. A push that changed a provider triggers a pull, so
-  divergences reflect it. Providers with an `interval` are pulled again that long
+  divergences reflect it. A push of the whole inventory (`:push_all`) runs one task
+  per provider in write mode and is refused while one is running. Providers with an `interval` are pulled again that long
   after each pull completes (one timer per provider).
 
   Options:
@@ -76,6 +77,14 @@ defmodule Belgo.Discovery.Server do
 
   @impl GenServer
   def handle_call(:state, _from, state), do: {:reply, state.public, state}
+
+  def handle_call(:push_all, _from, %{public: %State{pushing_all?: true}} = state),
+    do: {:reply, {:error, :already_running}, state}
+
+  def handle_call(:push_all, _from, state) do
+    {reply, state} = push_all(state)
+    {:reply, reply, state}
+  end
 
   @impl GenServer
   def handle_cast(:refresh, state), do: {:noreply, refresh(state)}
@@ -164,6 +173,40 @@ defmodule Belgo.Discovery.Server do
     end)
   end
 
+  defp push_all(state) do
+    case Settings.load(state.directory, state.environment) do
+      {:ok, settings} -> start_push_all(state, settings)
+      {:error, messages} -> {{:error, :invalid_settings}, put_settings_error(state, messages)}
+    end
+  end
+
+  defp start_push_all(state, settings) do
+    state = Map.update!(state, :public, &State.configure(&1, settings))
+
+    case Settings.writable(settings) do
+      [] ->
+        Logger.debug("[push] [all] skipped, no provider in write mode")
+        {{:error, :no_writable_provider}, state}
+
+      writable ->
+        desired_state =
+          state.inventory
+          |> Inventory.snapshot()
+          |> DesiredState.build()
+
+        state =
+          writable
+          |> Enum.reduce(state, &start_full_push(&2, &1, desired_state))
+          |> Map.update!(:public, &State.put_pushing_all(&1, true))
+          |> broadcast()
+
+        {:ok, state}
+    end
+  end
+
+  defp start_full_push(state, %Configured{module: module, config: config}, desired_state),
+    do: start_task(state, module, {:push, :all}, fn -> module.push(config, desired_state) end)
+
   defp release(state, owner, mac_addresses) do
     case unknown_mac_addresses(state.inventory, mac_addresses) do
       [] -> state
@@ -204,15 +247,19 @@ defmodule Belgo.Discovery.Server do
         function.(settings)
 
       {:error, messages} ->
-        Logger.error(
-          "[discovery] invalid providers configuration, providers keep their last result:\n  " <>
-            Enum.join(messages, "\n  ")
-        )
-
-        state
-        |> Map.update!(:public, &State.put_settings_error(&1, messages))
-        |> broadcast()
+        put_settings_error(state, messages)
     end
+  end
+
+  defp put_settings_error(state, messages) do
+    Logger.error(
+      "[discovery] invalid providers configuration, providers keep their last result:\n  " <>
+        Enum.join(messages, "\n  ")
+    )
+
+    state
+    |> Map.update!(:public, &State.put_settings_error(&1, messages))
+    |> broadcast()
   end
 
   defp start_task(state, module, run, function) do
@@ -229,6 +276,7 @@ defmodule Belgo.Discovery.Server do
     log_result(module, run, result, duration)
 
     %{state | tasks: tasks}
+    |> update_pushing_all()
     |> record_result(module, run, result)
     |> recompute()
     |> ping_discovered(run)
@@ -250,6 +298,11 @@ defmodule Belgo.Discovery.Server do
       :public,
       &State.complete_push(&1, module.key(), device_id, result, DateTime.utc_now())
     )
+  end
+
+  defp update_pushing_all(state) do
+    pushing_all? = Enum.any?(state.tasks, &match?({_reference, %{run: {:push, :all}}}, &1))
+    Map.update!(state, :public, &State.put_pushing_all(&1, pushing_all?))
   end
 
   defp ping_discovered(%{reachability: nil} = state, _run), do: state

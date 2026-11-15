@@ -195,22 +195,27 @@ defmodule BelgoWeb.Devices.Live.Form do
     socket
     |> assign(:form, to_form(changeset, action: action))
     |> assign(:placement, current_placement(changeset, params))
-    |> assign(:range_suggestions, range_suggestions(socket, changeset))
+    |> assign_range_suggestions(changeset)
   end
 
-  # Offered (not applied) for interfaces outside the ranges of the device kind.
-  defp range_suggestions(socket, changeset) do
+  # Offered (not applied) for interfaces outside the ranges of the device kind; when
+  # those ranges are full, the form says so instead.
+  defp assign_range_suggestions(socket, changeset) do
     snapshot = socket.assigns.snapshot
     device_id = socket.assigns.device && socket.assigns.device.id
     observations = State.observations(socket.assigns.discovery)
 
-    AddressAllocation.suggest_interfaces(
-      snapshot,
-      Ecto.Changeset.get_field(changeset, :kind),
-      Ecto.Changeset.get_field(changeset, :interfaces),
-      AddressAllocation.used_addresses(snapshot, observations, device_id)
+    kind = Ecto.Changeset.get_field(changeset, :kind)
+    interfaces = Ecto.Changeset.get_field(changeset, :interfaces)
+    used = AddressAllocation.used_addresses(snapshot, observations, device_id)
+
+    assign(socket,
+      range_suggestions: AddressAllocation.suggest_interfaces(snapshot, kind, interfaces, used),
+      exhausted_ranges: AddressAllocation.exhausted_interfaces(snapshot, kind, interfaces, used)
     )
   end
+
+  defp range_names(ranges), do: Enum.map_join(ranges, ", ", & &1.name)
 
   defp add_reservation_errors(changeset, observations) do
     changeset
@@ -565,6 +570,16 @@ defmodule BelgoWeb.Devices.Live.Form do
                       >
                         {@range_suggestions[interface_form.index].ip}
                       </button>
+                    </p>
+                    <p
+                      :if={@exhausted_ranges[interface_form.index]}
+                      id={"range-exhausted-#{interface_form.index}"}
+                      class="mt-1 flex items-start gap-1 text-xs text-warning"
+                    >
+                      <.icon name="hero-exclamation-triangle-micro" class="mt-px size-3.5 shrink-0" />
+                      {gettext("No free address left in %{ranges}.",
+                        ranges: range_names(@exhausted_ranges[interface_form.index])
+                      )}
                     </p>
                   </div>
                   <Form.input

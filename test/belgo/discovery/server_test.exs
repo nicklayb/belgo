@@ -199,6 +199,39 @@ defmodule Belgo.Discovery.ServerTest do
              ~r/\[info\] \[push\] \[opnsense\] \[smithers\] completed in \d+ms: update reservation/
   end
 
+  test "pushes the whole inventory once at a time and logs it", context do
+    server = start_server(context, "https://slow.example", "    mode: write\n")
+    previous_level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: previous_level) end)
+
+    log =
+      capture_log([level: :info], fn ->
+        assert :ok = Discovery.push_all(server)
+        assert %{pushing_all?: true} = Discovery.state(server)
+        assert {:error, :already_running} = Discovery.push_all(server)
+
+        assert_receive {:discovery_changed,
+                        %{
+                          pushing_all?: false,
+                          providers: [%{last_push: %{device_id: :all, result: {:ok, report}}}]
+                        }},
+                       2_000
+
+        # Every device is in the push, not only one.
+        assert length(report.operations) > 1
+        assert :ok = Discovery.push_all(server)
+      end)
+
+    assert log =~ ~r/\[info\] \[push\] \[opnsense\] \[all\] completed in \d+ms/
+  end
+
+  test "a push of the whole inventory needs a provider in write mode", context do
+    server = start_server(context, "https://opnsense.springfield.lan")
+    assert {:error, :no_writable_provider} = Discovery.push_all(server)
+    assert %{pushing_all?: false} = Discovery.state(server)
+  end
+
   test "releases MAC addresses the inventory no longer has", context do
     server =
       start_server(

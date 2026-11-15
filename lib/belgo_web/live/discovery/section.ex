@@ -1,9 +1,9 @@
 defmodule BelgoWeb.Discovery.Section do
   @moduledoc """
-  Suggestions from the providers, shown on the Overview page: provider statuses,
-  records to claim or ignore (new networks, locations, devices out of DHCP, unknown
-  devices, DNS names) and ignored devices. Divergences are listed with the issues of
-  the Overview. The page delegates its state (`mount/1`, `handle_params/2`,
+  Suggestions from the providers, shown on the Overview page: records to claim or
+  ignore (new networks, locations, devices out of DHCP, unknown devices, DNS names)
+  and ignored devices. Divergences are listed with the issues of the Overview,
+  provider statuses on the Sync page (`BelgoWeb.Sync.Live`). The page delegates its state (`mount/1`, `handle_params/2`,
   `assign_inventory/1`, `assign_discovery/1`) and the events in `events/0` here.
   """
 
@@ -15,15 +15,14 @@ defmodule BelgoWeb.Discovery.Section do
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.OutOfDhcpFilter
   alias Belgo.Discovery.Sorting
-  alias Belgo.Discovery.State.ProviderStatus
   alias Belgo.Inventory.Interface
   alias Belgo.Inventory.Snapshot
-  alias Belgo.Sync.PushReport
+  alias BelgoWeb.Components.Providers
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Mutation
   alias BelgoWeb.Live.Reachability
 
-  @events ~w(refresh refresh-provider filter_out_of_dhcp sort_out_of_dhcp ignore stop-ignoring ping)
+  @events ~w(refresh filter_out_of_dhcp sort_out_of_dhcp ignore stop-ignoring ping)
 
   @doc "Events handled by `handle_event/3`."
   @spec events() :: [String.t()]
@@ -61,15 +60,6 @@ defmodule BelgoWeb.Discovery.Section do
           Phoenix.LiveView.Socket.t()
   def handle_event("refresh", _params, socket) do
     Discovery.refresh()
-    socket
-  end
-
-  def handle_event("refresh-provider", %{"provider" => name}, socket) do
-    case Enum.find(socket.assigns.discovery.providers, &(Atom.to_string(&1.key) == name)) do
-      %ProviderStatus{key: key} -> Discovery.refresh_provider(key)
-      nil -> :ok
-    end
-
     socket
   end
 
@@ -191,10 +181,7 @@ defmodule BelgoWeb.Discovery.Section do
         </Form.button>
       </div>
 
-      <.card :if={@discovery.settings_errors != []} class="border-danger/40">
-        <p class="mb-2 text-sm font-medium text-danger">{gettext("providers.yaml is invalid")}</p>
-        <p :for={message <- @discovery.settings_errors} class="font-mono text-xs">{message}</p>
-      </.card>
+      <Providers.settings_errors errors={@discovery.settings_errors} />
 
       <.card :if={@discovery.providers == []}>
         <.empty_state icon="hero-sparkles" title={gettext("No provider configured")}>
@@ -203,10 +190,6 @@ defmodule BelgoWeb.Discovery.Section do
       </.card>
 
       <div :if={@discovery.providers != []} class="space-y-6">
-        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <.provider_status :for={provider <- @discovery.providers} provider={provider} />
-        </div>
-
         <.card title={gettext("New networks")} padded={false} collapse_key="discovery-new-networks">
           <:actions>
             <.badge>{length(@correlation.new_networks)}</.badge>
@@ -492,100 +475,4 @@ defmodule BelgoWeb.Discovery.Section do
     </.table>
     """
   end
-
-  defp failed?(%ProviderStatus{running?: true}), do: false
-  defp failed?(%ProviderStatus{error: error}) when not is_nil(error), do: true
-  defp failed?(%ProviderStatus{report: %{failures: [_failure | _failures]}}), do: true
-  defp failed?(%ProviderStatus{}), do: false
-
-  attr(:provider, ProviderStatus, required: true)
-
-  defp provider_status(assigns) do
-    ~H"""
-    <div class="rounded-xl border border-border bg-surface p-4 shadow-xs">
-      <div class="flex items-center justify-between">
-        <p class="flex items-center gap-2 font-semibold">
-          {@provider.label}
-          <.badge>
-            {if @provider.mode == :write, do: gettext("Read & write"), else: gettext("Read only")}
-          </.badge>
-        </p>
-        <.badge :if={@provider.running?} tone={:accent}>{gettext("Pulling…")}</.badge>
-        <.badge :if={!@provider.running? && @provider.error} tone={:danger}>
-          {gettext("Failed")}
-        </.badge>
-        <.badge :if={!@provider.running? && !@provider.error && @provider.report} tone={:success}>
-          {gettext("Up to date")}
-        </.badge>
-      </div>
-      <p class="mt-1 text-xs text-muted">
-        {gettext("Last pull: %{time}", time: Format.datetime(@provider.completed_at))}
-      </p>
-      <p
-        :for={{service, reason} <- (@provider.report && @provider.report.failures) || []}
-        :if={!@provider.error}
-        class="mt-2 font-mono text-xs break-all text-danger"
-      >
-        {Format.label(service)}: {inspect(reason)}
-      </p>
-      <p :if={@provider.error} class="mt-2 font-mono text-xs break-all text-danger">
-        {inspect(@provider.error)}
-      </p>
-      <Form.button
-        :if={failed?(@provider)}
-        size={:small}
-        class="mt-3"
-        phx-click="refresh-provider"
-        phx-value-provider={@provider.key}
-        title={gettext("Pull %{provider} again", provider: @provider.label)}
-      >
-        <.icon name="hero-arrow-path-mini" class="size-4" /> {gettext("Refresh")}
-      </Form.button>
-      <ul :if={@provider.report} class="mt-2 space-y-0.5 text-sm">
-        <li :for={{source, count} <- Enum.sort(@provider.report.counts)} class="flex justify-between">
-          <span class="text-muted">{Format.source(source)}</span>
-          <span class="tabular-nums">{count}</span>
-        </li>
-      </ul>
-      <div :if={@provider.last_push} class="mt-3 border-t border-border pt-3 text-sm">
-        <p class="flex items-center justify-between gap-2">
-          <span class="text-muted">
-            {gettext("Last push: %{device}", device: @provider.last_push.device_id)}
-          </span>
-          <.push_badge result={@provider.last_push.result} />
-        </p>
-        <p class="mt-1 text-xs break-words text-muted">{push_summary(@provider.last_push.result)}</p>
-      </div>
-    </div>
-    """
-  end
-
-  attr(:result, :any, required: true)
-
-  defp push_badge(assigns) do
-    assigns = assign(assigns, :outcome, push_outcome(assigns.result))
-
-    ~H"""
-    <.badge :if={@outcome == :applied} tone={:success}>{gettext("Applied")}</.badge>
-    <.badge :if={@outcome == :partial} tone={:danger}>{gettext("Partly failed")}</.badge>
-    <.badge :if={@outcome == :failed} tone={:danger}>{gettext("Failed")}</.badge>
-    """
-  end
-
-  defp push_outcome({:ok, %PushReport{failures: [_ | _]}}), do: :partial
-  defp push_outcome({:ok, %PushReport{}}), do: :applied
-  defp push_outcome({:error, _reason}), do: :failed
-
-  defp push_summary({:ok, %PushReport{failures: []} = report}), do: PushReport.summary(report)
-
-  defp push_summary({:ok, report}) do
-    failures =
-      Enum.map_join(report.failures, "; ", fn {service, reason} ->
-        "#{service}: #{inspect(reason)}"
-      end)
-
-    PushReport.summary(report) <> " — " <> failures
-  end
-
-  defp push_summary({:error, reason}), do: inspect(reason)
 end

@@ -1,7 +1,7 @@
 // The 3D view of a plan. three.js is only loaded when this hook mounts (a separate
 // chunk), so other pages never download it. The scene is computed by the server
-// (`Belgo.Plans.Scene`) and given as JSON in `data-scene`; `data-visible-up-to`
-// (an elevation in centimetres, empty for all) hides the levels above it.
+// (`Belgo.Plans.Scene`) and given as JSON in `data-scene`; `data-visible-levels`
+// (a JSON list of level ids, empty for all) hides the other levels.
 // A click on a device sends `select-device` (an empty id for a click elsewhere); the
 // server answers with its network path in `data-network-path`, drawn in the view.
 // The camera and the toggles (`[data-toggle]`: facade = exterior walls, labels =
@@ -64,8 +64,8 @@ export default {
   render() {
     if (!this.viewer) return
     this.viewer.setScene(JSON.parse(this.el.dataset.scene))
-    const upTo = this.el.dataset.visibleUpTo
-    this.viewer.showUpTo(upTo === "" || upTo === undefined ? null : Number(upTo))
+    const visibleLevels = this.el.dataset.visibleLevels
+    this.viewer.showLevels(visibleLevels ? JSON.parse(visibleLevels) : null)
     const path = this.el.dataset.networkPath
     this.viewer.showPath(path ? JSON.parse(path) : null)
   },

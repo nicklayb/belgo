@@ -11,8 +11,9 @@ defmodule Belgo.Discovery.State do
     @enforce_keys [:key, :label]
     defstruct [:key, :label, :mode, :report, :error, :completed_at, :last_push, running?: false]
 
+    @typedoc "`device_id` is `:all` for a push of the whole inventory."
     @type push :: %{
-            device_id: String.t(),
+            device_id: String.t() | :all,
             result: {:ok, Belgo.Sync.PushReport.t()} | {:error, any()},
             completed_at: DateTime.t()
           }
@@ -28,12 +29,13 @@ defmodule Belgo.Discovery.State do
           }
   end
 
-  defstruct providers: [], settings_errors: [], correlation: %Correlation{}
+  defstruct providers: [], settings_errors: [], correlation: %Correlation{}, pushing_all?: false
 
   @type t :: %__MODULE__{
           providers: [ProviderStatus.t()],
           settings_errors: [String.t()],
-          correlation: Correlation.t()
+          correlation: Correlation.t(),
+          pushing_all?: boolean()
         }
 
   @doc "Keeps the statuses of providers still configured and adds the new ones."
@@ -79,13 +81,23 @@ defmodule Belgo.Discovery.State do
     end)
   end
 
-  @doc "Records the result of a push of one device."
-  @spec complete_push(t(), atom(), String.t(), {:ok, any()} | {:error, any()}, DateTime.t()) ::
-          t()
+  @doc "Records the result of a push of one record, or of everything (`:all`)."
+  @spec complete_push(
+          t(),
+          atom(),
+          String.t() | :all,
+          {:ok, any()} | {:error, any()},
+          DateTime.t()
+        ) :: t()
   def complete_push(%__MODULE__{} = state, key, device_id, result, completed_at) do
     push = %{device_id: device_id, result: result, completed_at: completed_at}
     update_provider(state, key, fn %ProviderStatus{} = status -> %{status | last_push: push} end)
   end
+
+  @doc "Records whether a push of the whole inventory is running."
+  @spec put_pushing_all(t(), boolean()) :: t()
+  def put_pushing_all(%__MODULE__{} = state, pushing_all?) when is_boolean(pushing_all?),
+    do: %__MODULE__{state | pushing_all?: pushing_all?}
 
   @doc "Stores the correlation."
   @spec put_correlation(t(), Correlation.t()) :: t()

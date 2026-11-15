@@ -671,6 +671,33 @@ defmodule BelgoWeb.PagesTest do
     refute has_element?(view, "#range-suggestion-0")
   end
 
+  test "the device form says when the ranges of the kind are full", %{conn: conn} do
+    {:ok, _network} =
+      Belgo.Inventory.update(
+        :networks,
+        "springfield",
+        %{
+          "ranges" => [
+            %{
+              "name" => "Media",
+              "start" => "10.0.0.20",
+              "end" => "10.0.0.20",
+              "kinds" => ["media"]
+            }
+          ]
+        },
+        user: :system
+      )
+
+    {:ok, view, _html} = live(conn, ~p"/devices/new")
+
+    view
+    |> form("#device-form", device: %{name: "Krusty TV", kind: "media"})
+    |> render_change()
+
+    assert has_element?(view, "#range-exhausted-0", "No free address left in Media")
+  end
+
   defp eventually(check, attempts \\ 40) do
     cond do
       check.() -> true

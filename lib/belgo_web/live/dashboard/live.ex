@@ -72,8 +72,19 @@ defmodule BelgoWeb.Dashboard.Live do
     |> assign(:divergence_groups, divergence_groups(correlation.divergences, snapshot))
     |> assign(:conflicts, Correlation.unowned_conflicts(correlation))
     |> assign(:divergence_count, length(correlation.divergences))
+    |> assign_issue_count()
     |> DiscoverySection.assign_discovery()
   end
+
+  defp assign_issue_count(socket) do
+    %{issues: issues, divergence_count: divergence_count, conflicts: conflicts} = socket.assigns
+    assign(socket, :issue_count, length(issues) + divergence_count + length(conflicts))
+  end
+
+  # Collapsed while there is nothing to fix: a key of its own, so the choice remembered
+  # for the card with issues (open by default) does not apply to the empty one.
+  defp issues_collapse_key(0), do: "overview-issues-none"
+  defp issues_collapse_key(_count), do: "overview-issues"
 
   defp divergence_groups(divergences, snapshot) do
     divergences
@@ -187,18 +198,20 @@ defmodule BelgoWeb.Dashboard.Live do
         />
       </div>
 
-      <.card title={gettext("Issues")} class="mt-6" padded={false} collapse_key="overview-issues">
+      <.card
+        title={gettext("Issues")}
+        class="mt-6"
+        padded={false}
+        collapse_key={issues_collapse_key(@issue_count)}
+        collapsed={@issue_count == 0}
+      >
         <:actions>
-          <.badge tone={
-            if @issues == [] and @divergence_count == 0 and @conflicts == [],
-              do: :success,
-              else: :warning
-          }>
-            {length(@issues) + @divergence_count + length(@conflicts)}
+          <.badge tone={if @issue_count == 0, do: :success, else: :warning}>
+            {@issue_count}
           </.badge>
         </:actions>
         <.empty_state
-          :if={@issues == [] and @divergence_count == 0 and @conflicts == []}
+          :if={@issue_count == 0}
           icon="hero-check-circle"
           title={gettext("All consistent")}
         >

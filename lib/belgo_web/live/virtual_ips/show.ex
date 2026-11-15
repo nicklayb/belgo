@@ -94,7 +94,7 @@ defmodule BelgoWeb.VirtualIps.Live.Show do
     Belgo.Discovery.push_virtual_ip(socket.assigns.virtual_ip.id)
 
     {:noreply,
-     put_flash(socket, :info, gettext("Push started, its result is shown in Discovery."))}
+     put_flash(socket, :info, gettext("Push started, its result is shown on the Sync page."))}
   end
 
   def handle_event("delete", _params, socket) do

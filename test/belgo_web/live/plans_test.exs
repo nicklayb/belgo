@@ -106,11 +106,11 @@ defmodule BelgoWeb.PlansTest do
     assert has_element?(view, "#plan-level-exterior [data-footprint]")
   end
 
-  test "shows the home in 3D by default, up to a level when chosen", %{conn: conn} do
+  test "shows the home in 3D by default, the selected levels when chosen", %{conn: conn} do
     {:ok, _plan} = Inventory.create(:plans, @evergreen_terrace, user: :system)
     {:ok, view, _html} = live(conn, ~p"/plan")
 
-    assert has_element?(view, ~s(#plan-3d[phx-hook="Plan3D"][data-visible-up-to=""]))
+    assert has_element?(view, ~s(#plan-3d[phx-hook="Plan3D"][data-visible-levels=""]))
 
     for key <- ~w(labels names facade markers boxes),
         do: assert(has_element?(view, ~s(#plan-3d button[data-toggle="#{key}"])))
@@ -119,8 +119,17 @@ defmodule BelgoWeb.PlansTest do
     assert Enum.any?(scene["devices"], &(&1["name"] == "TV Living Room"))
     assert Enum.any?(scene["walls"], &(&1["kind"] == "door"))
 
-    render_click(element(view, "#plan-levels a", "Basement"))
-    assert has_element?(view, ~s(#plan-3d[data-visible-up-to="0.0"]))
+    render_click(element(view, "#plan-levels button", "Ground floor"))
+    assert_patch(view, ~p"/plan/evergreen-terrace?levels=ground-floor")
+    assert has_element?(view, ~s(#plan-3d[data-visible-levels='["ground-floor"]']))
+
+    render_click(element(view, "#plan-levels button", "Basement"))
+    assert_patch(view, "/plan/evergreen-terrace?levels=basement%2Cground-floor")
+    assert has_element?(view, ~s(#plan-levels button[aria-pressed=true]), "Basement")
+
+    render_click(element(view, "#plan-levels button", "All levels"))
+    assert_patch(view, ~p"/plan/evergreen-terrace")
+    assert has_element?(view, ~s(#plan-3d[data-visible-levels=""]))
   end
 
   defp scene_of(html) do
@@ -235,7 +244,9 @@ defmodule BelgoWeb.PlansTest do
     assert %{"tv-living-room" => false, "burns-node" => true} = hidden
 
     # Levels keep the filter.
-    assert has_element?(view, ~s(#plan-levels a[href*="kinds=media"]))
+    render_click(element(view, "#plan-levels button", "Basement"))
+    assert_patch(view, ~p"/plan/evergreen-terrace?levels=basement&kinds=media")
+    render_click(element(view, "#plan-levels button", "All levels"))
 
     render_click(element(view, "#plan-kind-filter button", "All kinds"))
     assert_patch(view, ~p"/plan/evergreen-terrace")
