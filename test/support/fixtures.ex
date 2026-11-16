@@ -70,7 +70,7 @@ defmodule Belgo.Fixtures do
   @doc """
   A small but complete homelab: Homer's basement rack with the Power Plant gateway,
   the Plow King switch plugged into it, a Proxmox node
-  (`burns-node`) running `smithers` (VM) which runs `itchy` (container),
+  (`burns-node`) running `smithers` (critical VM) which runs `itchy` (container),
   Lisa's laptop being portable and Bart's console left unplaced.
   """
   def snapshot do
@@ -135,6 +135,7 @@ defmodule Belgo.Fixtures do
           id: "smithers",
           name: "Smithers",
           kind: :server,
+          critical: true,
           host_id: "burns-node",
           virtualization: :virtual_machine,
           platforms: [:docker],

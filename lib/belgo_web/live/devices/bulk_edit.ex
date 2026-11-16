@@ -1,6 +1,6 @@
 defmodule BelgoWeb.Devices.Live.BulkEdit do
   @moduledoc """
-  Edits several devices at once (`Belgo.Inventory.BulkEdit`): kind, placement and
+  Edits several devices at once (`Belgo.Inventory.BulkEdit`): kind, critical, placement and
   metadata. The devices come from the `ids` query param (comma separated); the other
   params are the device list filter, restored when going back.
   """
@@ -110,6 +110,10 @@ defmodule BelgoWeb.Devices.Live.BulkEdit do
   defp inspect_message(message) when is_binary(message), do: message
   defp inspect_message(message), do: inspect(message)
 
+  defp critical_options do
+    [{gettext("Critical"), true}, {gettext("Not critical"), false}]
+  end
+
   defp placement_options do
     [
       {gettext("Keep current"), :keep},
@@ -167,6 +171,13 @@ defmodule BelgoWeb.Devices.Live.BulkEdit do
               label={gettext("Kind")}
               prompt={gettext("Keep current")}
               options={Format.options(Device.kinds())}
+            />
+            <Form.input
+              field={@form[:critical]}
+              type="select"
+              label={gettext("Critical")}
+              prompt={gettext("Keep current")}
+              options={critical_options()}
             />
             <Form.input
               field={@form[:placement]}

@@ -18,8 +18,11 @@ holds settings that are not about providers. Every key is optional:
 * `theme` (`auto`): `auto` follows the system, `light` and `dark` force a theme
   (applies on the next page load).
 * `ping.cache_duration` (`15m`): devices are pinged and shown with a dot (green:
-  answers, red: no answer, yellow: checking) on the device page, the device list
-  and Discovery. Unknown devices are pinged as soon as a provider reports them.
+  answers, red: a *critical* device does not answer, grey: another device does not
+  answer, yellow: checking) on the device page, the device list and Discovery.
+  Mark a device critical in its form or with the bulk edit; the Overview only
+  counts the critical devices that do not answer, and the device list has a
+  *Critical* filter. Unknown devices are pinged as soon as a provider reports them.
   Results are kept per address, in memory only, and reused this long; clicking the
   dot on a device page pings again right away.
 * `ping.timeout` (`2s`): how long to wait for an answer.

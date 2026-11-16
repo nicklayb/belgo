@@ -354,6 +354,13 @@ defmodule BelgoWeb.Devices.Live.Form do
               options={Format.options(Device.kinds())}
             />
             <Form.input
+              field={@form[:critical]}
+              type="checkbox"
+              label={gettext("Critical")}
+              hint={gettext("Shown in red and counted in the Overview when it does not answer.")}
+              class="sm:mt-7"
+            />
+            <Form.input
               :if={to_string(@form[:kind].value) == "network"}
               field={@form[:network_role]}
               type="select"

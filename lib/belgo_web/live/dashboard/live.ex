@@ -1,6 +1,7 @@
 defmodule BelgoWeb.Dashboard.Live do
   @moduledoc """
-  Overview: key figures, the issues to fix (inventory issues, divergences with the
+  Overview: key figures (the Devices figure tells whether critical devices answer
+  pings), the issues to fix (inventory issues, divergences with the
   providers, duplicates on providers; collapsible), then the Discovery section
   (`BelgoWeb.Discovery.Section`, its events and filter delegated there).
   """
@@ -41,7 +42,8 @@ defmodule BelgoWeb.Dashboard.Live do
   def assign_inventory(socket) do
     snapshot = socket.assigns.snapshot
 
-    addresses_by_device = Enum.map(snapshot.devices, &Device.ip_addresses/1)
+    addresses_by_device =
+      for device <- snapshot.devices, device.critical, do: Device.ip_addresses(device)
 
     socket
     |> assign(:addresses_by_device, addresses_by_device)
@@ -118,7 +120,7 @@ defmodule BelgoWeb.Dashboard.Live do
 
   attr(:counts, :map, required: true)
 
-  # Devices without address (unknown) are left out.
+  # Counts critical devices only; those without address (unknown) are left out.
   defp reachability_summary(assigns) do
     ~H"""
     <span id="devices-reachability">
@@ -128,7 +130,11 @@ defmodule BelgoWeb.Dashboard.Live do
         class="inline-flex items-center gap-1.5 font-medium text-danger"
       >
         <span class="size-2 rounded-full bg-danger" />
-        {ngettext("1 does not answer", "%{count} do not answer", @counts.down)}
+        {ngettext(
+          "1 critical device does not answer",
+          "%{count} critical devices do not answer",
+          @counts.down
+        )}
       </span>
       <span
         :if={Map.get(@counts, :down, 0) == 0 and pinging?(@counts)}
@@ -144,7 +150,7 @@ defmodule BelgoWeb.Dashboard.Live do
         class="inline-flex items-center gap-1.5 text-success"
       >
         <span class="size-2 rounded-full bg-success" />
-        {gettext("All answer")}
+        {gettext("All critical devices answer")}
       </span>
     </span>
     """

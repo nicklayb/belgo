@@ -2,7 +2,8 @@ defmodule Belgo.Inventory.DeviceFilter do
   @moduledoc """
   Filter of the device list (`Box.DataFilter`): `query` matches the name, hostname,
   tags, IP and MAC addresses and DNS names (case insensitive), `kinds` keeps devices
-  of any of the selected kinds (none selected: every kind). `sort` and `direction`
+  of any of the selected kinds (none selected: every kind), `critical` keeps critical
+  devices only. `sort` and `direction`
   order the list (`Belgo.Inventory.DeviceSorting`, applied by the list since it sorts
   by displayed values). Serialised in the query string (`kinds=gaming,server`) so the
   list keeps its filter on back navigation; defaults are left out.
@@ -12,6 +13,7 @@ defmodule Belgo.Inventory.DeviceFilter do
     fields: [
       query: [],
       kinds: [default: []],
+      critical: [default: false],
       sort: [default: :name],
       direction: [default: :asc]
     ]
@@ -33,6 +35,11 @@ defmodule Belgo.Inventory.DeviceFilter do
       do: %Filter{filter | kinds: List.delete(kinds, kind)},
       else: %Filter{filter | kinds: kinds ++ [kind]}
   end
+
+  @doc "Shows critical devices only, or every device when it already does."
+  @spec toggle_critical(t()) :: t()
+  def toggle_critical(%Filter{critical: critical} = filter),
+    do: %Filter{filter | critical: not critical}
 
   @doc "Sorts by `field`, toggling the direction when it is already the sorted field."
   @spec sort_by(t(), DeviceSorting.field()) :: t()
@@ -63,6 +70,8 @@ defmodule Belgo.Inventory.DeviceFilter do
   def cast(%Filter{}, :kinds, kinds) when is_list(kinds), do: cast_kinds(kinds)
   def cast(%Filter{}, :kinds, _kinds), do: []
 
+  def cast(%Filter{}, :critical, value), do: value in [true, "true"]
+
   def cast(%Filter{}, :sort, value) when is_binary(value),
     do: DeviceSorting.parse_field(value) || @default_sort
 
@@ -77,6 +86,8 @@ defmodule Belgo.Inventory.DeviceFilter do
   def apply(%Filter{}, devices, _field, nil), do: devices
   def apply(%Filter{}, devices, field, _value) when field in [:sort, :direction], do: devices
   def apply(%Filter{}, devices, :kinds, []), do: devices
+  def apply(%Filter{}, devices, :critical, false), do: devices
+  def apply(%Filter{}, devices, :critical, true), do: Enum.filter(devices, & &1.critical)
 
   def apply(%Filter{}, devices, :query, query) do
     normalized = String.downcase(String.trim(query))
@@ -88,6 +99,8 @@ defmodule Belgo.Inventory.DeviceFilter do
   @impl Box.DataFilter
   def to_query(%Filter{}, _field, nil), do: :ignore
   def to_query(%Filter{}, :kinds, []), do: :ignore
+  def to_query(%Filter{}, :critical, false), do: :ignore
+  def to_query(%Filter{}, :critical, true), do: "true"
   def to_query(%Filter{}, :sort, @default_sort), do: :ignore
   def to_query(%Filter{}, :direction, @default_direction), do: :ignore
 

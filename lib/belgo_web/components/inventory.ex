@@ -53,15 +53,35 @@ defmodule BelgoWeb.Components.Inventory do
     """
   end
 
+  attr(:device, Device, required: true)
+
+  @doc "Star icon of the critical devices, nothing otherwise."
+  def critical_indicator(assigns) do
+    ~H"""
+    <span
+      :if={@device.critical}
+      data-critical-device
+      role="img"
+      title={gettext("Critical")}
+      aria-label={gettext("Critical")}
+      class="inline-flex shrink-0 items-center text-accent"
+    >
+      <.icon name="hero-star-mini" class="size-4" />
+    </span>
+    """
+  end
+
   attr(:status, Status, default: nil)
   attr(:clickable, :boolean, default: false, doc: "sends the `ping` event when clicked")
   attr(:ping_id, :string, default: nil, doc: "sent as the `id` value of the `ping` event")
+  attr(:critical, :boolean, default: false, doc: "a critical device not answering is red")
   attr(:id, :string, default: nil)
 
   @doc """
-  Ping indicator of a device: green when it answers, red when it does not, yellow
-  while checking, nothing before the first ping or without address. A clickable
-  indicator sends the `ping` event (pings again now), with `ping_id` as `id` value.
+  Ping indicator of a device: green when it answers, yellow while checking, nothing
+  before the first ping or without address. A device that does not answer is red when
+  `critical`, grey otherwise. A clickable indicator sends the `ping` event (pings
+  again now), with `ping_id` as `id` value.
   """
   def reachability_indicator(%{status: %Status{state: state}, clickable: true} = assigns)
       when state in @shown_reachability_states do
@@ -75,10 +95,11 @@ defmodule BelgoWeb.Components.Inventory do
       title={reachability_title(@status, @clickable)}
       aria-label={reachability_title(@status, @clickable)}
       data-state={@status.state}
+      data-critical={@critical}
       data-reachability
       class="inline-flex shrink-0 items-center rounded-full p-1.5 hover:bg-surface-muted disabled:cursor-wait"
     >
-      <.reachability_dot state={@status.state} />
+      <.reachability_dot state={@status.state} critical={@critical} />
     </button>
     """
   end
@@ -92,10 +113,11 @@ defmodule BelgoWeb.Components.Inventory do
       title={reachability_title(@status, @clickable)}
       aria-label={reachability_title(@status, @clickable)}
       data-state={@status.state}
+      data-critical={@critical}
       data-reachability
       class="inline-flex shrink-0 items-center"
     >
-      <.reachability_dot state={@status.state} />
+      <.reachability_dot state={@status.state} critical={@critical} />
     </span>
     """
   end
@@ -103,13 +125,15 @@ defmodule BelgoWeb.Components.Inventory do
   def reachability_indicator(assigns), do: ~H""
 
   attr(:state, :atom, required: true)
+  attr(:critical, :boolean, required: true)
 
   defp reachability_dot(assigns) do
     ~H"""
     <span class={[
       "block size-3 rounded-full ring-2 ring-surface",
       @state == :up && "bg-success",
-      @state == :down && "bg-danger",
+      @state == :down && @critical && "bg-danger",
+      @state == :down && !@critical && "bg-muted",
       @state == :pending && "animate-pulse bg-warning"
     ]} />
     """

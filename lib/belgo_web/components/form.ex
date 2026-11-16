@@ -56,6 +56,7 @@ defmodule BelgoWeb.Components.Form do
         />
         {@label}
       </label>
+      <p :if={@hint && @errors == []} class="mt-1 text-xs text-muted">{@hint}</p>
       <.errors errors={@errors} />
     </div>
     """

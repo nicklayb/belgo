@@ -88,6 +88,11 @@ defmodule BelgoWeb.Devices.Live.Index do
     end
   end
 
+  def handle_event("toggle-critical", _params, socket) do
+    filter = DeviceFilter.toggle_critical(socket.assigns.filter)
+    {:noreply, push_patch(socket, to: devices_path(filter), replace: true)}
+  end
+
   def handle_event("clear-kinds", _params, socket) do
     filter = %{socket.assigns.filter | kinds: []}
     {:noreply, push_patch(socket, to: devices_path(filter), replace: true)}
@@ -182,6 +187,20 @@ defmodule BelgoWeb.Devices.Live.Index do
               class="block w-full rounded-md border-0 bg-surface py-2 pr-3 pl-9 text-sm ring-1 ring-border ring-inset placeholder:text-muted focus:ring-2 focus:ring-accent focus:outline-none"
             />
           </div>
+          <button
+            type="button"
+            id="critical-filter"
+            phx-click="toggle-critical"
+            aria-pressed={to_string(@filter.critical)}
+            class={[
+              "inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium ring-1 ring-inset",
+              @filter.critical && "bg-accent-soft text-accent ring-accent",
+              !@filter.critical &&
+                "text-muted ring-border hover:bg-surface-muted hover:text-foreground"
+            ]}
+          >
+            <.icon name="hero-star" class="size-4" /> {gettext("Critical")}
+          </button>
         </.form>
 
         <.kind_filter
@@ -249,10 +268,12 @@ defmodule BelgoWeb.Devices.Live.Index do
           <:col :let={{device, _placement}} label={gettext("Name")} sort_field={:name}>
             <div class="flex min-w-0 items-center gap-2">
               <.device_link device={device} />
+              <.critical_indicator device={device} />
               <.poe_indicator device={device} />
-              <.reachability_indicator status={
-                Reachability.status(@address_statuses, Device.ip_addresses(device))
-              } />
+              <.reachability_indicator
+                critical={device.critical}
+                status={Reachability.status(@address_statuses, Device.ip_addresses(device))}
+              />
             </div>
             <p class="mt-0.5 font-mono text-xs text-muted">{Device.hostname(device)}</p>
           </:col>

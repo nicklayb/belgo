@@ -55,6 +55,21 @@ defmodule Belgo.Inventory.BulkEditTest do
     refute Map.has_key?(params, "network_role")
   end
 
+  test "sets or clears critical, keeps it when left empty" do
+    {:ok, critical} = bulk_edit(%{"critical" => "true"})
+    {:ok, not_critical} = bulk_edit(%{"critical" => "false"})
+    {:ok, kept} = bulk_edit(%{"critical" => "", "kind" => "media"})
+    %Device{} = device = burns_node()
+
+    assert %{"critical" => true} = BulkEdit.device_params(critical, device)
+
+    assert %{"critical" => false} =
+             BulkEdit.device_params(not_critical, %{device | critical: true})
+
+    assert %{"critical" => true} = BulkEdit.device_params(kept, %{device | critical: true})
+    refute Map.has_key?(BulkEdit.device_params(kept, device), "critical")
+  end
+
   test "requires a change, a location when moving to one, and unique labels" do
     assert {:error, %{errors: [kind: {"choose at least one change", _}]}} = bulk_edit(%{})
 

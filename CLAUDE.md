@@ -492,6 +492,16 @@ first addressed interface only, other interfaces are named through their
   `Reachability.Status.with_open_ports/2` (virtual IP pages count open ports as up).
   `BelgoWeb.Live.PortScans` and `Components.Inventory.open_ports/1` are shared with
   the device page.
+- Critical devices (owner): `Device.critical` (boolean, omitted from files when
+  false). Only critical devices that do not answer get a red dot
+  (`reachability_indicator` `critical`, `data-critical`); other non answering ones
+  are grey (`bg-muted`), so discovered devices and virtual IPs are grey too. The
+  Overview's Devices stat pings and counts critical devices only. Devices list
+  filter `DeviceFilter.critical` (`?critical=true`, `#critical-filter`); bulk edit
+  `BulkEdit.critical` (nil = keep, true / false). A star
+  (`Components.Inventory.critical_indicator/1`, `text-accent`, owner: eye-catching
+  but never evoking danger) follows their name like the PoE bolt (device list,
+  Routing); accent badge on the device page, accent filter button.
 - Copy buttons (owner): `Components.Core.copy_button/1` dispatches `belgo:copy`
   (listener in `app.js`: Clipboard API in secure contexts, `execCommand("copy")`
   fallback over plain HTTP), `data-copied` shows a check for 1.5 s. Used next to MAC

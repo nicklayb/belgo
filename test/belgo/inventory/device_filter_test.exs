@@ -25,6 +25,15 @@ defmodule Belgo.Inventory.DeviceFilterTest do
              length(Fixtures.snapshot().devices)
   end
 
+  test "keeps critical devices only, toggled and kept in the query string" do
+    assert ["smithers"] == ids(%{"critical" => "true"})
+    assert length(ids(%{"critical" => "false"})) == length(Fixtures.snapshot().devices)
+
+    filter = DeviceFilter.toggle_critical(DeviceFilter.new())
+    assert %{"critical" => "true"} == DeviceFilter.to_query_params(filter)
+    assert %{} == DeviceFilter.to_query_params(DeviceFilter.toggle_critical(filter))
+  end
+
   test "toggle_kind/2 adds then removes a kind" do
     filter = DeviceFilter.toggle_kind(DeviceFilter.new(), :gaming)
     assert [:gaming] == filter.kinds

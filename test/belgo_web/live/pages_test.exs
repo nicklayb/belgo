@@ -66,17 +66,38 @@ defmodule BelgoWeb.PagesTest do
     assert await_state(view, "#reachability", "down")
   end
 
-  test "the overview counts the devices that do not answer", %{conn: conn} do
+  test "the overview counts the critical devices that do not answer", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
     assert await_state(view, "#devices-reachability [data-state]", "down")
-    # Only Burns Node (10.0.0.10) answers among the fixture devices with an address.
-    assert render(element(view, "#devices-reachability")) =~ ~r/\d+ do not answer/
+    # Smithers (10.0.0.11) is the only critical fixture device, it does not answer.
+    assert render(element(view, "#devices-reachability")) =~
+             "1 critical device does not answer"
   end
 
-  test "the device list shows whether each device answers", %{conn: conn} do
+  test "the device list shows whether each device answers, red for critical ones only",
+       %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/devices")
     assert await_state(view, "#device-burns-node [data-reachability]", "up")
     assert await_state(view, "#device-smithers [data-reachability]", "down")
+    assert await_state(view, "#device-tv-living-room [data-reachability]", "down")
+
+    assert has_element?(view, "#device-smithers [data-reachability][data-critical] .bg-danger")
+    refute has_element?(view, "#device-tv-living-room [data-reachability][data-critical]")
+    assert has_element?(view, "#device-tv-living-room [data-reachability] .bg-muted")
+    assert has_element?(view, "#device-smithers [data-critical-device]")
+    refute has_element?(view, "#device-tv-living-room [data-critical-device]")
+  end
+
+  test "the device list filters critical devices", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/devices")
+
+    view
+    |> element("#critical-filter")
+    |> render_click()
+
+    assert_patch(view, ~p"/devices?critical=true")
+    assert has_element?(view, "#device-smithers")
+    refute has_element?(view, "#device-burns-node")
   end
 
   test "the device page shows where a guest physically is", %{conn: conn} do
@@ -158,6 +179,7 @@ defmodule BelgoWeb.PagesTest do
              |> form("#bulk-edit-form",
                bulk_edit: %{
                  kind: "appliance",
+                 critical: "true",
                  placement: "location",
                  location_id: "living-room",
                  metadata: %{"0" => %{label: "brand", value: "Krusty"}}
@@ -167,7 +189,10 @@ defmodule BelgoWeb.PagesTest do
 
     for id <- ["itchy", "smithers"] do
       assert {:ok, device} = Snapshot.fetch(Inventory.snapshot(), :devices, id)
-      assert %{kind: :appliance, location_id: "living-room", host_id: nil} = device
+
+      assert %{kind: :appliance, critical: true, location_id: "living-room", host_id: nil} =
+               device
+
       assert [%{label: "Brand", value: "Krusty"}] = device.metadata
     end
   end

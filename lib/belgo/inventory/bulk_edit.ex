@@ -1,8 +1,8 @@
 defmodule Belgo.Inventory.BulkEdit do
   @moduledoc """
-  Changes applied to several devices at once: the kind, the placement (a location,
-  portable or unplaced) and metadata entries. Fields left empty keep each device's
-  current value.
+  Changes applied to several devices at once: the kind, whether they are critical,
+  the placement (a location, portable or unplaced) and metadata entries. Fields left
+  empty keep each device's current value.
 
   Conflicts are overwritten: a metadata entry replaces the value of the entry with the
   same label (case insensitive) on each device, other entries are kept; a placement
@@ -24,6 +24,7 @@ defmodule Belgo.Inventory.BulkEdit do
   @primary_key false
   embedded_schema do
     field(:kind, Ecto.Enum, values: Device.kinds())
+    field(:critical, :boolean)
     field(:placement, Ecto.Enum, values: @placements, default: :keep)
     field(:location_id, :string)
     embeds_many(:metadata, MetadataEntry, on_replace: :delete)
@@ -31,6 +32,7 @@ defmodule Belgo.Inventory.BulkEdit do
 
   @type t :: %__MODULE__{
           kind: atom() | nil,
+          critical: boolean() | nil,
           placement: :keep | :location | :portable | :unplaced,
           location_id: String.t() | nil,
           metadata: [MetadataEntry.t()]
@@ -46,7 +48,7 @@ defmodule Belgo.Inventory.BulkEdit do
     params = SortParams.new_last(params, ["metadata_sort"])
 
     bulk_edit
-    |> cast(params, [:kind, :placement, :location_id])
+    |> cast(params, [:kind, :critical, :placement, :location_id])
     |> cast_embed(:metadata,
       with: &MetadataEntry.changeset/2,
       sort_param: :metadata_sort,
@@ -59,7 +61,9 @@ defmodule Belgo.Inventory.BulkEdit do
 
   @doc "Returns `true` when the edit changes nothing."
   @spec empty?(t()) :: boolean()
-  def empty?(%__MODULE__{kind: nil, placement: :keep, metadata: []}), do: true
+  def empty?(%__MODULE__{kind: nil, critical: nil, placement: :keep, metadata: []}),
+    do: true
+
   def empty?(%__MODULE__{}), do: false
 
   @doc "Computes the attributes of a device once the edit is applied."
@@ -68,6 +72,7 @@ defmodule Belgo.Inventory.BulkEdit do
     device
     |> Codec.encode()
     |> put_kind(bulk_edit.kind)
+    |> put_critical(bulk_edit.critical)
     |> put_placement(bulk_edit)
     |> put_metadata(bulk_edit.metadata)
   end
@@ -80,6 +85,9 @@ defmodule Belgo.Inventory.BulkEdit do
     |> Map.put("kind", Atom.to_string(kind))
     |> Map.delete("network_role")
   end
+
+  defp put_critical(attributes, nil), do: attributes
+  defp put_critical(attributes, critical), do: Map.put(attributes, "critical", critical)
 
   defp put_placement(attributes, %__MODULE__{placement: :keep}), do: attributes
 

@@ -15,6 +15,9 @@ defmodule Belgo.Inventory.Device do
   for network devices without interface (unmanaged switches), where `uplink_id` /
   `uplink_port` say. Switches can declare their number of ports (`port_count`) and
   whether they supply Power over Ethernet (`poe`); other devices never keep them.
+
+  A `critical` device is one whose outage matters: only critical devices that do not
+  answer pings are shown as failing (red dot, Overview counter).
   """
 
   use Belgo, :schema
@@ -30,7 +33,7 @@ defmodule Belgo.Inventory.Device do
   @virtualizations ~w(virtual_machine lxc container)a
   @placements ~w(location host portable unplaced)a
   @network_roles ~w(gateway switch access_point)a
-  @fields ~w(id name hostname kind network_role port_count poe uplink_id uplink_port location_id host_id virtualization portable platforms tags notes)a
+  @fields ~w(id name hostname kind critical network_role port_count poe uplink_id uplink_port location_id host_id virtualization portable platforms tags notes)a
   @required ~w(id name kind)a
   @list_fields ~w(platforms tags)
   @sort_params ~w(interfaces_sort metadata_sort)
@@ -43,6 +46,7 @@ defmodule Belgo.Inventory.Device do
     field(:name, :string)
     field(:hostname, :string)
     field(:kind, Ecto.Enum, values: @kinds, default: :other)
+    field(:critical, :boolean, default: false)
     field(:network_role, Ecto.Enum, values: @network_roles)
     field(:port_count, :integer)
     field(:poe, :boolean, default: false)

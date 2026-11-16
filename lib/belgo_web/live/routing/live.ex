@@ -107,6 +107,7 @@ defmodule BelgoWeb.Routing.Live do
         <.link navigate={~p"/devices/#{@node.device.id}"} class="font-semibold hover:text-accent">
           {@node.device.name}
         </.link>
+        <.critical_indicator device={@node.device} />
         <.poe_indicator device={@node.device} />
         <.port_usage :if={Device.switch?(@node.device)} node={@node} />
         <span class="text-xs text-muted">{Format.label(@node.device.network_role)}</span>

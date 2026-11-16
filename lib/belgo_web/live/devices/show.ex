@@ -192,12 +192,16 @@ defmodule BelgoWeb.Devices.Live.Show do
           <.reachability_indicator
             id="reachability"
             clickable
+            critical={@device.critical}
             status={Reachability.status(@address_statuses, Device.ip_addresses(@device))}
           />
         </:title_suffix>
         <:subtitle>
           <span class="inline-flex flex-wrap items-center gap-2">
             <.badge>{Format.label(@device.kind)}</.badge>
+            <.badge :if={@device.critical} id="critical-badge" tone={:accent}>
+              <.icon name="hero-star-micro" class="size-3" /> {gettext("Critical")}
+            </.badge>
             <.badge :if={Device.poe?(@device)} tone={:warning}>
               <.icon name="hero-bolt-micro" class="size-3" /> {gettext("PoE")}
             </.badge>
