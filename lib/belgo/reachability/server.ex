@@ -15,12 +15,12 @@ defmodule Belgo.Reachability.Server do
 
   use GenServer
 
-  require Logger
-
   alias Belgo.Config
   alias Belgo.Reachability
   alias Belgo.Reachability.AddressStatus
   alias Belgo.Reachability.Pinger
+
+  require Logger
 
   @maximum_concurrent_pings 32
   @broadcast_delay_milliseconds 250

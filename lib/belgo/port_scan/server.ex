@@ -14,13 +14,13 @@ defmodule Belgo.PortScan.Server do
 
   use GenServer
 
-  require Logger
-
   alias Belgo.Config
   alias Belgo.PortScan
   alias Belgo.PortScan.AddressScan
   alias Belgo.PortScan.Ports
   alias Belgo.PortScan.Scanner
+
+  require Logger
 
   @doc "Starts the server."
   @spec start_link(Keyword.t()) :: GenServer.on_start()

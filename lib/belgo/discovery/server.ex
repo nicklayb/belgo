@@ -32,8 +32,8 @@ defmodule Belgo.Discovery.Server do
   alias Belgo.Inventory
   alias Belgo.Inventory.Device
   alias Belgo.Providers.Settings
-  alias Belgo.Reachability
   alias Belgo.Providers.Settings.Configured
+  alias Belgo.Reachability
   alias Belgo.Sync.DesiredState
   alias Belgo.Sync.PushReport
 

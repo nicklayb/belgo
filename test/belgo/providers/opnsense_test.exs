@@ -1,9 +1,12 @@
 defmodule Belgo.Providers.OpnsenseTest do
   use ExUnit.Case, async: true
 
+  import Belgo.Fixtures, only: [device: 1, snapshot: 0]
+
   alias Belgo.Discovery.Observation
   alias Belgo.Discovery.Report
   alias Belgo.Fixtures.OpnsenseClient
+  alias Belgo.Inventory.Snapshot
   alias Belgo.Providers.Opnsense
   alias Belgo.Providers.Opnsense.Translate
 
@@ -124,13 +127,13 @@ defmodule Belgo.Providers.OpnsenseTest do
   end
 
   test "the gateway addresses make a single discovered device" do
-    snapshot = Belgo.Inventory.Snapshot.delete(Belgo.Fixtures.snapshot(), :devices, "power-plant")
+    snapshot = Snapshot.delete(snapshot(), :devices, "power-plant")
 
     snapshot =
-      Belgo.Inventory.Snapshot.put(
+      Snapshot.put(
         snapshot,
         :devices,
-        Belgo.Fixtures.device(id: "plow-king", name: "Plow King", kind: :network)
+        device(id: "plow-king", name: "Plow King", kind: :network)
       )
 
     {:ok, report} = Opnsense.discover(config())

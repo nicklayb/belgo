@@ -24,14 +24,14 @@ defmodule Belgo.Config do
   Read when needed, so edits apply without restart.
   """
 
-  require Logger
-
   alias Belgo.Config.Git
   alias Belgo.Config.Ping
   alias Belgo.Config.Plan
   alias Belgo.Config.PortScan
   alias Belgo.Config.WakeOnLan
   alias Belgo.Duration
+
+  require Logger
 
   @file_name "config.yaml"
   @format_version 1

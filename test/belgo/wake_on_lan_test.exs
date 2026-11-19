@@ -1,14 +1,14 @@
 defmodule Belgo.WakeOnLanTest do
   use ExUnit.Case, async: true
 
-  @moduletag :tmp_dir
-  @environment %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}
-
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.Interface
   alias Belgo.Inventory.Network
   alias Belgo.WakeOnLan
   alias Belgo.WakeOnLan.MagicPacket
+
+  @moduletag :tmp_dir
+  @environment %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}
 
   test "the magic packet is 6 × 0xFF then the MAC address 16 times" do
     assert {:ok, packet} = MagicPacket.build("02-00-00-00-00-10")

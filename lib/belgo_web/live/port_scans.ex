@@ -6,12 +6,12 @@ defmodule BelgoWeb.Live.PortScans do
   (connected), reusing recent results.
   """
 
+  import Phoenix.Component, only: [assign: 3, update: 3]
+  import Phoenix.LiveView, only: [connected?: 1]
+
   alias Belgo.PortScan
   alias Belgo.PortScan.AddressScan
   alias Phoenix.LiveView.Socket
-
-  import Phoenix.Component, only: [assign: 3, update: 3]
-  import Phoenix.LiveView, only: [connected?: 1]
 
   @doc "Assigns the known scans and subscribes to their changes (connected only)."
   @spec subscribe(Socket.t()) :: Socket.t()

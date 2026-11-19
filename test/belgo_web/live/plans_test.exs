@@ -223,6 +223,7 @@ defmodule BelgoWeb.PlansTest do
 
     render_hook(element(view, "#plan-3d"), "set-wide", %{"wide" => true})
     assert render(view) =~ "lg:px-6 lg:py-4"
+    assert render(element(view, "#version-footer")) =~ "v#{Belgo.version()}"
 
     render_hook(element(view, "#plan-3d"), "set-wide", %{"wide" => false})
     refute render(view) =~ "lg:px-6 lg:py-4"

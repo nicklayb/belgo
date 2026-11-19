@@ -21,13 +21,13 @@ defmodule Belgo.Versioning.Server do
 
   use GenServer
 
-  require Logger
-
   alias Belgo.Config
   alias Belgo.Config.Git, as: GitConfig
   alias Belgo.Inventory.Store
   alias Belgo.Versioning
   alias Belgo.Versioning.Git
+
+  require Logger
 
   @short_sha_length 7
   @topic "versioning"

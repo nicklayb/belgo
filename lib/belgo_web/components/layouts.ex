@@ -57,18 +57,30 @@ defmodule BelgoWeb.Components.Layouts do
         </div>
 
         <.live_component module={BelgoWeb.Components.SearchModal} id="global-search" />
-        <main class="relative flex-1 overflow-y-auto overscroll-contain">
+        <main class="relative flex flex-1 flex-col overflow-y-auto overscroll-contain">
           <div class={[
-            "px-4 py-6",
+            "w-full flex-1 px-4 py-6",
             !@wide && "mx-auto max-w-6xl lg:px-8 lg:py-8",
             @wide && "lg:px-6 lg:py-4"
           ]}>
             <.flash_group flash={@flash} />
             {render_slot(@inner_block)}
           </div>
+          <.version_footer />
         </main>
       </div>
     </div>
+    """
+  end
+
+  @doc "Discreet footer showing the application version, aligned to the bottom right."
+  def version_footer(assigns) do
+    assigns = assign(assigns, :version, Belgo.version())
+
+    ~H"""
+    <footer id="version-footer" class="shrink-0 px-4 pb-3 text-right text-xs text-muted lg:px-8">
+      v{@version}
+    </footer>
     """
   end
 

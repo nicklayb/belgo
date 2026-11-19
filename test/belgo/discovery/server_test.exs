@@ -4,8 +4,6 @@ defmodule Belgo.Discovery.ServerTest do
 
   import ExUnit.CaptureLog
 
-  require Logger
-
   alias Belgo.Discovery
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.Server
@@ -13,6 +11,8 @@ defmodule Belgo.Discovery.ServerTest do
   alias Belgo.Inventory.Snapshot
   alias Belgo.Inventory.Storage.YamlDirectory
   alias Belgo.Inventory.Store
+
+  require Logger
 
   @moduletag :tmp_dir
   @environment %{"BELGO_OPNSENSE_API_KEY" => "homer", "BELGO_OPNSENSE_API_SECRET" => "donuts"}

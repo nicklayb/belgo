@@ -21,9 +21,9 @@ defmodule BelgoWeb.Devices.Live.Show do
   alias Belgo.Topology.DeviceNode
   alias Belgo.Topology.Physical
   alias Belgo.Topology.Routing
+  alias Belgo.WakeOnLan
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Mutation
-  alias Belgo.WakeOnLan
   alias BelgoWeb.Live.PortScans
   alias BelgoWeb.Live.Reachability
 

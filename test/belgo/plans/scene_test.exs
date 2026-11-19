@@ -1,8 +1,8 @@
 defmodule Belgo.Plans.SceneTest do
   use ExUnit.Case, async: true
 
-  alias Belgo.Inventory.Storage.YamlDirectory
   alias Belgo.Inventory.Snapshot
+  alias Belgo.Inventory.Storage.YamlDirectory
   alias Belgo.Plans.Analysis
   alias Belgo.Plans.Level
   alias Belgo.Plans.Opening

@@ -1008,8 +1008,8 @@ defmodule BelgoWeb.Plans.Editor do
     end
   end
 
-  # Devices not on the plan yet and not hosted (a guest is where its host is), grouped by location (by path, devices without
-  # location last), by name within a group.
+  # Devices not on the plan yet and not hosted (a guest is where its host is), grouped by
+  # location (by path, devices without location last), by name within a group.
   defp device_options(device_by_id, draft, location_labels) do
     placed_ids = MapSet.new(draft.placements, & &1.device_id)
 

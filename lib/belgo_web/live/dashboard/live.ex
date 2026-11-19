@@ -19,10 +19,10 @@ defmodule BelgoWeb.Dashboard.Live do
   alias Belgo.Sync.DesiredState
   alias Belgo.Topology.Hosting
   alias BelgoWeb.Discovery.Section, as: DiscoverySection
-
-  @discovery_events DiscoverySection.events()
   alias BelgoWeb.Format
   alias BelgoWeb.Live.Reachability
+
+  @discovery_events DiscoverySection.events()
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do

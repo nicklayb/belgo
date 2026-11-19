@@ -1,9 +1,17 @@
 defmodule Belgo do
   @moduledoc """
-  Shared `use` macros for Belgo modules.
+  Shared `use` macros for Belgo modules, and the application version.
 
       use Belgo, :schema
   """
+
+  @doc "Application version, from the generated `.app` (filled by `mix.exs` from `VERSION`)."
+  @spec version() :: String.t()
+  def version do
+    :belgo
+    |> Application.spec(:vsn)
+    |> to_string()
+  end
 
   @doc "Embedded schema whose primary key is a human readable slug."
   def schema do
