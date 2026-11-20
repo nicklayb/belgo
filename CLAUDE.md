@@ -460,6 +460,36 @@ first addressed interface only, other interfaces are named through their
   `port_scan.timeout` 1s, only `PortScan.Ports` (~40 common ports with service
   names); no SYN scan (needs raw sockets). Device page card with *Refresh*
   (force). Tests inject `:scan` (`Belgo.Fixtures.PortScanner`).
+- Intel AMT (owner: MeshCentral replacement = SOL + power + info; no KVM). Detection
+  is live only (never persisted: the device page scans on display, AMT shares the
+  host IP): `PortScan.Ports` has 623 / 664 / 16992-16995, the scan task then runs
+  `:probe` (`Amt.Probe.detect/3`, one unauthenticated `GET /` on 16992, else 16993
+  with `verify_none`; not `HEAD`: measured, AMT's HEAD answer carries a chunked
+  terminator Mint rejects) into `AddressScan.amt` (`Amt.Detection`). **Measured** on the
+  owner's LAN: `Server:` is `Intel(R) Active Management Technology 11.8.55.3510`,
+  `Intel(R) Standard Manageability 9.1.45` or bare `AMT`; 16992 / 16994 / 623 open,
+  TLS ports closed; `/wsman` answers `401` `Digest realm="Digest:…", nonce="…",
+  stale="false",qop="auth"`. The password is typed for **every** action (owner),
+  wrapped in `Amt.Credentials` (closure, hidden from inspect; form field `password`
+  filtered by Phoenix), never stored / logged / in argv. WS-Man: `Amt.Wsman.Client`
+  behaviour, `HttpClient` (Req + `Amt.Digest`, one unauthenticated post then the
+  digest one; a second 401 stops at once, AMT locks accounts), `Messages` /
+  `Response` (`:xmerl`, in `extra_applications`), `Amt.status/3` (power state first,
+  then `Info.classes/0`), `Amt.power/4` (`Power`: on 2, off 8, reset 10, cycle 5;
+  extra checkbox on critical devices), `Vulnerability` (CVE-2017-5689 from the
+  version). Tests: `Fixtures.WsmanClient`, a Bandit fake AMT checking the digest.
+  SOL: `Amt.Sol` + `Sol.Session` (Registry `{username, device_id}` +
+  DynamicSupervisor, owns the amtterm Port, `AMT_PASSWORD` env only, 64 KiB
+  `Scrollback` with a byte offset so a reattaching page skips duplicates, idle =
+  no **input** for `amt.idle_timeout` (15m), terminate = `Port.close` then
+  `OsProcess.terminate` (SIGTERM, SIGKILL after grace: amtterm ignores stdin until
+  connected)). Page `/devices/:id/console` (`AmtConsole` hook, xterm.js chunk
+  `assets/js/amt/terminal.js`, CSS imported as text via esbuild
+  `--loader:.css=text`). amtterm: `BELGO_AMTTERM_PATH` (image: binary only,
+  `amtterm` derivation in `flake.nix`: the package's amttool drags Perl, 119 MiB
+  measured), tests use `test/support/fake_amtterm`. TLS (`amt.ca_file`) only when
+  the plain port is closed. **Not verified on real hardware**: SOL through amtterm,
+  WS-Man messages / fields, power actions, TLS.
 - Search dialog keyboard: arrows move a `data-active` highlight over
   `[data-search-result]` links while the focus stays in the field (wraps), Enter
   follows it (the first result by default); typing resets it, `updated()` puts it

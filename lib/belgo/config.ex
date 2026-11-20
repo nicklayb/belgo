@@ -20,10 +20,15 @@ defmodule Belgo.Config do
         timeout: 1s           # how long to wait for each port
       plan:
         autosave_delay: 5s    # the plan editor saves once changes are left alone
+      amt:
+        idle_timeout: 15m     # an Intel AMT console closes after that long without input
+        timeout: 10s          # how long to wait for each WS-Management answer
+        ca_file: /data/amt-ca.pem   # optional, TLS ports only (16993 / 16995)
 
   Read when needed, so edits apply without restart.
   """
 
+  alias Belgo.Config.Amt
   alias Belgo.Config.Git
   alias Belgo.Config.Ping
   alias Belgo.Config.Plan
@@ -49,7 +54,8 @@ defmodule Belgo.Config do
             git: nil,
             wake_on_lan: %WakeOnLan{},
             port_scan: %PortScan{},
-            plan: %Plan{}
+            plan: %Plan{},
+            amt: %Amt{}
 
   @type theme :: :auto | :light | :dark
   @type t :: %__MODULE__{
@@ -58,7 +64,8 @@ defmodule Belgo.Config do
           git: Git.t() | nil,
           wake_on_lan: WakeOnLan.t(),
           port_scan: PortScan.t(),
-          plan: Plan.t()
+          plan: Plan.t(),
+          amt: Amt.t()
         }
 
   @doc "Reads `config.yaml` from the configured data directory, defaults when invalid."
@@ -121,7 +128,8 @@ defmodule Belgo.Config do
          {:ok, plan} <-
            parse_durations(document, "plan", Plan,
              autosave_delay: @minimum_commit_delay_milliseconds
-           ) do
+           ),
+         {:ok, amt} <- parse_amt(Map.get(document, "amt") || %{}) do
       {:ok,
        %__MODULE__{
          theme: theme,
@@ -129,7 +137,8 @@ defmodule Belgo.Config do
          git: git,
          wake_on_lan: wake_on_lan,
          port_scan: port_scan,
-         plan: plan
+         plan: plan,
+         amt: amt
        }}
     end
   end
@@ -160,6 +169,34 @@ defmodule Belgo.Config do
   end
 
   defp parse_ping(_options), do: {:error, ["#{@file_name}: ping must be a map"]}
+
+  defp parse_amt(options) when is_map(options) do
+    defaults = %Amt{}
+
+    collect(Amt,
+      idle_timeout:
+        duration(
+          options,
+          "amt.idle_timeout",
+          defaults.idle_timeout,
+          @minimum_timeout_milliseconds
+        ),
+      timeout: duration(options, "amt.timeout", defaults.timeout, @minimum_timeout_milliseconds),
+      ca_file: optional_text(options, "amt.ca_file")
+    )
+  end
+
+  defp parse_amt(_options), do: {:error, ["#{@file_name}: amt must be a map"]}
+
+  defp optional_text(options, path) do
+    key = List.last(String.split(path, "."))
+
+    case Map.get(options, key) do
+      nil -> {:ok, nil}
+      value when is_binary(value) and value != "" -> {:ok, value}
+      _invalid -> {:error, "#{@file_name}: #{path} must be a non empty text"}
+    end
+  end
 
   defp parse_git(%{"git" => nil}), do: parse_git(%{"git" => %{}})
 

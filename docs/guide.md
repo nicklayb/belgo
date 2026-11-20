@@ -42,6 +42,8 @@ holds settings that are not about providers. Every key is optional:
   plain connection closed right away, nothing is sent, eight at a time: no
   privilege needed and nothing that disturbs the device (its services may log a
   closed connection). Results are kept in memory; *Refresh* checks again.
+* `amt.idle_timeout` (`15m`), `amt.timeout` (`10s`), `amt.ca_file` (none): Intel
+  AMT, see [Intel AMT](#intel-amt).
 * `git` (absent: disabled, `git:` alone uses the defaults): versions the data directory. Belgo makes it a git
   repository when it is not one yet and commits changes once the files are left
   alone for `git.commit_delay` (`5m`), and before stopping. Commits are authored by
@@ -133,6 +135,36 @@ DNS names belong to an interface address: a short name gets the network domain
 (`plex` → `plex.home.lan`), a name with a dot is used as is. The device hostname only
 names DHCP reservations, it never creates a DNS record. Names duplicated in Unbound
 are shown in *Overview* and never written until fixed in OPNsense.
+
+## Intel AMT
+
+The port scan also checks the Intel AMT ports (16992 to 16995, 623, 664). When the
+WS-Management port answers with AMT's `Server` header (`Intel(R) Active Management
+Technology 11.8.55.3510`, `Intel(R) Standard Manageability 9.1.45` or `AMT`), the
+device page shows an *Intel AMT* card. Nothing is stored: the card comes back with
+the next scan. AMT shares the host's address, so the host may look reachable while
+its system is off.
+
+Every action asks the AMT account (`admin` by default) and its password, used for
+that action only: never stored, never logged, never on a command line.
+
+* *Open the console*: serial over LAN with `amtterm`, in a terminal on
+  `/devices/<id>/console`. The console belongs to you and keeps running when you
+  leave the page (come back from the card's *Back to the console*); it closes with
+  *Close the console*, or after `amt.idle_timeout` without typing (output does not
+  count). The host must send its console to AMT's serial port (BIOS redirection,
+  kernel `console=ttyS<n>,115200`). Consoles live in memory: restarting Belgo
+  closes them.
+* *Read status*: power state, firmware, machine, BIOS, processor and memory.
+* *Power on*, *Power off*, *Reset*, *Power cycle*: hard actions, confirmed in the
+  dialog; a critical device needs an extra checkbox.
+
+Firmware older than the fix of CVE-2017-5689 (login without password, AMT 6 to
+11.6) gets a warning. Plain ports are used when open; when only the TLS ports are
+(16993 / 16995), set `amt.ca_file` to the PEM certificate of the CA that signed the
+AMT certificates (amtterm verifies it, TLS 1.2, host name not checked). Not verified
+on real hardware: TLS, power actions, the information fields; the detection and the
+Digest challenge were checked on the owner's machines, the rest against a fake AMT.
 
 ## Logical ranges
 

@@ -1,15 +1,19 @@
 defmodule Belgo.PortScan.AddressScan do
   @moduledoc """
   The open TCP ports of one address: `:pending` while being checked, `:done` with
-  `open_ports` (among `checked_ports`) and `scanned_at` once checked.
+  `open_ports` (among `checked_ports`), `amt` (Intel AMT confirmed on those ports) and
+  `scanned_at` once checked.
   """
 
+  alias Belgo.Amt.Detection
+
   @enforce_keys [:address, :state]
-  defstruct [:address, :state, :scanned_at, open_ports: [], checked_ports: []]
+  defstruct [:address, :state, :scanned_at, :amt, open_ports: [], checked_ports: []]
 
   @type t :: %__MODULE__{
           address: String.t(),
           state: :pending | :done,
+          amt: Detection.t() | nil,
           open_ports: [:inet.port_number()],
           checked_ports: [:inet.port_number()],
           scanned_at: DateTime.t() | nil

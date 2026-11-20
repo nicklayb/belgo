@@ -13,6 +13,8 @@ defmodule Belgo.Application do
       {Belgo.PortScan.Server, port_scan_options()},
       {Registry, keys: :unique, name: Belgo.WakeOnLan.Registry},
       {DynamicSupervisor, name: Belgo.WakeOnLan.Supervisor, strategy: :one_for_one},
+      {Registry, keys: :unique, name: Belgo.Amt.Sol.Registry},
+      {DynamicSupervisor, name: Belgo.Amt.Sol.Supervisor, strategy: :one_for_one},
       {Belgo.Discovery.Server, discovery_options()},
       {Belgo.Versioning.Server, versioning_options()},
       BelgoWeb.Endpoint

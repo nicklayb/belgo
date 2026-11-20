@@ -45,6 +45,7 @@ defmodule BelgoWeb.Router do
       live("/devices/bulk-edit", Devices.Live.BulkEdit, :edit)
       live("/devices/:id", Devices.Live.Show, :show)
       live("/devices/:id/edit", Devices.Live.Form, :edit)
+      live("/devices/:id/console", Devices.Live.Console, :show)
 
       live("/locations", Locations.Live.Index, :index)
       live("/locations/new", Locations.Live.Form, :new)
