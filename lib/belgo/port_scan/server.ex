@@ -9,11 +9,13 @@ defmodule Belgo.PortScan.Server do
   Options: `:directory` (where `config.yaml` lives), `:scan` (address, ports, timeout
   → open ports, `Belgo.PortScan.Scanner.open_ports/3` by default), `:ports`
   (`Belgo.PortScan.Ports.all/0` by default), `:clock`, `:pubsub`, `:topic`,
-  `:task_supervisor`, `:name`.
+  `:task_supervisor`, `:name`, `:probe` (address, open ports, timeout → `Belgo.Amt.Detection`
+  or `nil`, `Belgo.Amt.Probe.detect/3` by default: confirms Intel AMT on its open ports).
   """
 
   use GenServer
 
+  alias Belgo.Amt.Probe
   alias Belgo.Config
   alias Belgo.PortScan
   alias Belgo.PortScan.AddressScan
@@ -34,6 +36,7 @@ defmodule Belgo.PortScan.Server do
      %{
        directory: Keyword.fetch!(options, :directory),
        scan: Keyword.get(options, :scan, &Scanner.open_ports/3),
+       probe: Keyword.get(options, :probe, &Probe.detect/3),
        ports: Keyword.get(options, :ports, Ports.all()),
        clock: Keyword.get(options, :clock, &DateTime.utc_now/0),
        pubsub: Keyword.get(options, :pubsub),
@@ -75,38 +78,42 @@ defmodule Belgo.PortScan.Server do
   end
 
   @impl GenServer
-  def handle_info({reference, open_ports}, state) when is_map_key(state.tasks, reference) do
+  def handle_info({reference, {open_ports, amt}}, state)
+      when is_map_key(state.tasks, reference) do
     Process.demonitor(reference, [:flush])
-    {:noreply, finish(state, reference, open_ports)}
+    {:noreply, finish(state, reference, open_ports, amt)}
   end
 
   def handle_info({:DOWN, reference, :process, _pid, reason}, state)
       when is_map_key(state.tasks, reference) do
     Logger.error("[port_scan] #{state.tasks[reference]} crashed: #{inspect(reason)}")
-    {:noreply, finish(state, reference, [])}
+    {:noreply, finish(state, reference, [], nil)}
   end
 
   def handle_info(_message, state), do: {:noreply, state}
 
   defp start_scan(state, address, timeout) do
     scan = state.scan
+    probe = state.probe
     ports = state.ports
 
     task =
       Task.Supervisor.async_nolink(state.task_supervisor, fn ->
-        scan.(address, ports, timeout)
+        open_ports = scan.(address, ports, timeout)
+        {open_ports, probe.(address, open_ports, timeout)}
       end)
 
     %{state | tasks: Map.put(state.tasks, task.ref, address)}
   end
 
-  defp finish(state, reference, open_ports) do
+  defp finish(state, reference, open_ports, amt) do
     {address, tasks} = Map.pop!(state.tasks, reference)
 
     address_scan = %AddressScan{
       address: address,
       state: :done,
       open_ports: open_ports,
+      amt: amt,
       checked_ports: state.ports,
       scanned_at: state.clock.()
     }

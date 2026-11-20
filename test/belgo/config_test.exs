@@ -114,6 +114,31 @@ defmodule Belgo.ConfigTest do
     assert message =~ "wake_on_lan.ping_interval"
   end
 
+  test "AMT consoles close after 15 minutes without input by default" do
+    assert {:ok,
+            %Config{amt: %Belgo.Config.Amt{idle_timeout: 900_000, timeout: 10_000, ca_file: nil}}} =
+             Config.parse(%{"version" => 1})
+
+    assert {:ok,
+            %Config{
+              amt: %Belgo.Config.Amt{
+                idle_timeout: 1_800_000,
+                timeout: 5_000,
+                ca_file: "/data/ca.pem"
+              }
+            }} =
+             Config.parse(%{
+               "version" => 1,
+               "amt" => %{"idle_timeout" => "30m", "timeout" => "5s", "ca_file" => "/data/ca.pem"}
+             })
+
+    assert {:error, [_message]} =
+             Config.parse(%{"version" => 1, "amt" => %{"idle_timeout" => "soon"}})
+
+    assert {:error, [_message]} = Config.parse(%{"version" => 1, "amt" => %{"ca_file" => ""}})
+    assert {:error, [_message]} = Config.parse(%{"version" => 1, "amt" => "always"})
+  end
+
   test "the plan editor saves after 5 seconds by default" do
     assert {:ok, %Config{plan: %Belgo.Config.Plan{autosave_delay: 5_000}}} =
              Config.parse(%{"version" => 1})

@@ -1,8 +1,9 @@
 defmodule BelgoWeb.Devices.Live.Show do
   @moduledoc """
   Everything known about a device: placement, interfaces (with wake-on-LAN), open
-  ports, controls of the controllers seeing it as a client (Omada reconnect), guests
-  and synced records.
+  ports, Intel AMT (status, power, console; the account is asked for each action),
+  controls of the controllers seeing it as a client (Omada reconnect), guests and
+  synced records.
   """
 
   @behaviour BelgoWeb.Hooks.Discovery
@@ -12,6 +13,8 @@ defmodule BelgoWeb.Devices.Live.Show do
 
   import BelgoWeb.Components.Hosting
 
+  alias Belgo.Amt
+  alias Belgo.Amt.Sol
   alias Belgo.ClientControls
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.State
@@ -25,7 +28,9 @@ defmodule BelgoWeb.Devices.Live.Show do
   alias Belgo.Topology.Physical
   alias Belgo.Topology.Routing
   alias Belgo.WakeOnLan
+  alias BelgoWeb.Components.Amt, as: AmtComponents
   alias BelgoWeb.Format
+  alias BelgoWeb.Live.Amt, as: LiveAmt
   alias BelgoWeb.Live.Mutation
   alias BelgoWeb.Live.PortScans
   alias BelgoWeb.Live.Reachability
@@ -37,6 +42,14 @@ defmodule BelgoWeb.Devices.Live.Show do
      socket
      |> assign(:device_id, id)
      |> assign(:wake_on_lan?, WakeOnLan.enabled?())
+     |> assign(
+       amt_request: nil,
+       amt_error: nil,
+       amt_form_key: 0,
+       amt_info: nil,
+       amt_busy: nil,
+       amt_console_open?: Sol.open?(socket.assigns.current_user.username, id)
+     )
      |> Reachability.subscribe()
      |> PortScans.subscribe()
      |> assign_inventory()}
@@ -150,6 +163,38 @@ defmodule BelgoWeb.Devices.Live.Show do
   def handle_event("set-host", %{"device_id" => device_id}, socket),
     do: {:noreply, SetHost.handle(socket, device_id)}
 
+  def handle_event("amt-request", %{"request" => name}, socket) do
+    case LiveAmt.parse_request(name) do
+      {:ok, request} -> {:noreply, assign(socket, amt_request: request, amt_error: nil)}
+      :error -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("amt-cancel", _params, socket), do: {:noreply, close_amt_modal(socket)}
+
+  def handle_event("amt-submit", %{"amt" => params}, %{assigns: %{amt_request: request}} = socket)
+      when request != nil do
+    device = socket.assigns.device
+
+    with %Amt.Detection{} = detection <-
+           LiveAmt.detection(socket.assigns.address_scans, device),
+         true <- LiveAmt.confirmed?(request, device, params),
+         {:ok, credentials} <- LiveAmt.credentials(params) do
+      run_amt_request(socket, request, detection, credentials)
+    else
+      nil ->
+        {:noreply, amt_error(socket, gettext("AMT is no longer detected on this device."))}
+
+      false ->
+        {:noreply, amt_error(socket, gettext("Confirm the action on this critical device."))}
+
+      {:error, message} ->
+        {:noreply, amt_error(socket, message)}
+    end
+  end
+
+  def handle_event("amt-submit", _params, socket), do: {:noreply, socket}
+
   def handle_event("push", _params, socket) do
     Belgo.Discovery.push_device(socket.assigns.device.id)
 
@@ -170,7 +215,91 @@ defmodule BelgoWeb.Devices.Live.Show do
     end
   end
 
+  defp run_amt_request(socket, :console, detection, credentials) do
+    device = socket.assigns.device
+
+    case LiveAmt.open_console(
+           socket.assigns.current_user.username,
+           device,
+           detection,
+           credentials
+         ) do
+      {:ok, _opened} ->
+        {:noreply, push_navigate(close_amt_modal(socket), to: ~p"/devices/#{device.id}/console")}
+
+      {:error, reason} ->
+        {:noreply, amt_error(socket, LiveAmt.describe_error(reason))}
+    end
+  end
+
+  defp run_amt_request(socket, request, detection, credentials) do
+    target = LiveAmt.target(detection)
+
+    log_options = [
+      device_id: socket.assigns.device.id,
+      username: socket.assigns.current_user.username
+    ]
+
+    task =
+      if request == :status,
+        do: fn -> Amt.status(target, credentials, log_options) end,
+        else: fn -> Amt.power(target, credentials, request, log_options) end
+
+    {:noreply,
+     socket
+     |> close_amt_modal()
+     |> assign(:amt_busy, request)
+     |> start_async(:amt, task)}
+  end
+
+  defp close_amt_modal(socket) do
+    socket
+    |> assign(amt_request: nil, amt_error: nil)
+    |> update(:amt_form_key, &(&1 + 1))
+  end
+
+  # A new form key empties the password field.
+  defp amt_error(socket, message) do
+    socket
+    |> assign(:amt_error, message)
+    |> update(:amt_form_key, &(&1 + 1))
+  end
+
   @impl Phoenix.LiveView
+  def handle_async(:amt, {:ok, {:ok, %Amt.Info{} = info}}, socket),
+    do: {:noreply, assign(socket, amt_busy: nil, amt_info: info)}
+
+  def handle_async(:amt, {:ok, {:ok, power_state}}, socket) do
+    action = socket.assigns.amt_busy
+
+    {:noreply,
+     socket
+     |> assign(:amt_busy, nil)
+     |> update(:amt_info, &(&1 && %{&1 | power_state: power_state}))
+     |> put_flash(
+       :info,
+       gettext("%{action} sent to %{name}; AMT now reports: %{state}.",
+         action: LiveAmt.request_label(action),
+         name: socket.assigns.device.name,
+         state: LiveAmt.power_state_label(power_state)
+       )
+     )}
+  end
+
+  def handle_async(:amt, {:ok, {:error, reason}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:amt_busy, nil)
+     |> put_flash(:error, LiveAmt.describe_error(reason))}
+  end
+
+  def handle_async(:amt, {:exit, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:amt_busy, nil)
+     |> put_flash(:error, LiveAmt.describe_error(reason))}
+  end
+
   def handle_async(:reconnect_client, {:ok, :ok}, socket) do
     {:noreply,
      put_flash(
@@ -328,6 +457,15 @@ defmodule BelgoWeb.Devices.Live.Show do
             <.open_ports address_scans={@address_scans} addresses={Device.ip_addresses(@device)} />
           </.card>
 
+          <AmtComponents.amt_card
+            :if={LiveAmt.detection(@address_scans, @device)}
+            device={@device}
+            detection={LiveAmt.detection(@address_scans, @device)}
+            info={@amt_info}
+            busy={@amt_busy}
+            console_open?={@amt_console_open?}
+          />
+
           <.provider_clients
             :for={{provider, clients} <- Enum.group_by(@provider_clients, & &1.provider)}
             provider={provider}
@@ -425,6 +563,14 @@ defmodule BelgoWeb.Devices.Live.Show do
           </p>
         </.card>
       </div>
+
+      <AmtComponents.credentials_modal
+        :if={@amt_request}
+        request={@amt_request}
+        device={@device}
+        error={@amt_error}
+        form_key={@amt_form_key}
+      />
     </Layouts.app>
     """
   end
