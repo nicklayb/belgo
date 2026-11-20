@@ -16,7 +16,7 @@ msgstr ""
 msgid "%{id} (deleted device)"
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:126
+#: lib/belgo_web/components/layouts.ex:138
 #, elixir-autogen, elixir-format
 msgid "%{label}: %{count}"
 msgstr ""
@@ -31,7 +31,7 @@ msgstr ""
 msgid "%{name} cannot be saved: %{messages}. Nothing was changed."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:157
+#: lib/belgo_web/live/devices/show.ex:201
 #: lib/belgo_web/live/locations/index.ex:32
 #: lib/belgo_web/live/locations/show.ex:73
 #: lib/belgo_web/live/networks/show.ex:62
@@ -87,7 +87,7 @@ msgstr ""
 msgid "%{size} addresses: too many to list."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:149
+#: lib/belgo_web/components/inventory.ex:167
 #, elixir-autogen, elixir-format
 msgid "%{summary} (%{details}), checked %{time}."
 msgstr ""
@@ -107,7 +107,7 @@ msgstr ""
 msgid "(greyed out above)."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:375
+#: lib/belgo_web/live/devices/show.ex:512
 #, elixir-autogen, elixir-format
 msgid "1 DNS name"
 msgid_plural "%{count} DNS names"
@@ -115,7 +115,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:155
-#: lib/belgo_web/live/routing/live.ex:115
+#: lib/belgo_web/live/routing/live.ex:116
 #, elixir-autogen, elixir-format
 msgid "1 device"
 msgid_plural "%{count} devices"
@@ -136,7 +136,7 @@ msgid_plural "%{count} guests"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/belgo_web/live/devices/show.ex:209
+#: lib/belgo_web/live/devices/show.ex:337
 #, elixir-autogen, elixir-format
 msgid "1 port"
 msgid_plural "%{count} ports"
@@ -184,7 +184,7 @@ msgstr ""
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:207
 #: lib/belgo_web/live/devices/form.ex:426
-#: lib/belgo_web/live/devices/show.ex:356
+#: lib/belgo_web/live/devices/show.ex:493
 #: lib/belgo_web/live/networks/form.ex:113
 #, elixir-autogen, elixir-format
 msgid "Add"
@@ -205,7 +205,7 @@ msgstr ""
 msgid "Add a room on this side"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:630
+#: lib/belgo_web/live/devices/show.ex:775
 #, elixir-autogen, elixir-format
 msgid "Add an interface with a MAC or an IP address."
 msgstr ""
@@ -235,8 +235,8 @@ msgstr ""
 msgid "Add names in the form, or claim them from Discovery."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:319
-#: lib/belgo_web/live/devices/show.ex:269
+#: lib/belgo_web/components/inventory.ex:337
+#: lib/belgo_web/live/devices/show.ex:397
 #: lib/belgo_web/live/networks/show.ex:207
 #: lib/belgo_web/live/sync/live.ex:130
 #: lib/belgo_web/live/sync/live.ex:162
@@ -246,7 +246,7 @@ msgstr ""
 msgid "Address"
 msgstr ""
 
-#: lib/belgo_web/live/devices/index.ex:289
+#: lib/belgo_web/live/devices/index.ex:290
 #: lib/belgo_web/live/discovery/section.ex:440
 #: lib/belgo_web/live/locations/show.ex:168
 #, elixir-autogen, elixir-format
@@ -288,7 +288,7 @@ msgstr ""
 msgid "All consistent"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:384
+#: lib/belgo_web/components/inventory.ex:402
 #, elixir-autogen, elixir-format
 msgid "All kinds"
 msgstr ""
@@ -321,7 +321,7 @@ msgstr ""
 msgid "Anchored rooms follow their parent: edit their offset."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:138
+#: lib/belgo_web/components/inventory.ex:156
 #, elixir-autogen, elixir-format
 msgid "Answers ping"
 msgstr ""
@@ -389,6 +389,7 @@ msgstr ""
 msgid "Brand, model, serial number… add only what you know."
 msgstr ""
 
+#: lib/belgo_web/components/amt.ex:219
 #: lib/belgo_web/live/devices/bulk_edit.ex:252
 #: lib/belgo_web/live/devices/form.ex:636
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:285
@@ -404,18 +405,18 @@ msgstr ""
 msgid "Centred"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:315
+#: lib/belgo_web/live/devices/show.ex:443
 #: lib/belgo_web/live/virtual_ips/show.ex:220
 #, elixir-autogen, elixir-format
 msgid "Check the ports again"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:331
+#: lib/belgo_web/components/inventory.ex:349
 #, elixir-autogen, elixir-format
 msgid "Checked %{count} common ports on %{date}."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:312
+#: lib/belgo_web/components/inventory.ex:330
 #, elixir-autogen, elixir-format
 msgid "Checking ports…"
 msgstr ""
@@ -522,14 +523,14 @@ msgstr ""
 msgid "Click on a wall to add an opening (no door)."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:132
-#: lib/belgo_web/components/inventory.ex:155
+#: lib/belgo_web/components/inventory.ex:150
+#: lib/belgo_web/components/inventory.ex:173
 #, elixir-autogen, elixir-format
 msgid "Click to ping again."
 msgstr ""
 
 #: lib/belgo_web/format.ex:123
-#: lib/belgo_web/live/devices/show.ex:614
+#: lib/belgo_web/live/devices/show.ex:759
 #, elixir-autogen, elixir-format
 msgid "Client"
 msgstr ""
@@ -554,7 +555,7 @@ msgstr ""
 msgid "Comma separated. Short names get the network domain."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:332
+#: lib/belgo_web/live/devices/show.ex:469
 #, elixir-autogen, elixir-format
 msgid "Connected to"
 msgstr ""
@@ -635,7 +636,7 @@ msgstr ""
 msgid "Default wall height (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:231
+#: lib/belgo_web/live/devices/show.ex:359
 #: lib/belgo_web/live/locations/index.ex:129
 #: lib/belgo_web/live/locations/show.ex:128
 #: lib/belgo_web/live/networks/show.ex:96
@@ -653,7 +654,7 @@ msgstr ""
 msgid "Delete %{name} and its rooms?"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:229
+#: lib/belgo_web/live/devices/show.ex:357
 #: lib/belgo_web/live/locations/index.ex:128
 #: lib/belgo_web/live/locations/show.ex:126
 #: lib/belgo_web/live/networks/show.ex:94
@@ -681,7 +682,7 @@ msgstr ""
 msgid "Detach"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:392
+#: lib/belgo_web/live/devices/show.ex:529
 #: lib/belgo_web/live/locations/show.ex:195
 #: lib/belgo_web/live/networks/show.ex:146
 #: lib/belgo_web/live/virtual_ips/show.ex:229
@@ -739,19 +740,19 @@ msgid "Dismiss"
 msgstr ""
 
 #: lib/belgo_web/live/dashboard/live.ex:231
-#: lib/belgo_web/live/devices/show.ex:242
+#: lib/belgo_web/live/devices/show.ex:370
 #: lib/belgo_web/live/locations/show.ex:139
 #: lib/belgo_web/live/virtual_ips/show.ex:178
 #, elixir-autogen, elixir-format
 msgid "Divergences with providers"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:139
+#: lib/belgo_web/components/inventory.ex:157
 #, elixir-autogen, elixir-format
 msgid "Does not answer ping"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:128
+#: lib/belgo_web/components/inventory.ex:146
 #, elixir-autogen, elixir-format
 msgid "Does not answer ping, but TCP %{ports} accept connections."
 msgstr ""
@@ -820,7 +821,7 @@ msgid "East"
 msgstr ""
 
 #: lib/belgo_web/live/devices/index.ex:240
-#: lib/belgo_web/live/devices/show.ex:224
+#: lib/belgo_web/live/devices/show.ex:352
 #: lib/belgo_web/live/locations/index.ex:119
 #: lib/belgo_web/live/locations/show.ex:121
 #: lib/belgo_web/live/networks/show.ex:89
@@ -1020,7 +1021,7 @@ msgstr ""
 msgid "Ground on"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:383
+#: lib/belgo_web/live/devices/show.ex:520
 #, elixir-autogen, elixir-format
 msgid "Guests"
 msgstr ""
@@ -1113,7 +1114,7 @@ msgid "IP address"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:341
-#: lib/belgo_web/live/devices/show.ex:408
+#: lib/belgo_web/live/devices/show.ex:545
 #: lib/belgo_web/live/locations/form.ex:77
 #: lib/belgo_web/live/locations/show.ex:201
 #: lib/belgo_web/live/networks/form.ex:67
@@ -1150,7 +1151,7 @@ msgstr ""
 msgid "Inside"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:258
+#: lib/belgo_web/live/devices/show.ex:386
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:264
 #, elixir-autogen, elixir-format
 msgid "Interface"
@@ -1162,7 +1163,7 @@ msgid "Interface %{position}"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:516
-#: lib/belgo_web/live/devices/show.ex:251
+#: lib/belgo_web/live/devices/show.ex:379
 #, elixir-autogen, elixir-format
 msgid "Interfaces"
 msgstr ""
@@ -1261,7 +1262,7 @@ msgstr ""
 msgid "Linked floor (floor/<id>) or area (area/<id>), set when claimed."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:360
+#: lib/belgo_web/live/devices/show.ex:497
 #, elixir-autogen, elixir-format
 msgid "Load balancer or floating addresses this device answers for."
 msgstr ""
@@ -1304,17 +1305,17 @@ msgstr ""
 msgid "MAC address"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:435
+#: lib/belgo_web/live/devices/show.ex:580
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name} again, still waiting for it to answer."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:427
+#: lib/belgo_web/live/devices/show.ex:572
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name}, waiting for it to answer."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:445
+#: lib/belgo_web/live/devices/show.ex:590
 #, elixir-autogen, elixir-format
 msgid "Magic packet sent to %{name}. Without IP address, Belgo cannot tell when it is awake."
 msgstr ""
@@ -1371,8 +1372,8 @@ msgid "Nearest wall"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:595
-#: lib/belgo_web/live/devices/show.ex:276
-#: lib/belgo_web/live/devices/show.ex:330
+#: lib/belgo_web/live/devices/show.ex:404
+#: lib/belgo_web/live/devices/show.ex:467
 #: lib/belgo_web/live/virtual_ips/form.ex:105
 #: lib/belgo_web/live/virtual_ips/show.ex:234
 #, elixir-autogen, elixir-format
@@ -1497,7 +1498,7 @@ msgstr ""
 msgid "No host yet"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:255
+#: lib/belgo_web/live/devices/show.ex:383
 #, elixir-autogen, elixir-format
 msgid "No interface"
 msgstr ""
@@ -1543,7 +1544,7 @@ msgstr ""
 msgid "No new network"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:326
+#: lib/belgo_web/components/inventory.ex:344
 #, elixir-autogen, elixir-format
 msgid "No open port"
 msgstr ""
@@ -1578,7 +1579,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:328
+#: lib/belgo_web/components/inventory.ex:346
 #, elixir-autogen, elixir-format
 msgid "None of the %{count} checked ports accepts connections."
 msgstr ""
@@ -1642,7 +1643,7 @@ msgstr ""
 msgid "Nothing runs here yet."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:628
+#: lib/belgo_web/live/devices/show.ex:773
 #, elixir-autogen, elixir-format
 msgid "Nothing to synchronise"
 msgstr ""
@@ -1672,7 +1673,7 @@ msgstr ""
 msgid "Open menu"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:306
+#: lib/belgo_web/live/devices/show.ex:434
 #: lib/belgo_web/live/virtual_ips/show.ex:213
 #, elixir-autogen, elixir-format
 msgid "Open ports"
@@ -1719,7 +1720,7 @@ msgstr ""
 msgid "Partly failed"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:343
+#: lib/belgo_web/live/devices/show.ex:480
 #, elixir-autogen, elixir-format
 msgid "Path"
 msgstr ""
@@ -1734,7 +1735,7 @@ msgstr ""
 msgid "Pick a wall of each room."
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:124
+#: lib/belgo_web/components/inventory.ex:142
 #: lib/belgo_web/live/dashboard/live.ex:145
 #, elixir-autogen, elixir-format
 msgid "Pinging…"
@@ -1757,8 +1758,8 @@ msgstr ""
 
 #: lib/belgo_web/live/devices/bulk_edit.ex:185
 #: lib/belgo_web/live/devices/form.ex:468
-#: lib/belgo_web/live/devices/index.ex:281
-#: lib/belgo_web/live/devices/show.ex:394
+#: lib/belgo_web/live/devices/index.ex:282
+#: lib/belgo_web/live/devices/show.ex:531
 #: lib/belgo_web/live/plans/live.ex:413
 #, elixir-autogen, elixir-format
 msgid "Placement"
@@ -1779,19 +1780,19 @@ msgstr ""
 
 #: lib/belgo_web/components/inventory.ex:47
 #: lib/belgo_web/components/inventory.ex:48
-#: lib/belgo_web/live/devices/show.ex:206
+#: lib/belgo_web/live/devices/show.ex:334
 #, elixir-autogen, elixir-format
 msgid "PoE"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:315
+#: lib/belgo_web/components/inventory.ex:333
 #: lib/belgo_web/live/devices/form.ex:399
 #, elixir-autogen, elixir-format
 msgid "Port"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:285
-#: lib/belgo_web/live/devices/show.ex:534
+#: lib/belgo_web/live/devices/show.ex:413
+#: lib/belgo_web/live/devices/show.ex:679
 #, elixir-autogen, elixir-format
 msgid "Port %{port}"
 msgstr ""
@@ -1799,7 +1800,7 @@ msgstr ""
 #: lib/belgo_web/live/devices/bulk_edit.ex:121
 #: lib/belgo_web/live/devices/form.ex:478
 #: lib/belgo_web/live/devices/index.ex:143
-#: lib/belgo_web/live/devices/show.ex:557
+#: lib/belgo_web/live/devices/show.ex:702
 #: lib/belgo_web/live/locations/index.ex:70
 #, elixir-autogen, elixir-format
 msgid "Portable"
@@ -1830,7 +1831,7 @@ msgstr ""
 msgid "Pulling…"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:221
+#: lib/belgo_web/live/devices/show.ex:349
 #: lib/belgo_web/live/settings/live.ex:233
 #: lib/belgo_web/live/virtual_ips/show.ex:157
 #, elixir-autogen, elixir-format
@@ -1873,7 +1874,7 @@ msgid "Reference"
 msgstr ""
 
 #: lib/belgo_web/components/providers.ex:77
-#: lib/belgo_web/live/devices/show.ex:317
+#: lib/belgo_web/live/devices/show.ex:445
 #: lib/belgo_web/live/discovery/section.ex:180
 #: lib/belgo_web/live/virtual_ips/show.ex:222
 #, elixir-autogen, elixir-format
@@ -1946,7 +1947,7 @@ msgid "Routing"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:502
-#: lib/belgo_web/live/devices/show.ex:397
+#: lib/belgo_web/live/devices/show.ex:534
 #, elixir-autogen, elixir-format
 msgid "Runs as"
 msgstr ""
@@ -1993,7 +1994,7 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:91
+#: lib/belgo_web/components/layouts.ex:103
 #: lib/belgo_web/components/search_modal.ex:59
 #, elixir-autogen, elixir-format
 msgid "Search"
@@ -2040,12 +2041,12 @@ msgstr ""
 msgid "Select devices in the list first."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:296
+#: lib/belgo_web/live/devices/show.ex:424
 #, elixir-autogen, elixir-format
 msgid "Send a wake-on-LAN magic packet"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:318
+#: lib/belgo_web/components/inventory.ex:336
 #, elixir-autogen, elixir-format
 msgid "Service"
 msgstr ""
@@ -2148,7 +2149,7 @@ msgid "Supplies PoE"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:602
-#: lib/belgo_web/live/devices/show.ex:279
+#: lib/belgo_web/live/devices/show.ex:407
 #, elixir-autogen, elixir-format
 msgid "Switch"
 msgstr ""
@@ -2164,14 +2165,14 @@ msgstr ""
 msgid "Sync"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:387
+#: lib/belgo_web/live/devices/show.ex:524
 #, elixir-autogen, elixir-format
 msgid "Synchronised records"
 msgstr ""
 
 #: lib/belgo_web/live/devices/form.ex:404
-#: lib/belgo_web/live/devices/index.ex:295
-#: lib/belgo_web/live/devices/show.ex:403
+#: lib/belgo_web/live/devices/index.ex:296
+#: lib/belgo_web/live/devices/show.ex:540
 #, elixir-autogen, elixir-format
 msgid "Tags"
 msgstr ""
@@ -2196,13 +2197,14 @@ msgstr ""
 msgid "This DNS name is no longer unclaimed"
 msgstr ""
 
+#: lib/belgo_web/live/devices/console.ex:56
 #: lib/belgo_web/live/devices/form.ex:45
-#: lib/belgo_web/live/devices/show.ex:73
+#: lib/belgo_web/live/devices/show.ex:85
 #, elixir-autogen, elixir-format
 msgid "This device no longer exists."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:127
+#: lib/belgo_web/live/devices/show.ex:139
 #, elixir-autogen, elixir-format
 msgid "This interface has no MAC address."
 msgstr ""
@@ -2248,7 +2250,7 @@ msgstr ""
 msgid "This virtual IP no longer exists."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:468
+#: lib/belgo_web/live/devices/show.ex:613
 #, elixir-autogen, elixir-format
 msgid "Unable to send the magic packet: %{reason}"
 msgstr ""
@@ -2286,7 +2288,7 @@ msgstr ""
 #: lib/belgo_web/live/devices/bulk_edit.ex:122
 #: lib/belgo_web/live/devices/form.ex:479
 #: lib/belgo_web/live/devices/index.ex:144
-#: lib/belgo_web/live/devices/show.ex:560
+#: lib/belgo_web/live/devices/show.ex:705
 #: lib/belgo_web/live/locations/index.ex:73
 #, elixir-autogen, elixir-format
 msgid "Unplaced"
@@ -2358,7 +2360,7 @@ msgstr ""
 msgid "Virtual IP"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:349
+#: lib/belgo_web/live/devices/show.ex:486
 #: lib/belgo_web/live/discovery/claim_dns_name.ex:180
 #: lib/belgo_web/live/virtual_ips/index.ex:23
 #: lib/belgo_web/live/virtual_ips/index.ex:70
@@ -2367,7 +2369,7 @@ msgstr ""
 msgid "Virtual IPs"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:298
+#: lib/belgo_web/live/devices/show.ex:426
 #, elixir-autogen, elixir-format
 msgid "Wake"
 msgstr ""
@@ -2430,7 +2432,7 @@ msgid "Where is it?"
 msgstr ""
 
 #: lib/belgo_web/components/routing.ex:21
-#: lib/belgo_web/live/devices/show.ex:539
+#: lib/belgo_web/live/devices/show.ex:684
 #, elixir-autogen, elixir-format
 msgid "Wi-Fi"
 msgstr ""
@@ -2447,7 +2449,7 @@ msgstr ""
 msgid "Width (cm)"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:219
+#: lib/belgo_web/live/devices/show.ex:347
 #, elixir-autogen, elixir-format
 msgid "Write its DHCP reservations and DNS names to the providers"
 msgstr ""
@@ -2482,7 +2484,7 @@ msgstr ""
 msgid "and %{count} more"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:158
+#: lib/belgo_web/components/inventory.ex:176
 #, elixir-autogen, elixir-format
 msgid "answers"
 msgstr ""
@@ -2497,7 +2499,7 @@ msgstr ""
 msgid "live"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:159
+#: lib/belgo_web/components/inventory.ex:177
 #, elixir-autogen, elixir-format
 msgid "no answer"
 msgstr ""
@@ -2517,12 +2519,12 @@ msgstr ""
 msgid "on %{parent}"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:161
+#: lib/belgo_web/components/inventory.ex:179
 #, elixir-autogen, elixir-format
 msgid "ping failed"
 msgstr ""
 
-#: lib/belgo_web/components/inventory.ex:160
+#: lib/belgo_web/components/inventory.ex:178
 #, elixir-autogen, elixir-format
 msgid "pinging"
 msgstr ""
@@ -2568,7 +2570,7 @@ msgstr ""
 msgid "Saved in this browser."
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:137
+#: lib/belgo_web/components/layouts.ex:149
 #: lib/belgo_web/live/settings/live.ex:27
 #: lib/belgo_web/live/settings/live.ex:103
 #, elixir-autogen, elixir-format
@@ -2744,9 +2746,9 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:265
-#: lib/belgo_web/live/devices/show.ex:604
-#: lib/belgo_web/live/devices/show.ex:619
+#: lib/belgo_web/live/devices/show.ex:393
+#: lib/belgo_web/live/devices/show.ex:749
+#: lib/belgo_web/live/devices/show.ex:764
 #, elixir-autogen, elixir-format
 msgid "Copy the MAC address"
 msgstr ""
@@ -2761,12 +2763,12 @@ msgstr ""
 msgid "Name parts of the network (routing, servers, IoT…). With kinds, new devices of those kinds get the first free address of the range."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:460
+#: lib/belgo_web/live/devices/show.ex:605
 #, elixir-autogen, elixir-format
 msgid "This interface has neither IP address nor network to find where to wake it."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:453
+#: lib/belgo_web/live/devices/show.ex:598
 #, elixir-autogen, elixir-format
 msgid "Wake-on-LAN is turned off in providers.yaml."
 msgstr ""
@@ -2812,43 +2814,43 @@ msgstr ""
 msgid "Kea lease"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:515
+#: lib/belgo_web/live/devices/show.ex:660
 #, elixir-autogen, elixir-format
 msgid "Disconnect the client from Wi-Fi so it connects again"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:473
+#: lib/belgo_web/live/devices/show.ex:618
 #, elixir-autogen, elixir-format
 msgid "Only wireless clients can be reconnected."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:519
+#: lib/belgo_web/live/devices/show.ex:664
 #, elixir-autogen, elixir-format
 msgid "Reconnect"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:476
-#: lib/belgo_web/live/devices/show.ex:516
+#: lib/belgo_web/live/devices/show.ex:621
+#: lib/belgo_web/live/devices/show.ex:661
 #, elixir-autogen, elixir-format
 msgid "Reconnecting needs the provider in write mode in providers.yaml."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:171
+#: lib/belgo_web/live/devices/show.ex:299
 #, elixir-autogen, elixir-format
 msgid "Reconnection of %{name} requested."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:137
+#: lib/belgo_web/live/devices/show.ex:149
 #, elixir-autogen, elixir-format
 msgid "This client is no longer seen."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:479
+#: lib/belgo_web/live/devices/show.ex:624
 #, elixir-autogen, elixir-format
 msgid "Unable to reconnect: %{reason}"
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:542
+#: lib/belgo_web/live/devices/show.ex:687
 #, elixir-autogen, elixir-format
 msgid "Wired"
 msgstr ""
@@ -2903,7 +2905,7 @@ msgstr ""
 msgid "Push of every device started."
 msgstr ""
 
-#: lib/belgo_web/live/devices/show.ex:149
+#: lib/belgo_web/live/devices/show.ex:193
 #: lib/belgo_web/live/virtual_ips/show.ex:97
 #, elixir-autogen, elixir-format
 msgid "Push started, its result is shown on the Sync page."
@@ -2921,11 +2923,13 @@ msgstr[1] ""
 msgid "All critical devices answer"
 msgstr ""
 
+#: lib/belgo_web/components/inventory.ex:65
+#: lib/belgo_web/components/inventory.ex:66
 #: lib/belgo_web/live/devices/bulk_edit.ex:114
 #: lib/belgo_web/live/devices/bulk_edit.ex:178
 #: lib/belgo_web/live/devices/form.ex:359
 #: lib/belgo_web/live/devices/index.ex:202
-#: lib/belgo_web/live/devices/show.ex:203
+#: lib/belgo_web/live/devices/show.ex:331
 #, elixir-autogen, elixir-format
 msgid "Critical"
 msgstr ""
@@ -2938,4 +2942,231 @@ msgstr ""
 #: lib/belgo_web/live/devices/form.ex:360
 #, elixir-autogen, elixir-format
 msgid "Shown in red and counted in the Overview when it does not answer."
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:186
+#, elixir-autogen, elixir-format
+msgid "%{action} %{name}?"
+msgstr ""
+
+#: lib/belgo_web/live/devices/show.ex:272
+#, elixir-autogen, elixir-format
+msgid "%{action} sent to %{name}; AMT now reports: %{state}."
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:215
+#, elixir-autogen, elixir-format
+msgid "%{name} is a critical device: I really want to do this."
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:141
+#, elixir-autogen, elixir-format
+msgid "%{size} GiB"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:191
+#, elixir-autogen, elixir-format
+msgid "AMT account"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:103
+#, elixir-autogen, elixir-format
+msgid "AMT did not answer: %{message}"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:108
+#: lib/belgo_web/live/amt.ex:110
+#, elixir-autogen, elixir-format
+msgid "AMT error: %{message}"
+msgstr ""
+
+#: lib/belgo_web/live/devices/show.ex:177
+#, elixir-autogen, elixir-format
+msgid "AMT is no longer detected on this device."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:104
+#, elixir-autogen, elixir-format
+msgid "AMT is not detected on this device."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:94
+#, elixir-autogen, elixir-format
+msgid "AMT refused the account."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:106
+#, elixir-autogen, elixir-format
+msgid "AMT refused the action (return value %{value})."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:88
+#, elixir-autogen, elixir-format
+msgid "Asleep"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:131
+#, elixir-autogen, elixir-format
+msgid "BIOS"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:72
+#, elixir-autogen, elixir-format
+msgid "Back to the console"
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:161
+#, elixir-autogen, elixir-format
+msgid "Close the console"
+msgstr ""
+
+#: lib/belgo_web/live/devices/show.ex:180
+#, elixir-autogen, elixir-format
+msgid "Confirm the action on this critical device."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:210
+#, elixir-autogen, elixir-format
+msgid "Console closed after a long time without input."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:207
+#, elixir-autogen, elixir-format
+msgid "Console closed."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:51
+#: lib/belgo_web/live/devices/console.ex:151
+#, elixir-autogen, elixir-format
+msgid "Console of %{name}"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:122
+#, elixir-autogen, elixir-format
+msgid "Firmware"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:59
+#, elixir-autogen, elixir-format
+msgid "Firmware %{version} is vulnerable to CVE-2017-5689 (login without password): update it."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:89
+#, elixir-autogen, elixir-format
+msgid "Hibernating"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:42
+#, elixir-autogen, elixir-format
+msgid "Intel AMT"
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:155
+#, elixir-autogen, elixir-format
+msgid "Intel AMT serial over LAN. Closes after %{minutes} min without input."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:181
+#, elixir-autogen, elixir-format
+msgid "Looking for Intel AMT on this device…"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:125
+#, elixir-autogen, elixir-format
+msgid "Machine"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:140
+#, elixir-autogen, elixir-format
+msgid "Memory"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:87
+#, elixir-autogen, elixir-format
+msgid "Off"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:86
+#, elixir-autogen, elixir-format
+msgid "On"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:97
+#, elixir-autogen, elixir-format
+msgid "Only the TLS ports of AMT are open: set amt.ca_file in config.yaml."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:77
+#, elixir-autogen, elixir-format
+msgid "Open the console"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:194
+#, elixir-autogen, elixir-format
+msgid "Password"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:82
+#, elixir-autogen, elixir-format
+msgid "Power cycle"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:80
+#, elixir-autogen, elixir-format
+msgid "Power off"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:79
+#, elixir-autogen, elixir-format
+msgid "Power on"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:137
+#, elixir-autogen, elixir-format
+msgid "Processor"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:78
+#, elixir-autogen, elixir-format
+msgid "Read status"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:81
+#, elixir-autogen, elixir-format
+msgid "Reset"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:128
+#, elixir-autogen, elixir-format
+msgid "Serial number"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:47
+#, elixir-autogen, elixir-format
+msgid "Type the AMT password."
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:90
+#, elixir-autogen, elixir-format
+msgid "Unknown"
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:204
+#, elixir-autogen, elixir-format
+msgid "Used for this action only, never stored."
+msgstr ""
+
+#: lib/belgo_web/components/amt.ex:108
+#, elixir-autogen, elixir-format
+msgid "Waiting for AMT…"
+msgstr ""
+
+#: lib/belgo_web/live/amt.ex:100
+#, elixir-autogen, elixir-format
+msgid "amtterm is not installed (or BELGO_AMTTERM_PATH is wrong)."
+msgstr ""
+
+#: lib/belgo_web/live/devices/console.ex:213
+#, elixir-autogen, elixir-format
+msgid "amtterm stopped (exit status %{status})."
 msgstr ""

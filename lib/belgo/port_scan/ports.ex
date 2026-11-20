@@ -16,7 +16,9 @@ defmodule Belgo.PortScan.Ports do
     445 => "SMB",
     548 => "AFP",
     554 => "RTSP",
+    623 => "Intel AMT (WS-Management)",
     631 => "IPP (printing)",
+    664 => "Intel AMT (WS-Management, TLS)",
     853 => "DNS over TLS",
     993 => "IMAPS",
     1883 => "MQTT",
@@ -40,6 +42,10 @@ defmodule Belgo.PortScan.Ports do
     9090 => "Prometheus",
     9100 => "Node exporter / printing",
     10_250 => "Kubelet",
+    16_992 => "Intel AMT (WS-Management)",
+    16_993 => "Intel AMT (WS-Management, TLS)",
+    16_994 => "Intel AMT (serial over LAN)",
+    16_995 => "Intel AMT (serial over LAN, TLS)",
     32_400 => "Plex"
   }
 

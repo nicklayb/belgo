@@ -24,7 +24,12 @@ config :belgo, Belgo.Discovery,
 
 config :belgo, Belgo.Reachability, ping: &Belgo.Fixtures.Pinger.ping/2
 
-config :belgo, Belgo.PortScan, scan: &Belgo.Fixtures.PortScanner.open_ports/3
+config :belgo, Belgo.PortScan,
+  scan: &Belgo.Fixtures.PortScanner.open_ports/3,
+  probe: &Belgo.Fixtures.AmtProbe.detect/3
+
+config :belgo, Belgo.Amt, wsman_client: Belgo.Fixtures.WsmanClient
+config :belgo, Belgo.Amt.Sol, executable: Path.expand("../test/support/fake_amtterm", __DIR__)
 
 config :belgo, Belgo.WakeOnLan,
   send: &Belgo.Fixtures.WakeOnLan.send_packet/2,

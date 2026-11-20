@@ -68,6 +68,49 @@ defmodule Belgo.PortScan.ServerTest do
     assert_received {:scanned, "10.0.0.10"}
   end
 
+  test "confirms Intel AMT on the open ports", %{tmp_dir: tmp_dir} do
+    detection = %Belgo.Amt.Detection{address: "10.0.0.10", open_ports: [16_992], product: :amt}
+
+    probe = fn
+      "10.0.0.10", [16_992], _timeout -> detection
+      _address, _open_ports, _timeout -> nil
+    end
+
+    server =
+      start_supervised!(
+        {Server,
+         directory: tmp_dir,
+         scan: fn address, _ports, _timeout ->
+           if address == "10.0.0.10", do: [16_992], else: []
+         end,
+         probe: probe,
+         ports: [16_992],
+         task_supervisor: __MODULE__.Tasks,
+         name: nil},
+        id: :amt_server
+      )
+
+    PortScan.scan(["10.0.0.10", "10.0.0.11"], server: server)
+
+    assert eventually(fn ->
+             match?(
+               %{
+                 "10.0.0.10" => %AddressScan{state: :done, amt: ^detection},
+                 "10.0.0.11" => %AddressScan{state: :done, amt: nil}
+               },
+               PortScan.address_scans(server)
+             )
+           end)
+  end
+
+  defp eventually(check, attempts \\ 50) do
+    cond do
+      check.() -> true
+      attempts == 0 -> false
+      true -> Process.sleep(20) && eventually(check, attempts - 1)
+    end
+  end
+
   test "the scanner sees listening ports and closed ones" do
     {:ok, listening} = :gen_tcp.listen(0, [:binary, ip: {127, 0, 0, 1}, active: false])
     {:ok, open_port} = :inet.port(listening)

@@ -1,0 +1,23 @@
+#!/bin/sh
+# A fake amtterm for tests: never touches the network.
+# - prints its arguments (the password must never be among them);
+# - refuses any password but "excellent" (exit 1, like amtterm failing to connect);
+# - host 10.0.0.66 plays a stuck amtterm: ignores stdin and SIGTERM, prints its pid;
+# - otherwise echoes stdin back, like a serial console, until end of file.
+echo "fake amtterm $*"
+
+if [ "$AMT_PASSWORD" != "excellent" ]; then
+  echo "amtterm: ERROR: authentication failed"
+  exit 1
+fi
+
+for argument in "$@"; do
+  if [ "$argument" = "10.0.0.66" ]; then
+    trap '' TERM
+    echo "stuck pid $$"
+    while :; do sleep 1; done
+  fi
+done
+
+echo "connected now, use ^] to escape"
+exec cat

@@ -3,6 +3,8 @@
   "private": true,
   "description": "Browser dependencies of Belgo, bundled by esbuild and Tailwind. node_modules is built by Nix (flake.nix, importNpmLock).",
   "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
     "heroicons": "2.2.0",
     "three": "0.187.0"
   }

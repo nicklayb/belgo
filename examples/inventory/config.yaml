@@ -21,6 +21,13 @@ port_scan:
 plan:
   # The plan editor saves once changes are left alone this long.
   autosave_delay: 5s
+amt:
+  # An Intel AMT console closes after this long without typing.
+  idle_timeout: 15m
+  # How long to wait for each WS-Management answer (status, power).
+  timeout: 10s
+  # Only needed when AMT has its TLS ports only (16993 / 16995): PEM CA certificate.
+  # ca_file: /data/amt-ca.pem
 # Versions this directory with git (remove the key to disable). Never pulls.
 # git:
 #   # Commit once the files are left alone this long.

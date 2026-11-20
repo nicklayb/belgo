@@ -78,6 +78,13 @@
           plugins = [ pkgs.kubernetes-helmPlugins.helm-unittest ];
         };
 
+        # Only the amtterm binary (Intel AMT serial over LAN): the package also ships
+        # amttool, whose Perl and SOAP::Lite make a 119 MiB closure (measured); the
+        # binary alone needs glibc and OpenSSL.
+        amtterm = pkgs.runCommand "amtterm-${pkgs.amtterm.version}" { } ''
+          install -Dm755 ${pkgs.amtterm}/bin/amtterm $out/bin/amtterm
+        '';
+
         dockerImage = pkgs.dockerTools.buildLayeredImage {
           name = "belgo";
           tag = version;
@@ -108,6 +115,8 @@
               # overridable with GIT_SSH_COMMAND (keys, known_hosts).
               "BELGO_GIT_PATH=${pkgs.gitMinimal}/bin/git"
               "GIT_SSH=${pkgs.openssh}/bin/ssh"
+              # Intel AMT serial over LAN consoles (Belgo.Amt.Sol).
+              "BELGO_AMTTERM_PATH=${amtterm}/bin/amtterm"
               "RELEASE_TMP=/tmp"
               "RELEASE_DISTRIBUTION=none"
               # Required by the release script, meaningless without distribution.
@@ -136,6 +145,7 @@
             pkgs.tailwindcss_4
             pkgs.esbuild
             pkgs.iputils
+            amtterm
             pkgs.git
             pkgs.nodejs
             helm
