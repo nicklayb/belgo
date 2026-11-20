@@ -10,9 +10,12 @@ defmodule BelgoWeb.Devices.Live.Show do
 
   use BelgoWeb, :live_view
 
+  import BelgoWeb.Components.Hosting
+
   alias Belgo.ClientControls
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.State
+  alias Belgo.Discovery.Workloads
   alias Belgo.Inventory
   alias Belgo.Inventory.Audit
   alias Belgo.Inventory.Device
@@ -26,6 +29,7 @@ defmodule BelgoWeb.Devices.Live.Show do
   alias BelgoWeb.Live.Mutation
   alias BelgoWeb.Live.PortScans
   alias BelgoWeb.Live.Reachability
+  alias BelgoWeb.Live.SetHost
 
   @impl Phoenix.LiveView
   def mount(%{"id" => id}, _session, socket) do
@@ -85,6 +89,7 @@ defmodule BelgoWeb.Devices.Live.Show do
       Correlation.divergences_for(discovery.correlation, :devices, device_id)
     )
     |> assign(:link, Map.get(links, device_id))
+    |> assign(:live_placement, Workloads.placement(discovery.correlation.workloads, device_id))
     |> assign(
       :provider_clients,
       ClientControls.clients(State.observations(discovery), socket.assigns.device)
@@ -141,6 +146,9 @@ defmodule BelgoWeb.Devices.Live.Show do
          start_async(socket, :reconnect_client, fn -> ClientControls.reconnect(client) end)}
     end
   end
+
+  def handle_event("set-host", %{"device_id" => device_id}, socket),
+    do: {:noreply, SetHost.handle(socket, device_id)}
 
   def handle_event("push", _params, socket) do
     Belgo.Discovery.push_device(socket.assigns.device.id)
@@ -393,6 +401,9 @@ defmodule BelgoWeb.Devices.Live.Show do
           <.properties>
             <:item label={gettext("Placement")}>
               <.placement device={@device} path={@path} />
+            </:item>
+            <:item :if={@live_placement} label={gettext("Running on")}>
+              <.live_placement id="live-placement" placement={@live_placement} />
             </:item>
             <:item :if={@device.virtualization} label={gettext("Runs as")}>
               {Format.label(@device.virtualization)}

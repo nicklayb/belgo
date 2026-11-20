@@ -10,6 +10,8 @@ config :belgo, Belgo.Providers.Opnsense, client: Belgo.Fixtures.OpnsenseClient
 config :belgo, Belgo.Providers.Adguard, client: Belgo.Fixtures.AdguardClient
 config :belgo, Belgo.Providers.Omada, client: Belgo.Fixtures.OmadaClient
 config :belgo, Belgo.Providers.HomeAssistant, client: Belgo.Fixtures.HomeAssistantClient
+config :belgo, Belgo.Providers.Prometheus, client: Belgo.Fixtures.PrometheusClient
+config :belgo, Belgo.Providers.Proxmox, client: Belgo.Fixtures.ProxmoxClient
 
 config :belgo, Belgo.Discovery,
   environment: %{
@@ -19,7 +21,9 @@ config :belgo, Belgo.Discovery,
     "BELGO_ADGUARD_PASSWORD" => "pretzels",
     "BELGO_OMADA_CLIENT_ID" => "ned",
     "BELGO_OMADA_CLIENT_SECRET" => "okilydokily",
-    "BELGO_HOME_ASSISTANT_TOKEN" => "mmm-donuts"
+    "BELGO_HOME_ASSISTANT_TOKEN" => "mmm-donuts",
+    "BELGO_PROXMOX_TOKEN_ID" => "burns@pve!excellent",
+    "BELGO_PROXMOX_TOKEN_SECRET" => "release-the-hounds"
   }
 
 config :belgo, Belgo.Reachability, ping: &Belgo.Fixtures.Pinger.ping/2

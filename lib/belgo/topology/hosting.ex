@@ -3,6 +3,8 @@ defmodule Belgo.Topology.Hosting do
   The virtualisation tree: hosts (Proxmox nodes, Docker hosts...) and what runs on them.
   """
 
+  alias Belgo.Discovery.Workload
+  alias Belgo.Discovery.Workloads
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.Snapshot
   alias Belgo.Topology.DeviceNode
@@ -13,16 +15,27 @@ defmodule Belgo.Topology.Hosting do
     docker: [:container],
     kubernetes: [:container]
   }
+  @workload_kinds_by_platform %{
+    proxmox: [:virtual_machine, :lxc],
+    docker: [:container],
+    kubernetes: [:pod]
+  }
 
   defmodule Host do
     @moduledoc """
-    A host within one platform: the hosts it runs on (outermost first) and its direct
-    guests of that platform.
+    A host within one platform: the hosts it runs on (outermost first), its direct
+    guests of that platform, and what a provider sees running on it right now
+    (`workloads`: pods, Docker containers or Proxmox guests, live only).
     """
     @enforce_keys [:device]
-    defstruct [:device, hosts: [], guests: []]
+    defstruct [:device, hosts: [], guests: [], workloads: []]
 
-    @type t :: %__MODULE__{device: Device.t(), hosts: [Device.t()], guests: [Device.t()]}
+    @type t :: %__MODULE__{
+            device: Device.t(),
+            hosts: [Device.t()],
+            guests: [Device.t()],
+            workloads: [Workload.t()]
+          }
   end
 
   defmodule Group do
@@ -54,19 +67,26 @@ defmodule Belgo.Topology.Hosting do
   Kubernetes. A host declaring several platforms appears in each of them. Hosts with
   guests no platform accounts for (or without platform) form the last group, `nil`.
   Empty groups are omitted.
+
+  Live `workloads` (`Belgo.Discovery.Workloads`) are attached to their host within
+  the platform they belong to (pods to Kubernetes, containers to Docker, VMs and LXC
+  to Proxmox); a device running workloads of a platform it does not declare still
+  appears in that platform, with its workloads only.
   """
-  @spec groups(Snapshot.t()) :: [Group.t()]
-  def groups(%Snapshot{} = snapshot) do
+  @spec groups(Snapshot.t(), Workloads.t()) :: [Group.t()]
+  def groups(%Snapshot{} = snapshot, %Workloads{} = workloads \\ %Workloads{}) do
     guests_by_host = DeviceNode.guests_by_host(snapshot)
 
     hosts =
       snapshot.devices
-      |> Enum.filter(&host?(&1, guests_by_host))
+      |> Enum.filter(&(host?(&1, guests_by_host) or Map.has_key?(workloads.by_host, &1.id)))
       |> Enum.sort_by(&String.downcase(&1.name))
+
+    context = %{guests_by_host: guests_by_host, snapshot: snapshot, workloads: workloads}
 
     platform_groups =
       for platform <- Device.platforms(),
-          members = platform_hosts(hosts, platform, guests_by_host, snapshot),
+          members = platform_hosts(hosts, platform, context),
           members != [],
           do: %Group{platform: platform, hosts: members}
 
@@ -76,20 +96,25 @@ defmodule Belgo.Topology.Hosting do
     end
   end
 
-  defp platform_hosts(hosts, platform, guests_by_host, snapshot) do
+  defp platform_hosts(hosts, platform, context) do
     guest_kinds = Map.get(@guest_kinds_by_platform, platform, [])
+    workload_kinds = Map.fetch!(@workload_kinds_by_platform, platform)
 
-    for device <- hosts, platform in device.platforms do
-      host_entry(
-        device,
-        snapshot,
-        guests_of(device, guests_by_host, &(&1.virtualization in guest_kinds))
-      )
+    for device <- hosts,
+        live_workloads = Workloads.on_host(context.workloads, device.id, workload_kinds),
+        platform in device.platforms or live_workloads != [] do
+      guests =
+        if platform in device.platforms,
+          do: guests_of(device, context.guests_by_host, &(&1.virtualization in guest_kinds)),
+          else: []
+
+      %Host{host_entry(device, context.snapshot, guests) | workloads: live_workloads}
     end
   end
 
   defp other_hosts(hosts, guests_by_host, snapshot) do
     for device <- hosts,
+        host?(device, guests_by_host),
         guests = guests_of(device, guests_by_host, &(not claimed?(device, &1))),
         device.platforms == [] or guests != [] do
       host_entry(device, snapshot, guests)

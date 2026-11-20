@@ -111,3 +111,6 @@ msgstr "Lecture"
 
 msgid "Write"
 msgstr "Écriture"
+
+msgid "Pod"
+msgstr "Pod"

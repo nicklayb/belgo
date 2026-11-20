@@ -801,6 +801,49 @@ first addressed interface only, other interfaces are named through their
 - Sources (owner's plan): networks ← OPNsense; locations ← Home Assistant floors/areas;
   devices ← OPNsense, AdGuard Home (rewrites join by IP, clients by MAC), Omada
   (software controller in Docker, latest version, Open API; joins by MAC).
+- Hosting providers (owner, read only, live only like uplinks): providers return
+  `Belgo.Discovery.Workload`s (`Report.with_workloads/3`, `State.workloads/1`;
+  pods, containers, VMs, LXC with a `HostReference`), joined by
+  `Belgo.Discovery.Workloads` (pure: host = explicit `device_id` > MAC > IP >
+  hostname / id / DNS name or its first label; unknown hosts listed; guests joined
+  by MAC → `LivePlacement` + divergence when not on `host_id`), stored in
+  `Correlation.workloads`. `Hosting.groups/2` attaches them per platform (a device
+  with workloads joins that platform, guests only when declared). Hosting page:
+  Kubernetes / Docker hosts one per row, workloads nested by `Topology.WorkloadTree`
+  (pure: groups by `{namespace, group}` first, then ungrouped, alphabetical; a pod
+  whose group is its own name is bare); groups are plain `<details>` (collapsed, no
+  `Collapsible` storage), open under `?app=namespace/app` (distinct id, since `open`
+  is ignored across patches); first 10 entries per host + "Show N more"; the
+  filter lists grouped pods only; Proxmox
+  "Also running here", unknown hosts; *Set host* (`BelgoWeb.Live.SetHost`, device
+  page "Running on" + Hosting) edits `devices.yaml` on click only.
+  - `Belgo.Providers.Prometheus`: queried through Grafana's data source proxy
+    (`/api/datasources/proxy/uid/<uid>/api/v1/query`, documented in the Grafana data
+    source HTTP API, **measured** with a service account token on the owner's Grafana,
+    same answer as Prometheus) or directly (`url` only). Owner chose Grafana
+    (polaris does the same; Prometheus is unauthenticated, Grafana has tokens).
+    Queries: `kube_pod_info`, `kube_pod_status_phase == 1`, `kube_replicaset_owner`
+    (Deployment of a ReplicaSet), `kube_pod_labels` (`app.kubernetes.io/instance`,
+    **measured absent**: kube-state-metrics exports no `kube_*_labels` without
+    `metricLabelsAllowlist`), `kube_node_info` (`internal_ip`), and
+    `container_last_seen{name!="",image!="",pod=""}` (Docker only; kubelet series
+    have `pod`). Option `instances` maps scrape targets (`cadvisor:8080`) to devices.
+    Pods and containers are independent parts (one failing is a partial failure).
+  - Monitor's cAdvisor (owner's VM, `~/stacks/monitor/docker-compose.yml`, not in
+    git) had no container names: Docker 29 uses the containerd image store, and
+    cAdvisor's Docker factory dials containerd at `--containerd` (default
+    `/run/containerd/containerd.sock`; Docker's is
+    `/var/run/docker/containerd/containerd.sock`, namespace `moby`). Fixed 2026-11-20
+    with `command: [--containerd=/var/run/docker/containerd/containerd.sock]`
+    (backup `docker-compose.yml.bak`), measured: names appear.
+  - `Belgo.Providers.Proxmox`: API token (`PVEAPIToken=` header, `BELGO_PROXMOX_TOKEN_ID`
+    / `_SECRET`), `/cluster/status` (node IPs, `Sys.Audit` on `/`),
+    `/cluster/resources?type=vm` (any user, filtered by permissions), each
+    `/nodes/{node}/{qemu|lxc}/{vmid}/config` (`VM.Audit`; `netN` MAC = any `k=v`
+    value that is a MAC: `virtio=`, `macaddr=`, `hwaddr=`), 4 at a time. Field names
+    and permissions verified in the API viewer schema (`apidoc.js`), **not on the
+    owner's cluster** (token not created yet). Node addresses and configurations are
+    best effort (failures reported, guests kept without MAC / IP).
 
 ## Roadmap
 

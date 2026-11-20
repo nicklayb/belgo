@@ -3,6 +3,8 @@ defmodule Belgo.TopologyTest do
 
   import Belgo.Fixtures
 
+  alias Belgo.Discovery.Workload
+  alias Belgo.Discovery.Workloads
   alias Belgo.Inventory.Snapshot
   alias Belgo.Topology.DeviceNode
   alias Belgo.Topology.Hosting
@@ -162,6 +164,50 @@ defmodule Belgo.TopologyTest do
 
       assert ["krusty", "tv-living-room"] == Enum.map(groups[nil], & &1.device.id)
       assert %{guests: [%{id: "sideshow"}]} = Enum.find(groups[nil], &(&1.device.id == "krusty"))
+    end
+
+    test "live workloads join their host in their platform, declared or not" do
+      host = %Workload.HostReference{name: "smithers"}
+
+      workloads =
+        Workloads.correlate(snapshot(), [
+          %Workload{
+            provider: :prometheus,
+            source: :kube_pod,
+            kind: :pod,
+            name: "krusty-0",
+            host: host
+          },
+          %Workload{
+            provider: :prometheus,
+            source: :docker_container,
+            kind: :container,
+            name: "duff-brewery",
+            host: host
+          }
+        ])
+
+      groups = Map.new(Hosting.groups(snapshot(), workloads), &{&1.platform, &1.hosts})
+
+      assert [
+               %Hosting.Host{
+                 device: %{id: "smithers"},
+                 guests: [%{id: "itchy"}],
+                 workloads: [%{name: "duff-brewery"}]
+               }
+             ] =
+               groups.docker
+
+      assert [
+               %Hosting.Host{
+                 device: %{id: "smithers"},
+                 guests: [],
+                 workloads: [%{name: "krusty-0"}]
+               }
+             ] =
+               groups.kubernetes
+
+      assert [%Hosting.Host{device: %{id: "burns-node"}, workloads: []}] = groups.proxmox
     end
   end
 end

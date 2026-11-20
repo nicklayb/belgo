@@ -110,3 +110,6 @@ msgstr ""
 
 msgid "Write"
 msgstr ""
+
+msgid "Pod"
+msgstr ""

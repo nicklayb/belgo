@@ -20,7 +20,8 @@ can edit by hand and version with git; there is no database.
   the providers, never deleted, except (opt-in) the Kea reservations of deleted devices and
   interfaces.
 * Physical, hosting and routing views; device reachability, open ports and
-  wake-on-LAN.
+  wake-on-LAN. The hosting view shows live pods and Docker containers (Prometheus)
+  and where Proxmox guests run.
 * Home plan in 2D and 3D with devices placed in their rooms.
 * English and French interface.
 

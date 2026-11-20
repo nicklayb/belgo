@@ -26,11 +26,13 @@ defmodule Belgo.Providers.Settings do
   alias Belgo.Providers.HomeAssistant
   alias Belgo.Providers.Omada
   alias Belgo.Providers.Opnsense
+  alias Belgo.Providers.Prometheus
+  alias Belgo.Providers.Proxmox
   alias Belgo.Providers.Secrets
 
   @file_name "providers.yaml"
   @format_version 1
-  @provider_modules [Adguard, HomeAssistant, Omada, Opnsense]
+  @provider_modules [Adguard, HomeAssistant, Omada, Opnsense, Prometheus, Proxmox]
   @mode_key "mode"
   @interval_key "interval"
   @minimum_interval_milliseconds 10_000
