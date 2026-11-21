@@ -103,6 +103,49 @@ defmodule Belgo.Amt.SolTest do
     end)
   end
 
+  test "amtterm exiting before its os pid is read still ends the session" do
+    Phoenix.PubSub.subscribe(Belgo.PubSub, Sol.topic(@username, "smithers"))
+    test_process = self()
+
+    # Waits for the port to close, as when amtterm exits before `init/1` reads its pid.
+    port_os_pid = fn port ->
+      monitor = Port.monitor(port)
+      assert_receive {:DOWN, ^monitor, :port, ^port, _reason}, @wait_milliseconds
+      Port.info(port, :os_pid)
+    end
+
+    terminate_process = fn os_pid, _grace -> send(test_process, {:terminated, os_pid}) end
+
+    capture_log(fn ->
+      assert {:ok, :opened} ==
+               open("smithers", "10.0.0.11", "mmm-donuts",
+                 port_os_pid: port_os_pid,
+                 terminate_process: terminate_process
+               )
+
+      assert_receive {:amt_sol_closed, {:exit_status, 1}}, @wait_milliseconds
+      refute_received {:terminated, _os_pid}
+    end)
+  end
+
+  test "closing a session without os pid terminates no process" do
+    Phoenix.PubSub.subscribe(Belgo.PubSub, Sol.topic(@username, "burns-node"))
+    test_process = self()
+    terminate_process = fn os_pid, _grace -> send(test_process, {:terminated, os_pid}) end
+
+    capture_log(fn ->
+      assert {:ok, :opened} ==
+               open("burns-node", "10.0.0.10", "excellent",
+                 port_os_pid: fn _port -> nil end,
+                 terminate_process: terminate_process
+               )
+
+      Sol.close(@username, "burns-node")
+      assert_receive {:amt_sol_closed, :manual}, @wait_milliseconds
+      refute_received {:terminated, _os_pid}
+    end)
+  end
+
   test "closes after the inactivity timeout" do
     Phoenix.PubSub.subscribe(Belgo.PubSub, Sol.topic(@username, "burns-node"))
 

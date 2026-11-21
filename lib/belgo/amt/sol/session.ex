@@ -15,7 +15,12 @@ defmodule Belgo.Amt.Sol.Session do
 
   Options: `:username`, `:device_id`, `:device_name`, `:target`, `:credentials`,
   `:executable`, `:idle_timeout`, `:kill_grace` (milliseconds), `:pubsub`,
-  `:topic`, `:registry`, `:terminate_process` (os pid, grace → :ok).
+  `:topic`, `:registry`, `:terminate_process` (os pid, grace → :ok), `:port_os_pid`
+  (port → os pid, `nil` once the port is closed; tests use it to replay the race).
+
+  amtterm can exit before the session reads its os pid (a refused password fails
+  at once): the os pid is then `nil` and the pending `exit_status` message ends the
+  session through the normal path.
   The password is only read to build the port environment, never kept.
   """
 
@@ -68,7 +73,7 @@ defmodule Belgo.Amt.Sol.Session do
         env: Command.environment(credentials)
       ])
 
-    {:os_pid, os_pid} = Port.info(port, :os_pid)
+    os_pid = Keyword.get(options, :port_os_pid, &port_os_pid/1).(port)
     idle_timeout = Keyword.fetch!(options, :idle_timeout)
 
     state = %{
@@ -137,12 +142,23 @@ defmodule Belgo.Amt.Sol.Session do
   def terminate(_reason, state) do
     if state.port do
       safe_close(state.port)
-      state.terminate_process.(state.os_pid, state.kill_grace)
+      terminate_process(state)
     end
 
     reason = state.close_reason || :manual
     Logger.info("#{state.log_prefix} closed (#{describe(reason)})")
     broadcast(state, {:amt_sol_closed, reason})
+  end
+
+  defp terminate_process(%{os_pid: nil}), do: :ok
+  defp terminate_process(state), do: state.terminate_process.(state.os_pid, state.kill_grace)
+
+  @spec port_os_pid(port()) :: non_neg_integer() | nil
+  defp port_os_pid(port) do
+    case Port.info(port, :os_pid) do
+      {:os_pid, os_pid} -> os_pid
+      nil -> nil
+    end
   end
 
   defp safe_close(port) do
