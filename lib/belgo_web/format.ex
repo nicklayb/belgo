@@ -42,6 +42,7 @@ defmodule BelgoWeb.Format do
     adguard: "AdGuard Home",
     omada: "Omada",
     home_assistant: "Home Assistant",
+    prometheus: "Prometheus",
     access_point: "Access point",
     metallb: "MetalLB",
     kube_vip: "kube-vip",
@@ -123,6 +124,10 @@ defmodule BelgoWeb.Format do
   def source(:omada_client), do: gettext("Client")
   def source(:home_assistant_floor), do: gettext("Floor")
   def source(:home_assistant_area), do: gettext("Area")
+  def source(:kube_pod), do: gettext("Pod")
+  def source(:docker_container), do: gettext("Docker container")
+  def source(:proxmox_vm), do: gettext("Virtual machine")
+  def source(:proxmox_lxc), do: gettext("LXC container")
   def source(source), do: label(source)
 
   @doc "Short, locale neutral timestamp."

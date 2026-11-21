@@ -81,6 +81,8 @@ addresses) are listed apart, in *Out of DHCP*.
 | AdGuard Home | Persistent and automatic clients (joined by MAC / IP), DNS rewrites | Persistent clients | `BELGO_ADGUARD_USERNAME`, `BELGO_ADGUARD_PASSWORD` |
 | Omada (Open API) | Devices (gateway, switches, APs and their uplink), connected clients (AP / switch port, Wi-Fi, Lock to AP, type, vendor, model) | Client names; client type, vendor and model (web API); reconnects Wi-Fi clients | `BELGO_OMADA_CLIENT_ID`, `BELGO_OMADA_CLIENT_SECRET`; optional `BELGO_OMADA_USERNAME`, `BELGO_OMADA_PASSWORD` |
 | Home Assistant | Floors and areas (suggested as locations) | Nothing (read only) | `BELGO_HOME_ASSISTANT_TOKEN` |
+| Prometheus | Kubernetes pods per node (kube-state-metrics), Docker containers per host (cAdvisor) | Nothing (read only) | optional `BELGO_PROMETHEUS_TOKEN` |
+| Proxmox VE | VMs and LXC containers per node, with their MAC addresses | Nothing (read only) | `BELGO_PROXMOX_TOKEN_ID`, `BELGO_PROXMOX_TOKEN_SECRET` |
 
 Omada uses its official Open API: create an application in client mode in the
 controller (Settings > Platform Integration > Open API) and give Belgo its client ID
@@ -116,6 +118,55 @@ supports (`os_linux`, `user_child`…) are added. DNS rewrites are read, never w
 Every secret can also be given as a file with the `_FILE` suffix (Docker / Kubernetes
 secrets). Pulls and pushes log `debug` when they start, `info` on success and `error`
 on failure.
+
+### Hosting providers
+
+Prometheus and Proxmox VE show what runs on the hosts right now on the *Hosting*
+page; this is never saved to the files.
+
+```yaml
+providers:
+  prometheus:
+    url: http://grafana.home.lan:3000   # or Prometheus itself: http://monitor.home.lan:9090
+    datasource_uid: afw2akionwj5se      # through Grafana's data source proxy; omit for Prometheus
+    namespaces: [homelab, monitor]      # pods followed, all when absent
+    instances:
+      "cadvisor:8080": monitor          # scrape targets whose host name is no device name
+  proxmox:
+    url: https://hal.home.lan:8006
+    verify_tls: false
+```
+
+- **Prometheus** reads metrics already scraped: `kube_pod_info` (pods per node,
+  joined to devices by the node's internal IP, else its name) and cAdvisor's
+  `container_last_seen` (containers per scrape target, joined by host name, IP, or
+  `instances`). Through Grafana, use a service account (role *Viewer*) token as
+  `BELGO_PROMETHEUS_TOKEN`. Pods are grouped by application: the
+  `app.kubernetes.io/instance` label when kube-state-metrics exports it
+  (`metricLabelsAllowlist: ["pods=[app.kubernetes.io/instance]"]` in its Helm values),
+  else their Deployment / StatefulSet / DaemonSet; containers by Compose project.
+  Each Kubernetes / Docker host (one per row) nests its pods / containers under
+  collapsible groups (with their count; bare pods and containers outside Compose stay
+  at the top), lists its first 10 entries and expands; the *Application* filter keeps
+  one application, its groups open. cAdvisor must see the
+  Docker engine: with Docker's containerd image store, pass
+  `--containerd=/var/run/docker/containerd/containerd.sock` (otherwise containers have
+  no `name`). Scrape targets matching no device are listed as unknown hosts.
+- **Proxmox VE** reads `/cluster/status`, `/cluster/resources` and each guest's
+  configuration, joining guests to devices by MAC address. A guest running on another
+  node than its device's host is a divergence; the device page and the Hosting page
+  show where it runs with a *Set host* button (never applied automatically). Create a
+  read-only token on any node:
+
+  ```sh
+  pveum user add belgo@pve --comment "Belgo (read only)"
+  pveum acl modify / --users belgo@pve --roles PVEAuditor
+  pveum user token add belgo@pve belgo --privsep 0
+  ```
+
+  then set `BELGO_PROXMOX_TOKEN_ID=belgo@pve!belgo` and `BELGO_PROXMOX_TOKEN_SECRET`
+  to the secret shown once. With `--privsep 1`, also run `pveum acl modify /
+  --tokens 'belgo@pve!belgo' --roles PVEAuditor`.
 
 ### Pushing
 

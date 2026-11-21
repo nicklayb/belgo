@@ -363,7 +363,13 @@ defmodule Belgo.Discovery.Server do
   defp log_prefix(module, {:push, device_id}), do: "[push] [#{module.key()}] [#{device_id}]"
 
   defp recompute(state) do
-    correlation = Correlation.build(state.snapshot, State.observations(state.public))
+    correlation =
+      Correlation.build(
+        state.snapshot,
+        State.observations(state.public),
+        State.workloads(state.public)
+      )
+
     Map.update!(state, :public, &State.put_correlation(&1, correlation))
   end
 

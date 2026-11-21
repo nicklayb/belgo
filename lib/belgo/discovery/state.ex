@@ -4,6 +4,7 @@ defmodule Belgo.Discovery.State do
   alias Belgo.Discovery.Correlation
   alias Belgo.Discovery.Observation
   alias Belgo.Discovery.Report
+  alias Belgo.Discovery.Workload
   alias Belgo.Providers.Settings
 
   defmodule ProviderStatus do
@@ -109,6 +110,15 @@ defmodule Belgo.Discovery.State do
   def observations(%__MODULE__{providers: providers}) do
     Enum.flat_map(providers, fn
       %ProviderStatus{report: %Report{observations: observations}} -> observations
+      _never_succeeded -> []
+    end)
+  end
+
+  @doc "Lists the workloads (pods, containers, guests) of every provider's last successful report."
+  @spec workloads(t()) :: [Workload.t()]
+  def workloads(%__MODULE__{providers: providers}) do
+    Enum.flat_map(providers, fn
+      %ProviderStatus{report: %Report{workloads: workloads}} -> workloads
       _never_succeeded -> []
     end)
   end

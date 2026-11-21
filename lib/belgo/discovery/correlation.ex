@@ -24,6 +24,9 @@ defmodule Belgo.Discovery.Correlation do
   Location observations (Home Assistant floors and areas) are handled by
   `Belgo.Discovery.Locations`. DNS names resolving to an inventory address without
   belonging to Belgo are `dns_names` (`Belgo.Discovery.DnsNames`), to claim.
+  Workloads (pods, containers, Proxmox guests) are joined to their hosts by
+  `Belgo.Discovery.Workloads`; guests running elsewhere than their `host_id` are
+  divergences.
   """
 
   alias Belgo.Discovery.DnsNames
@@ -32,6 +35,8 @@ defmodule Belgo.Discovery.Correlation do
   alias Belgo.Discovery.Locations.DiscoveredLocation
   alias Belgo.Discovery.Observation
   alias Belgo.Discovery.Uplink
+  alias Belgo.Discovery.Workload
+  alias Belgo.Discovery.Workloads
   alias Belgo.Inventory.Device
   alias Belgo.Inventory.Identifier
   alias Belgo.Inventory.Network
@@ -120,6 +125,7 @@ defmodule Belgo.Discovery.Correlation do
             new_networks: [],
             new_locations: [],
             dns_names: [],
+            workloads: %Workloads{},
             divergences: []
 
   @type t :: %__MODULE__{
@@ -132,15 +138,16 @@ defmodule Belgo.Discovery.Correlation do
           new_networks: [DiscoveredNetwork.t()],
           new_locations: [DiscoveredLocation.t()],
           dns_names: [DiscoveredDnsName.t()],
+          workloads: Workloads.t(),
           divergences: [Divergence.t()]
         }
 
   @typedoc "Effective DHCP range of a network and where it comes from."
   @type dhcp_range :: %{start: String.t(), end: String.t(), source: :inventory | atom()}
 
-  @doc "Correlates observations of every provider with the snapshot."
-  @spec build(Snapshot.t(), [Observation.t()]) :: t()
-  def build(%Snapshot{} = snapshot, observations) do
+  @doc "Correlates observations and workloads of every provider with the snapshot."
+  @spec build(Snapshot.t(), [Observation.t()], [Workload.t()]) :: t()
+  def build(%Snapshot{} = snapshot, observations, workloads \\ []) do
     observations_by_kind = Enum.group_by(observations, & &1.kind)
     context = device_context(snapshot)
 
@@ -158,6 +165,7 @@ defmodule Belgo.Discovery.Correlation do
       Locations.correlate(snapshot, Map.get(observations_by_kind, :location, []))
 
     conflicts = Enum.map(conflicts(device_observations), &own_conflict(&1, context))
+    workloads = Workloads.correlate(snapshot, workloads)
 
     {ignored, claimed, unknown} =
       device_observations
@@ -190,6 +198,7 @@ defmodule Belgo.Discovery.Correlation do
           context.desired_state,
           Enum.map(conflicts, & &1.name)
         ),
+      workloads: workloads,
       divergences:
         claimed
         |> Enum.flat_map(fn {discovered, devices} ->
@@ -198,6 +207,7 @@ defmodule Belgo.Discovery.Correlation do
         |> Kernel.++(network_divergences)
         |> Kernel.++(location_divergences)
         |> Kernel.++(conflict_divergences(conflicts))
+        |> Kernel.++(workloads.divergences)
         |> Enum.uniq()
         |> Enum.sort_by(&{&1.collection, &1.id, &1.message})
     }
