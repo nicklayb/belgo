@@ -109,7 +109,7 @@ defmodule BelgoWeb.Components.PlanDrawing do
       viewBox={"#{@view.x} #{@view.y} #{@view.width} #{@view.depth}"}
       class={[
         "select-none",
-        !@editable && "h-auto max-h-[70vh] w-full",
+        !@editable && "h-auto max-h-[70dvh] w-full",
         @editable && "h-full w-full touch-none"
       ]}
       role="img"

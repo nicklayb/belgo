@@ -56,10 +56,31 @@
 
   body {
     @apply bg-canvas text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+    /* `main` scrolls; the page itself never rubber-bands (standalone app feel). */
+    overscroll-behavior: none;
   }
 
   [data-phx-main] {
     height: 100%;
+  }
+}
+
+/* Navigation chrome (header, menus): no text selection nor iOS long-press callout, like
+   a native application. Never used on content or form controls. */
+@utility app-chrome {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* iOS zooms into form controls whose text is under 16px when they get the focus.
+   Unlayered, so it wins over the `text-sm` utilities, on touch screens only. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
   }
 }
 

@@ -16,7 +16,7 @@ msgstr ""
 msgid "%{id} (deleted device)"
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:138
+#: lib/belgo_web/components/layouts.ex:208
 #, elixir-autogen, elixir-format
 msgid "%{label}: %{count}"
 msgstr ""
@@ -1668,7 +1668,7 @@ msgstr ""
 msgid "Only devices with a MAC address can be ignored."
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:36
+#: lib/belgo_web/components/layouts.ex:85
 #, elixir-autogen, elixir-format
 msgid "Open menu"
 msgstr ""
@@ -1994,7 +1994,7 @@ msgstr ""
 msgid "Saving…"
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:103
+#: lib/belgo_web/components/layouts.ex:167
 #: lib/belgo_web/components/search_modal.ex:59
 #, elixir-autogen, elixir-format
 msgid "Search"
@@ -2570,7 +2570,7 @@ msgstr ""
 msgid "Saved in this browser."
 msgstr ""
 
-#: lib/belgo_web/components/layouts.ex:149
+#: lib/belgo_web/components/layouts.ex:220
 #: lib/belgo_web/live/settings/live.ex:27
 #: lib/belgo_web/live/settings/live.ex:103
 #, elixir-autogen, elixir-format
@@ -3277,4 +3277,9 @@ msgstr ""
 #: lib/belgo_web/live/devices/console.ex:217
 #, elixir-autogen, elixir-format
 msgid "amtterm stopped (exit status %{status})."
+msgstr ""
+
+#: lib/belgo_web/components/layouts.ex:104
+#, elixir-autogen, elixir-format
+msgid "Close menu"
 msgstr ""

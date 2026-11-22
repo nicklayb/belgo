@@ -1120,7 +1120,7 @@ defmodule BelgoWeb.Plans.Editor do
     ~H"""
     <ul
       id="plan-tree"
-      class="max-h-[max(12rem,calc(100vh-29rem))] overflow-y-auto py-1 text-sm"
+      class="max-h-[max(12rem,calc(100dvh-29rem))] overflow-y-auto py-1 text-sm"
     >
       <li
         :for={row <- @rows}
@@ -1537,7 +1537,7 @@ defmodule BelgoWeb.Plans.Editor do
               data-plan-id={@draft.id}
               data-tool={@tool}
               data-grid={@grid}
-              class="h-[calc(100vh-13rem)] min-h-96 overflow-hidden"
+              class="h-[calc(100dvh-13rem)] min-h-96 overflow-hidden"
             >
               <PlanDrawing.level_drawing
                 plan={@draft}

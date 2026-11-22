@@ -690,7 +690,7 @@ defmodule BelgoWeb.Plans.Live do
             data-scene={Jason.encode!(@shown_scene)}
             data-visible-levels={visible_levels(@level_ids)}
             data-network-path={@network_path && Jason.encode!(@network_path)}
-            class="relative h-[70vh] w-full overflow-hidden rounded-xl"
+            class="relative h-[70dvh] w-full overflow-hidden rounded-xl"
           >
             <div data-viewport class="absolute inset-0"></div>
             <div class="absolute top-3 right-3 z-10 flex max-w-[60%] flex-wrap justify-end gap-2">

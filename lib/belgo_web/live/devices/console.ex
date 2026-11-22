@@ -190,7 +190,7 @@ defmodule BelgoWeb.Devices.Live.Console do
         id={"amt-console-#{@session_key}"}
         phx-hook="AmtConsole"
         phx-update="ignore"
-        class="h-[70vh] overflow-hidden rounded-xl border border-border bg-black p-2"
+        class="h-[70dvh] overflow-hidden rounded-xl border border-border bg-black p-2"
       >
         <div data-terminal class="size-full"></div>
       </div>
