@@ -57,7 +57,7 @@ defmodule BelgoWeb.Components.SearchModal do
         phx-hook="SearchDialog"
         phx-mounted={JS.ignore_attributes("open")}
         aria-label={gettext("Search")}
-        class="mx-auto mt-[10vh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40"
+        class="mx-auto mt-[10dvh] w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-xl border border-border bg-surface p-0 text-foreground shadow-2xl backdrop:bg-black/40"
       >
         <div>
           <.form for={%{}} as={:search} phx-change="search" phx-submit="search" phx-target={@myself}>
@@ -91,7 +91,7 @@ defmodule BelgoWeb.Components.SearchModal do
             :if={@results != []}
             id="search-results"
             role="listbox"
-            class="max-h-[60vh] divide-y divide-border overflow-y-auto"
+            class="max-h-[60dvh] divide-y divide-border overflow-y-auto"
           >
             <li :for={result <- @results}>
               <.link

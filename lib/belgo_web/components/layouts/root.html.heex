@@ -2,11 +2,12 @@
 <html lang={assigns[:locale] || "en"} class="h-full" data-theme={assigns[:theme] || "auto"}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="csrf-token" content={Phoenix.Controller.get_csrf_token()} />
     <.live_title default="Belgo" suffix=" · Belgo">
       {assigns[:page_title]}
     </.live_title>
+    <.standalone_app_meta theme={assigns[:theme]} />
     <link rel="icon" href={~p"/favicon.ico"} sizes="any" />
     <link rel="icon" href={~p"/favicon.svg"} type="image/svg+xml" />
     <link rel="apple-touch-icon" href={~p"/apple-touch-icon.png"} />
@@ -14,7 +15,7 @@
     <script defer phx-track-static type="module" src={~p"/assets/app.js"}>
     </script>
   </head>
-  <body class="h-full">
+  <body class="h-dvh">
     {@inner_content}
   </body>
 </html>

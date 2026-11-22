@@ -16,7 +16,7 @@ msgstr ""
 msgid "%{id} (deleted device)"
 msgstr "%{id} (appareil supprimé)"
 
-#: lib/belgo_web/components/layouts.ex:138
+#: lib/belgo_web/components/layouts.ex:208
 #, elixir-autogen, elixir-format
 msgid "%{label}: %{count}"
 msgstr "%{label} : %{count}"
@@ -1668,7 +1668,7 @@ msgstr "Sur le mur %{side} de %{room}"
 msgid "Only devices with a MAC address can be ignored."
 msgstr "Seuls les appareils avec une adresse MAC peuvent être ignorés."
 
-#: lib/belgo_web/components/layouts.ex:36
+#: lib/belgo_web/components/layouts.ex:85
 #, elixir-autogen, elixir-format
 msgid "Open menu"
 msgstr "Ouvrir le menu"
@@ -1994,7 +1994,7 @@ msgstr "Enregistré à %{time}"
 msgid "Saving…"
 msgstr "Enregistrement…"
 
-#: lib/belgo_web/components/layouts.ex:103
+#: lib/belgo_web/components/layouts.ex:167
 #: lib/belgo_web/components/search_modal.ex:59
 #, elixir-autogen, elixir-format
 msgid "Search"
@@ -2570,7 +2570,7 @@ msgstr "Actuellement : %{language}."
 msgid "Saved in this browser."
 msgstr "Enregistrés dans ce navigateur."
 
-#: lib/belgo_web/components/layouts.ex:149
+#: lib/belgo_web/components/layouts.ex:220
 #: lib/belgo_web/live/settings/live.ex:27
 #: lib/belgo_web/live/settings/live.ex:103
 #, elixir-autogen, elixir-format
@@ -3278,3 +3278,8 @@ msgstr "amtterm n'est pas installé (ou BELGO_AMTTERM_PATH est faux)."
 #, elixir-autogen, elixir-format
 msgid "amtterm stopped (exit status %{status})."
 msgstr "amtterm s'est arrêté (code de sortie %{status})."
+
+#: lib/belgo_web/components/layouts.ex:104
+#, elixir-autogen, elixir-format
+msgid "Close menu"
+msgstr "Fermer le menu"

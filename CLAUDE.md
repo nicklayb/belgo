@@ -874,6 +874,17 @@ first addressed interface only, other interfaces are named through their
     and permissions verified in the API viewer schema (`apidoc.js`), **not on the
     owner's cluster** (token not created yet). Node addresses and configurations are
     best effort (failures reported, guests kept without MAC / IP).
+- Home screen app (owner: standalone on iPhone, **no service worker / offline**):
+  `priv/static/manifest.webmanifest` (served at the root via `static_paths` /
+  `static_file_prefixes`, linked with `crossorigin="use-credentials"` so the fetch
+  carries the Authelia cookie), icons in `priv/static/images` rendered from
+  `favicon.svg` (`apple-touch-icon.png` opaque 180, maskable 512 with a padded glyph).
+  `Layouts.standalone_app_meta/1`: Apple tags, `black-translucent` status bar,
+  `theme-color` = `--color-surface` hex (`Layouts.theme_colors/1`, one per scheme for
+  `auto`). `viewport-fit=cover`: chrome pads with `env(safe-area-inset-*)` (header,
+  sidebars, version footer, `main` sides); `app-chrome` utility (no selection /
+  callout, chrome only); form controls 16px on `pointer: coarse` (iOS focus zoom);
+  `dvh` instead of `vh`; the drawer closes on link tap (`sidebar` `on_navigate`).
 
 ## Roadmap
 
